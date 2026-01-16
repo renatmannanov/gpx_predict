@@ -1,0 +1,476 @@
+"""
+Prediction Handlers
+
+Handlers for GPX upload and prediction flow.
+"""
+
+import logging
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
+
+from states.prediction import PredictionStates
+from keyboards.prediction import (
+    get_experience_keyboard,
+    get_backpack_keyboard,
+    get_group_size_keyboard,
+    get_yes_no_keyboard,
+    get_route_type_keyboard,
+)
+from services.api_client import api_client, APIError
+from config import settings
+
+logger = logging.getLogger(__name__)
+router = Router()
+
+
+def format_gpx_info(info) -> str:
+    """Format GPX info for display."""
+    name = info.name or info.filename
+    return (
+        f"Маршрут: {name}\n\n"
+        f"Дистанция: {info.distance_km:.1f} км\n"
+        f"Набор высоты: {info.elevation_gain_m:.0f} м\n"
+        f"Сброс высоты: {info.elevation_loss_m:.0f} м\n"
+        f"Макс. высота: {info.max_elevation_m:.0f} м\n"
+        f"Мин. высота: {info.min_elevation_m:.0f} м"
+    )
+
+
+def format_time(hours: float) -> str:
+    """Format hours as Xч Yмин."""
+    h = int(hours)
+    m = int((hours - h) * 60)
+    if h > 0 and m > 0:
+        return f"{h}ч {m}мин"
+    elif h > 0:
+        return f"{h}ч"
+    else:
+        return f"{m}мин"
+
+
+def format_prediction(prediction, gpx_name: str, gpx_info=None) -> str:
+    """Format prediction result for display."""
+    result = f"Прогноз для маршрута:\n{gpx_name}\n\n"
+
+    # Show route info if available
+    if gpx_info:
+        result += (
+            f"Дистанция: {gpx_info.distance_km:.1f} км\n"
+            f"Набор: +{gpx_info.elevation_gain_m:.0f} м, "
+            f"сброс: -{gpx_info.elevation_loss_m:.0f} м\n\n"
+        )
+
+    # Main time
+    result += (
+        f"Общее время: {format_time(prediction.estimated_time_hours)}\n"
+        f"С запасом (+20%): {format_time(prediction.safe_time_hours)}\n\n"
+    )
+
+    # Time breakdown
+    if prediction.time_breakdown:
+        tb = prediction.time_breakdown
+        # Calculate total breaks
+        total_breaks = tb.rest_time_hours + tb.lunch_time_hours
+        result += (
+            f"Из них:\n"
+            f"  Движение: {format_time(tb.moving_time_hours)}\n"
+            f"  Остановки: {format_time(total_breaks)}"
+        )
+        # Detail breaks
+        details = []
+        if tb.rest_time_hours > 0:
+            details.append(f"отдых {format_time(tb.rest_time_hours)}")
+        if tb.lunch_time_hours > 0:
+            details.append(f"обед {format_time(tb.lunch_time_hours)}")
+        if details:
+            result += f" ({', '.join(details)})"
+        result += "\n\n"
+
+    result += f"Рекомендуемый старт: {prediction.recommended_start}\n"
+
+    if prediction.recommended_turnaround:
+        result += f"Точка разворота: {prediction.recommended_turnaround}\n"
+
+    # Show warnings
+    if prediction.warnings:
+        result += "\nПредупреждения:\n"
+        for w in prediction.warnings:
+            emoji = {"info": "i", "warning": "!", "danger": "!!"}
+            level_emoji = emoji.get(w.get("level", "info"), "i")
+            result += f"[{level_emoji}] {w.get('message', '')}\n"
+
+    return result
+
+
+def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
+    """Format complete prediction with all methods in one message."""
+    # Use original filename from gpx_info.name or fallback to filename
+    filename = gpx_info.name if gpx_info and gpx_info.name else (gpx_info.filename if gpx_info else "Маршрут")
+    # Remove .gpx extension for display
+    if filename.lower().endswith('.gpx'):
+        filename = filename[:-4]
+
+    result = f"<b>Прогноз для маршрута:</b>\n{filename}\n\n"
+
+    # Route summary - distance on new line
+    result += (
+        f"<b>Маршрут:</b>\n"
+        f"  {comparison['total_distance_km']:.2f} км\n"
+        f"  Подъём: {comparison['ascent_distance_km']:.2f} км (+{comparison['total_ascent_m']:.0f} м)\n"
+        f"  Спуск: {comparison['descent_distance_km']:.2f} км (-{comparison['total_descent_m']:.0f} м)\n\n"
+    )
+
+    # Moving time by methods
+    result += "<b>Чистое время движения:</b>\n"
+    tobler_hours = comparison["totals"].get("tobler", 0)
+    naismith_hours = comparison["totals"].get("naismith", 0)
+    old_moving = old_prediction.time_breakdown.moving_time_hours if old_prediction.time_breakdown else 0
+
+    result += f"  tobler: {format_time(tobler_hours)}\n"
+    result += f"  naismith: {format_time(naismith_hours)}\n"
+    result += f"  old_naismith: {format_time(old_moving)}\n\n"
+
+    # Additional time (was "Рекомендуем добавить")
+    rest_hours = comparison.get("rest_time_hours", 0)
+    lunch_hours = comparison.get("lunch_time_hours", 0)
+    buffer_hours = tobler_hours * 0.2  # 20% buffer
+
+    result += "<b>Дополнительное время:</b>\n"
+    if lunch_hours > 0:
+        result += f"  + {format_time(lunch_hours)} обед\n"
+    if rest_hours > 0:
+        result += f"  + {format_time(rest_hours)} отдых\n"
+    result += f"  + {format_time(buffer_hours)} (20% на непредвиденные ситуации)\n"
+
+    # Total estimate
+    total_estimate = tobler_hours + rest_hours + lunch_hours + buffer_hours
+    result += f"\n<b>Общее время:</b> ~{format_time(total_estimate)}\n\n"
+
+    # Recommended start with full schedule
+    sunrise = comparison.get("sunrise", "06:00")
+    sunset = comparison.get("sunset", "20:00")
+
+    # Calculate recommended start
+    sunset_hour = int(sunset.split(":")[0])
+    sunset_min = int(sunset.split(":")[1])
+    sunrise_hour = int(sunrise.split(":")[0])
+    sunrise_min = int(sunrise.split(":")[1])
+
+    # Want to return 1 hour before sunset
+    target_return = sunset_hour - 1
+    needed_hours = total_estimate
+    start_hour = target_return - needed_hours
+
+    # Don't start before sunrise
+    if start_hour < sunrise_hour:
+        start_hour = sunrise_hour
+        start_min = sunrise_min
+        recommended_start = sunrise
+    else:
+        start_min = 0
+        recommended_start = f"{int(start_hour):02d}:00"
+
+    # Calculate finish time
+    finish_hours = start_hour + start_min / 60 + total_estimate
+    finish_hour = int(finish_hours)
+    finish_min = int((finish_hours - finish_hour) * 60)
+    finish_time = f"{finish_hour:02d}:{finish_min:02d}"
+
+    # Check if late return (finish less than 1 hour before sunset or after sunset)
+    sunset_decimal = sunset_hour + sunset_min / 60
+    is_late_return = finish_hours > (sunset_decimal - 1)
+
+    result += "<b>Рекомендуемый старт:</b>\n"
+    result += f"  рассвет в {sunrise}\n"
+    result += f"  {recommended_start} старт\n"
+    result += f"  преодоление маршрута {format_time(total_estimate)}\n"
+    result += f"  {finish_time} ориентировочный финиш\n"
+    result += f"  закат в {sunset}\n"
+
+    if is_late_return:
+        result += f"  🚨 Риск вернуться после заката. Стартуйте раньше или выберите маршрут короче.\n"
+    result += "\n"
+
+    # Other warnings (without late return warning which is now in schedule)
+    max_elevation = comparison.get("max_elevation_m", 0)
+    warnings = []
+
+    if total_estimate > 8:
+        warnings.append(("ℹ️", "Длинный поход (8+ часов). Возьмите достаточно воды и еды."))
+
+    if max_elevation > 3000:
+        warnings.append(("⚠️", f"Маршрут достигает {max_elevation:.0f}м. Следите за симптомами горной болезни."))
+
+    if warnings:
+        result += "<b>Предупреждения:</b>\n"
+        for emoji, message in warnings:
+            result += f"{emoji} {message}\n"
+        result += "\n"
+
+    # Segments in expandable blockquote
+    seg_type_names = {
+        "ascent": "Подъём",
+        "descent": "Спуск",
+        "flat": "Ровный"
+    }
+
+    segments_text = ""
+    for seg in comparison["segments"]:
+        seg_type = seg_type_names.get(seg["segment_type"], seg["segment_type"])
+        ele_str = f"+{seg['elevation_change_m']:.0f}" if seg['elevation_change_m'] >= 0 else f"{seg['elevation_change_m']:.0f}"
+
+        segments_text += (
+            f"Часть {seg['segment_number']}: {seg_type} "
+            f"({seg['distance_km']} км, {ele_str} м)\n"
+            f"  Градиент: {seg['gradient_percent']}% ({seg['gradient_degrees']}°)\n"
+        )
+
+        for method_name, method_result in seg["methods"].items():
+            segments_text += f"  [{method_name}] {method_result['speed_kmh']} км/ч → {format_time(method_result['time_hours'])}\n"
+
+        segments_text += "\n"
+
+    # Wrap segments in expandable blockquote
+    result += f"<blockquote expandable>Разбивка по участкам:\n\n{segments_text.strip()}</blockquote>"
+
+    return result
+
+
+# === GPX Upload ===
+
+@router.message(F.document)
+async def handle_document(message: Message, state: FSMContext):
+    """Handle document upload."""
+    document = message.document
+
+    # Validate file extension
+    if not document.file_name or not document.file_name.lower().endswith(".gpx"):
+        await message.answer(
+            "Пожалуйста, отправь файл с расширением .gpx"
+        )
+        return
+
+    # Validate file size
+    max_size = settings.max_file_size_mb * 1024 * 1024
+    if document.file_size and document.file_size > max_size:
+        await message.answer(
+            f"Файл слишком большой. Максимум: {settings.max_file_size_mb} МБ"
+        )
+        return
+
+    # Download file
+    await message.answer("Загружаю файл...")
+
+    try:
+        file = await message.bot.get_file(document.file_id)
+        file_content = await message.bot.download_file(file.file_path)
+        content = file_content.read()
+    except Exception as e:
+        logger.error(f"Failed to download file: {e}")
+        await message.answer("Ошибка при загрузке файла. Попробуй ещё раз.")
+        return
+
+    # Upload to backend
+    try:
+        gpx_info = await api_client.upload_gpx(document.file_name, content)
+    except APIError as e:
+        await message.answer(f"Ошибка при обработке GPX: {e.detail}")
+        return
+    except Exception as e:
+        logger.error(f"API error: {e}")
+        await message.answer("Ошибка сервера. Попробуй позже.")
+        return
+
+    # Save to state
+    await state.update_data(
+        gpx_id=gpx_info.gpx_id,
+        gpx_name=gpx_info.name or gpx_info.filename,
+        gpx_info=gpx_info,
+    )
+
+    # Show GPX info
+    await message.answer(format_gpx_info(gpx_info))
+
+    # If route is a loop (start ≈ end), skip route type question
+    if gpx_info.is_loop:
+        await state.update_data(is_round_trip=False)  # Already a complete route
+        await message.answer(
+            "Какой у тебя опыт походов?",
+            reply_markup=get_experience_keyboard()
+        )
+        await state.set_state(PredictionStates.selecting_experience)
+    else:
+        # Linear route (A→B), ask if round trip
+        await message.answer(
+            "Это маршрут в одну сторону или туда-обратно?",
+            reply_markup=get_route_type_keyboard()
+        )
+        await state.set_state(PredictionStates.selecting_route_type)
+
+
+# === Route Type Selection ===
+
+@router.callback_query(PredictionStates.selecting_route_type, F.data.startswith("rt:"))
+async def handle_route_type(callback: CallbackQuery, state: FSMContext):
+    """Handle route type selection."""
+    is_round_trip = callback.data.split(":")[1] == "roundtrip"
+    await state.update_data(is_round_trip=is_round_trip)
+
+    await callback.message.edit_text(
+        "Какой у тебя опыт походов?",
+        reply_markup=get_experience_keyboard()
+    )
+    await state.set_state(PredictionStates.selecting_experience)
+    await callback.answer()
+
+
+# === Experience Selection ===
+
+@router.callback_query(PredictionStates.selecting_experience, F.data.startswith("exp:"))
+async def handle_experience(callback: CallbackQuery, state: FSMContext):
+    """Handle experience selection."""
+    experience = callback.data.split(":")[1]
+    await state.update_data(experience=experience)
+
+    await callback.message.edit_text(
+        "Какой вес рюкзака?",
+        reply_markup=get_backpack_keyboard()
+    )
+    await state.set_state(PredictionStates.selecting_backpack)
+    await callback.answer()
+
+
+# === Backpack Selection ===
+
+@router.callback_query(PredictionStates.selecting_backpack, F.data.startswith("bp:"))
+async def handle_backpack(callback: CallbackQuery, state: FSMContext):
+    """Handle backpack selection."""
+    backpack = callback.data.split(":")[1]
+    await state.update_data(backpack=backpack)
+
+    await callback.message.edit_text(
+        "Сколько человек в группе?",
+        reply_markup=get_group_size_keyboard()
+    )
+    await state.set_state(PredictionStates.selecting_group_size)
+    await callback.answer()
+
+
+# === Group Size Selection ===
+
+@router.callback_query(PredictionStates.selecting_group_size, F.data.startswith("gs:"))
+async def handle_group_size(callback: CallbackQuery, state: FSMContext):
+    """Handle group size selection."""
+    group_size = int(callback.data.split(":")[1])
+    await state.update_data(group_size=group_size)
+
+    await callback.message.edit_text(
+        "Есть ли в группе дети (до 14 лет)?",
+        reply_markup=get_yes_no_keyboard("children")
+    )
+    await state.set_state(PredictionStates.selecting_children)
+    await callback.answer()
+
+
+# === Children Selection ===
+
+@router.callback_query(PredictionStates.selecting_children, F.data.startswith("children:"))
+async def handle_children(callback: CallbackQuery, state: FSMContext):
+    """Handle children selection."""
+    has_children = callback.data.split(":")[1] == "yes"
+    await state.update_data(has_children=has_children)
+
+    await callback.message.edit_text(
+        "Есть ли в группе пожилые люди (60+ лет)?",
+        reply_markup=get_yes_no_keyboard("elderly")
+    )
+    await state.set_state(PredictionStates.selecting_elderly)
+    await callback.answer()
+
+
+# === Elderly Selection ===
+
+@router.callback_query(PredictionStates.selecting_elderly, F.data.startswith("elderly:"))
+async def handle_elderly(callback: CallbackQuery, state: FSMContext):
+    """Handle elderly selection and make prediction."""
+    has_elderly = callback.data.split(":")[1] == "yes"
+    await state.update_data(has_elderly=has_elderly)
+
+    # Get all data
+    data = await state.get_data()
+
+    await callback.message.edit_text("Рассчитываю прогноз...")
+
+    gpx_id = data["gpx_id"]
+    experience = data.get("experience", "casual")
+    backpack = data.get("backpack", "medium")
+    group_size = data.get("group_size", 1)
+    gpx_name = data.get("gpx_name", "")
+
+    # Get comparison of methods
+    comparison = None
+    try:
+        comparison = await api_client.compare_methods(
+            gpx_id=gpx_id,
+            experience=experience,
+            backpack=backpack,
+            group_size=group_size,
+        )
+    except APIError as e:
+        logger.error(f"Comparison error: {e}")
+    except Exception as e:
+        logger.error(f"Comparison error: {e}")
+
+    # Make old prediction (for recommendations, warnings, etc.)
+    try:
+        prediction = await api_client.predict_hike(
+            gpx_id=gpx_id,
+            experience=experience,
+            backpack=backpack,
+            group_size=group_size,
+            has_children=data.get("has_children", False),
+            has_elderly=has_elderly,
+            is_round_trip=data.get("is_round_trip", False),
+        )
+    except APIError as e:
+        await callback.message.edit_text(f"Ошибка: {e.detail}")
+        await state.clear()
+        return
+    except Exception as e:
+        logger.error(f"Prediction error: {e}")
+        await callback.message.edit_text("Ошибка сервера. Попробуй позже.")
+        await state.clear()
+        return
+
+    # Show unified prediction
+    gpx_info = data.get("gpx_info")
+
+    if comparison:
+        result = format_full_prediction(comparison, gpx_info, prediction)
+        await callback.message.edit_text(result, parse_mode="HTML")
+    else:
+        # Fallback to old format
+        result = format_prediction(
+            prediction,
+            gpx_name,
+            gpx_info
+        )
+        await callback.message.edit_text(result)
+
+    # Clear state
+    await state.clear()
+    await callback.answer()
+
+
+# === Cancel Callback ===
+
+@router.callback_query(F.data == "cancel")
+async def handle_cancel(callback: CallbackQuery, state: FSMContext):
+    """Handle cancel button."""
+    await state.clear()
+    await callback.message.edit_text(
+        "Операция отменена.\n"
+        "Отправь GPX файл, чтобы начать заново."
+    )
+    await callback.answer()
