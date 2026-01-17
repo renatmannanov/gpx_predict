@@ -2,6 +2,7 @@
 Comparison Service
 
 Compares multiple calculation methods side-by-side.
+Supports optional personalization based on user's Strava activity data.
 """
 
 from dataclasses import dataclass, field
@@ -16,6 +17,8 @@ from app.services.calculators.base import (
 from app.services.calculators.naismith import NaismithCalculator
 from app.services.calculators.tobler import ToblerCalculator
 from app.services.calculators.segmenter import RouteSegmenter
+from app.services.calculators.personalization import PersonalizationService
+from app.models.user_profile import UserPerformanceProfile
 
 
 @dataclass
@@ -53,6 +56,10 @@ class RouteComparison:
     # Method descriptions
     method_descriptions: Dict[str, str] = field(default_factory=dict)
 
+    # Personalization info
+    personalized: bool = False
+    activities_used: int = 0
+
 
 class ComparisonService:
     """
@@ -71,7 +78,8 @@ class ComparisonService:
     def compare_route(
         self,
         points: List[Tuple[float, float, float]],
-        profile_multiplier: float = 1.0
+        profile_multiplier: float = 1.0,
+        user_profile: Optional[UserPerformanceProfile] = None
     ) -> RouteComparison:
         """
         Compare all methods on a route.
@@ -79,6 +87,7 @@ class ComparisonService:
         Args:
             points: List of (lat, lon, elevation) tuples
             profile_multiplier: Multiplier from hiker profile
+            user_profile: Optional user profile for personalized calculations
 
         Returns:
             RouteComparison with segment-by-segment and total results
@@ -87,7 +96,7 @@ class ComparisonService:
         macro_segments = RouteSegmenter.segment_route(points)
 
         if not macro_segments:
-            return self._empty_comparison()
+            return self._empty_comparison(user_profile)
 
         # Calculate totals
         total_distance = sum(s.distance_km for s in macro_segments)
@@ -103,9 +112,24 @@ class ComparisonService:
             if s.segment_type == SegmentType.DESCENT
         )
 
+        # Setup personalization if profile is valid
+        personalization = None
+        is_personalized = False
+        activities_used = 0
+
+        if PersonalizationService.is_profile_valid(user_profile):
+            personalization = PersonalizationService(user_profile)
+            is_personalized = True
+            activities_used = user_profile.total_activities_analyzed
+
         # Compare each segment
         segment_comparisons = []
         method_totals: Dict[str, float] = {c.name: 0.0 for c in self.calculators}
+
+        # Add personalized method totals if profile available
+        if personalization:
+            method_totals["tobler_personalized"] = 0.0
+            method_totals["naismith_personalized"] = 0.0
 
         for segment in macro_segments:
             comparison = SegmentComparison(
@@ -120,11 +144,18 @@ class ComparisonService:
                 methods={}
             )
 
-            # Calculate with each method
+            # Calculate with base methods
             for calculator in self.calculators:
                 result = calculator.calculate_segment(segment, profile_multiplier)
                 comparison.methods[calculator.name] = result
                 method_totals[calculator.name] += result.time_hours
+
+            # Calculate with personalized methods
+            if personalization:
+                for base_method in ["tobler", "naismith"]:
+                    result = personalization.calculate_segment(segment, base_method)
+                    comparison.methods[result.method_name] = result
+                    method_totals[result.method_name] += result.time_hours
 
             segment_comparisons.append(comparison)
 
@@ -134,6 +165,11 @@ class ComparisonService:
         # Method descriptions
         descriptions = {c.name: c.description for c in self.calculators}
 
+        # Add personalized descriptions if available
+        if personalization:
+            descriptions["tobler_personalized"] = f"Tobler + ваш темп ({activities_used} активностей)"
+            descriptions["naismith_personalized"] = f"Naismith + ваш темп ({activities_used} активностей)"
+
         return RouteComparison(
             total_distance_km=round(total_distance, 2),
             total_ascent_m=round(total_ascent, 0),
@@ -142,11 +178,30 @@ class ComparisonService:
             descent_distance_km=round(descent_distance, 2),
             segments=segment_comparisons,
             totals=method_totals,
-            method_descriptions=descriptions
+            method_descriptions=descriptions,
+            personalized=is_personalized,
+            activities_used=activities_used
         )
 
-    def _empty_comparison(self) -> RouteComparison:
+    def _empty_comparison(
+        self,
+        user_profile: Optional[UserPerformanceProfile] = None
+    ) -> RouteComparison:
         """Return empty comparison for invalid routes."""
+        totals = {c.name: 0.0 for c in self.calculators}
+        descriptions = {c.name: c.description for c in self.calculators}
+
+        # Add personalized methods if profile valid
+        is_personalized = False
+        activities_used = 0
+        if PersonalizationService.is_profile_valid(user_profile):
+            is_personalized = True
+            activities_used = user_profile.total_activities_analyzed
+            totals["tobler_personalized"] = 0.0
+            totals["naismith_personalized"] = 0.0
+            descriptions["tobler_personalized"] = f"Tobler + ваш темп ({activities_used} активностей)"
+            descriptions["naismith_personalized"] = f"Naismith + ваш темп ({activities_used} активностей)"
+
         return RouteComparison(
             total_distance_km=0,
             total_ascent_m=0,
@@ -154,8 +209,10 @@ class ComparisonService:
             ascent_distance_km=0,
             descent_distance_km=0,
             segments=[],
-            totals={c.name: 0.0 for c in self.calculators},
-            method_descriptions={c.name: c.description for c in self.calculators}
+            totals=totals,
+            method_descriptions=descriptions,
+            personalized=is_personalized,
+            activities_used=activities_used
         )
 
     def format_comparison(self, comparison: RouteComparison) -> str:

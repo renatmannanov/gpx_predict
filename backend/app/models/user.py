@@ -6,6 +6,7 @@ Stores user information and preferences.
 
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime, Boolean
+from sqlalchemy.orm import relationship
 import uuid
 
 from app.models.base import Base
@@ -30,6 +31,14 @@ class User(Base):
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    performance_profile = relationship(
+        "UserPerformanceProfile",
+        back_populates="user",
+        uselist=False,
+        lazy="joined"
+    )
 
     def __repr__(self):
         return f"<User {self.id} ({self.name})>"

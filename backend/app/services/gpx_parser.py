@@ -9,9 +9,10 @@ from dataclasses import dataclass
 from typing import List, Tuple
 import gpxpy
 import gpxpy.gpx
-from math import radians, cos, sin, asin, sqrt
 
 from app.schemas.gpx import GPXInfo
+from app.utils.geo import haversine, calculate_total_distance
+from app.utils.elevation import calculate_elevation_changes
 
 logger = logging.getLogger(__name__)
 
@@ -72,13 +73,13 @@ class GPXParserService:
         if not points:
             raise ValueError("GPX file contains no track or route points")
 
-        # Calculate metrics
-        distance_km = GPXParserService._calculate_distance(points)
-        elevation_gain, elevation_loss = GPXParserService._calculate_elevation(points)
+        # Calculate metrics using shared utilities
+        distance_km = calculate_total_distance(points)
+        elevation_gain, elevation_loss = calculate_elevation_changes(points)
         elevations = [p[2] for p in points]
 
         # Check if route is a loop (start and end within 500m)
-        start_end_distance = GPXParserService._haversine(
+        start_end_distance = haversine(
             points[0][0], points[0][1],
             points[-1][0], points[-1][1]
         )
@@ -100,79 +101,6 @@ class GPXParserService:
             points_count=len(points),
             is_loop=is_loop
         )
-
-    @staticmethod
-    def _calculate_distance(points: List[Tuple[float, float, float]]) -> float:
-        """Calculate total distance in km using Haversine formula."""
-        total = 0.0
-
-        for i in range(1, len(points)):
-            lat1, lon1, _ = points[i - 1]
-            lat2, lon2, _ = points[i]
-            total += GPXParserService._haversine(lat1, lon1, lat2, lon2)
-
-        return total
-
-    @staticmethod
-    def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        """Calculate distance between two points in km."""
-        R = 6371  # Earth radius in km
-
-        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-
-        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-        c = 2 * asin(sqrt(a))
-
-        return R * c
-
-    @staticmethod
-    def _calculate_elevation(
-        points: List[Tuple[float, float, float]],
-        smoothing_window: int = 5
-    ) -> Tuple[float, float]:
-        """
-        Calculate total elevation gain and loss.
-
-        Uses smoothing to reduce GPS noise while preserving real changes.
-
-        Args:
-            points: List of (lat, lon, elevation) tuples
-            smoothing_window: Window size for smoothing (odd number)
-
-        Returns:
-            Tuple of (gain, loss) in meters
-        """
-        if len(points) < 2:
-            return 0.0, 0.0
-
-        # Extract elevations
-        elevations = [p[2] for p in points]
-
-        # Apply simple moving average smoothing to reduce noise
-        if len(elevations) > smoothing_window:
-            smoothed = []
-            half_window = smoothing_window // 2
-            for i in range(len(elevations)):
-                start = max(0, i - half_window)
-                end = min(len(elevations), i + half_window + 1)
-                smoothed.append(sum(elevations[start:end]) / (end - start))
-            elevations = smoothed
-
-        # Calculate gain and loss from smoothed data
-        gain = 0.0
-        loss = 0.0
-
-        for i in range(1, len(elevations)):
-            diff = elevations[i] - elevations[i - 1]
-            if diff > 0:
-                gain += diff
-            else:
-                loss += abs(diff)
-
-        return gain, loss
 
     @staticmethod
     def extract_points(content: bytes) -> List[Tuple[float, float, float]]:
@@ -209,7 +137,12 @@ class GPXParserService:
         gradient_threshold: float = 5.0
     ) -> List[GPXSegment]:
         """
-        Segment route by gradient and distance.
+        Segment route by distance for UI display (segment_by_distance).
+
+        Creates roughly equal-sized segments (~0.5-1.5 km) for displaying
+        per-segment predictions to users. This is different from
+        RouteSegmenter.segment_route() which creates segments
+        based on ascent/descent direction for calculator algorithms.
 
         Creates segments when:
         - Gradient changes by more than threshold
@@ -221,7 +154,10 @@ class GPXParserService:
             gradient_threshold: Gradient change to trigger new segment (%)
 
         Returns:
-            List of GPXSegment objects
+            List of GPXSegment objects for UI display
+
+        See also:
+            RouteSegmenter.segment_route() for direction-based segmentation
         """
         if len(points) < 2:
             return []
@@ -236,7 +172,7 @@ class GPXParserService:
             lat1, lon1, ele1 = points[i - 1]
             lat2, lon2, ele2 = points[i]
 
-            step_distance = GPXParserService._haversine(lat1, lon1, lat2, lon2)
+            step_distance = haversine(lat1, lon1, lat2, lon2)
             cumulative_km += step_distance
 
             segment_distance = cumulative_km - segment_start_km

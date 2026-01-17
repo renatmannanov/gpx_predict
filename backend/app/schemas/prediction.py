@@ -54,6 +54,9 @@ class HikePredictRequest(BaseModel):
     sunrise: str = "06:00"
     sunset: str = "20:00"
 
+    # Optional: for personalized predictions
+    telegram_id: Optional[str] = None
+
 
 class GroupMemberInput(BaseModel):
     """Input for a group member."""
@@ -115,6 +118,10 @@ class HikePrediction(BaseModel):
     group_multiplier: float = 1.0
     altitude_multiplier: float = 1.0
     total_multiplier: float = 1.0
+
+    # Personalization info
+    personalized: bool = False
+    activities_used: int = 0
 
 
 class GroupMemberPrediction(BaseModel):
@@ -185,14 +192,15 @@ class RouteComparisonResponse(BaseModel):
     segments: List[MacroSegmentSchema]
 
     # Totals by method (hours)
-    totals: dict  # {"naismith": 8.2, "tobler": 5.7}
+    # Can include: naismith, tobler, naismith_personalized, tobler_personalized
+    totals: dict
 
     # Rest/lunch time
     rest_time_hours: float = 0
     lunch_time_hours: float = 0
 
     # Method descriptions
-    method_descriptions: dict  # {"naismith": "Naismith's Rule...", ...}
+    method_descriptions: dict
 
     # Sun times
     sunrise: Optional[str] = None  # HH:MM
@@ -200,3 +208,7 @@ class RouteComparisonResponse(BaseModel):
 
     # Formatted text output (for bot/debugging)
     formatted_text: Optional[str] = None
+
+    # Personalization info
+    personalized: bool = False
+    activities_used: int = 0

@@ -10,6 +10,7 @@ sqlalchemy>=2.0.25
 alembic>=1.13.0
 asyncpg>=0.29.0
 psycopg2-binary>=2.9.9
+aiosqlite>=0.19.0  # Async SQLite for local development
 
 # GPX Processing
 gpxpy>=1.6.0

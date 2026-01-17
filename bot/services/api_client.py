@@ -92,6 +92,21 @@ class HikePrediction:
     group_multiplier: float
     total_multiplier: float
     time_breakdown: Optional[TimeBreakdown] = None
+    personalized: bool = False
+    activities_used: int = 0
+
+
+@dataclass
+class UserProfile:
+    """User performance profile from Strava data."""
+    has_profile: bool
+    avg_flat_pace_min_km: Optional[float] = None
+    avg_uphill_pace_min_km: Optional[float] = None
+    avg_downhill_pace_min_km: Optional[float] = None
+    flat_speed_kmh: Optional[float] = None
+    vertical_ability: Optional[float] = None
+    total_activities_analyzed: int = 0
+    has_split_data: bool = False
 
 
 class APIError(Exception):
@@ -177,6 +192,7 @@ class APIClient:
         has_children: bool = False,
         has_elderly: bool = False,
         is_round_trip: bool = False,
+        telegram_id: Optional[str] = None,
     ) -> HikePrediction:
         """
         Get hike prediction from backend.
@@ -189,6 +205,7 @@ class APIClient:
             has_children: Has children in group
             has_elderly: Has elderly in group
             is_round_trip: If route is out-and-back
+            telegram_id: Optional Telegram ID for personalized prediction
 
         Returns:
             HikePrediction with time estimates
@@ -209,7 +226,11 @@ class APIClient:
             "is_round_trip": is_round_trip,
         }
 
-        logger.info(f"Requesting prediction for GPX: {gpx_id}")
+        # Add telegram_id for personalization if provided
+        if telegram_id:
+            payload["telegram_id"] = telegram_id
+
+        logger.info(f"Requesting prediction for GPX: {gpx_id}, personalized={telegram_id is not None}")
 
         async with session.post(url, json=payload) as resp:
             data = await resp.json()
@@ -240,6 +261,8 @@ class APIClient:
                 group_multiplier=data.get("group_multiplier", 1.0),
                 total_multiplier=data.get("total_multiplier", 1.0),
                 time_breakdown=time_breakdown,
+                personalized=data.get("personalized", False),
+                activities_used=data.get("activities_used", 0),
             )
 
     async def compare_methods(
@@ -248,6 +271,7 @@ class APIClient:
         experience: str = "regular",
         backpack: str = "light",
         group_size: int = 1,
+        telegram_id: Optional[str] = None,
     ) -> dict:
         """
         Compare different prediction methods on a route.
@@ -257,9 +281,11 @@ class APIClient:
             experience: Experience level
             backpack: Backpack weight
             group_size: Number of people
+            telegram_id: Optional Telegram ID for personalized comparison
 
         Returns:
-            RouteComparison with segment breakdown and totals
+            RouteComparison with segment breakdown and totals.
+            If telegram_id provided and user has profile, includes personalized methods.
 
         Raises:
             APIError: If comparison fails
@@ -274,7 +300,11 @@ class APIClient:
             "group_size": group_size,
         }
 
-        logger.info(f"Requesting comparison for GPX: {gpx_id}")
+        # Add telegram_id for personalization if provided
+        if telegram_id:
+            payload["telegram_id"] = telegram_id
+
+        logger.info(f"Requesting comparison for GPX: {gpx_id}, personalized={telegram_id is not None}")
 
         async with session.post(url, json=payload) as resp:
             data = await resp.json()
@@ -471,6 +501,120 @@ class APIClient:
         except Exception as e:
             logger.error(f"Strava sync trigger failed: {e}")
             return False
+
+    # =========================================================================
+    # User Profile (Personalization)
+    # =========================================================================
+
+    async def get_user_profile(self, telegram_id: str) -> Optional[UserProfile]:
+        """
+        Get user's performance profile.
+
+        Args:
+            telegram_id: User's Telegram ID
+
+        Returns:
+            UserProfile or None if no profile exists
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/profile/{telegram_id}"
+
+        try:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    return None
+
+                data = await resp.json()
+                return UserProfile(
+                    has_profile=data.get("has_profile", False),
+                    avg_flat_pace_min_km=data.get("avg_flat_pace_min_km"),
+                    avg_uphill_pace_min_km=data.get("avg_uphill_pace_min_km"),
+                    avg_downhill_pace_min_km=data.get("avg_downhill_pace_min_km"),
+                    flat_speed_kmh=data.get("flat_speed_kmh"),
+                    vertical_ability=data.get("vertical_ability"),
+                    total_activities_analyzed=data.get("total_activities_analyzed", 0),
+                    has_split_data=data.get("has_split_data", False),
+                )
+        except Exception as e:
+            logger.error(f"Get user profile failed: {e}")
+            return None
+
+    async def calculate_profile(self, telegram_id: str, use_splits: bool = True) -> Optional[UserProfile]:
+        """
+        Calculate or recalculate user's performance profile.
+
+        Args:
+            telegram_id: User's Telegram ID
+            use_splits: If True, use detailed split data
+
+        Returns:
+            UserProfile or None if calculation failed
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/profile/{telegram_id}/calculate"
+        params = {"use_splits": "true" if use_splits else "false"}
+
+        try:
+            async with session.post(url, params=params) as resp:
+                data = await resp.json()
+
+                if resp.status != 200:
+                    logger.error(f"Profile calculation failed: {data.get('detail')}")
+                    return None
+
+                if not data.get("success"):
+                    logger.warning(f"Profile calculation: {data.get('message')}")
+                    return None
+
+                profile_data = data.get("profile", {})
+                return UserProfile(
+                    has_profile=profile_data.get("has_profile", False),
+                    avg_flat_pace_min_km=profile_data.get("avg_flat_pace_min_km"),
+                    avg_uphill_pace_min_km=profile_data.get("avg_uphill_pace_min_km"),
+                    avg_downhill_pace_min_km=profile_data.get("avg_downhill_pace_min_km"),
+                    flat_speed_kmh=profile_data.get("flat_speed_kmh"),
+                    vertical_ability=profile_data.get("vertical_ability"),
+                    total_activities_analyzed=profile_data.get("total_activities_analyzed", 0),
+                    has_split_data=profile_data.get("has_split_data", False),
+                )
+        except Exception as e:
+            logger.error(f"Calculate profile failed: {e}")
+            return None
+
+    async def sync_splits(self, telegram_id: str, max_activities: int = 20) -> dict:
+        """
+        Sync splits data from Strava activities.
+
+        Args:
+            telegram_id: User's Telegram ID
+            max_activities: Maximum activities to sync splits for
+
+        Returns:
+            Dict with sync results
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/strava/sync-splits/{telegram_id}"
+        params = {"max_activities": max_activities}
+
+        try:
+            async with session.post(url, params=params) as resp:
+                data = await resp.json()
+
+                if resp.status != 200:
+                    return {
+                        "success": False,
+                        "message": data.get("detail", "Unknown error")
+                    }
+
+                return {
+                    "success": data.get("success", False),
+                    "activities_processed": data.get("activities_processed", 0),
+                    "total_splits_saved": data.get("total_splits_saved", 0),
+                    "message": data.get("message", "")
+                }
+        except Exception as e:
+            logger.error(f"Sync splits failed: {e}")
+            return {"success": False, "message": str(e)}
 
 
 # Global client instance

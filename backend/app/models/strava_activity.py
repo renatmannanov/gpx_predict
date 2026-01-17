@@ -6,6 +6,7 @@ Only stores metrics allowed by Strava API Agreement (no GPS/polylines).
 """
 
 from datetime import datetime
+from typing import Optional
 from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 
@@ -17,7 +18,8 @@ class StravaActivity(Base):
     Strava activity summary for calibration.
 
     Stores only aggregated metrics (allowed by Strava API Agreement).
-    Does NOT store: GPS coordinates, polylines, splits, laps.
+    Does NOT store: GPS coordinates, polylines.
+    Splits are stored separately (aggregated metrics per km).
     """
 
     __tablename__ = "strava_activities"
@@ -54,11 +56,15 @@ class StravaActivity(Base):
     # Strava computed
     suffer_score = Column(Integer, nullable=True)  # Relative effort
 
+    # Splits sync flag
+    splits_synced = Column(Integer, default=0)  # Boolean as int for SQLite
+
     # Sync metadata
     synced_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationship
+    # Relationships
     user = relationship("User", backref="strava_activities")
+    splits = relationship("StravaActivitySplit", back_populates="activity", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<StravaActivity {self.strava_id} {self.activity_type} {self.distance_m}m>"
@@ -74,6 +80,56 @@ class StravaActivity(Base):
         if not self.distance_m or not self.moving_time_s or self.distance_m == 0:
             return None
         return round((self.moving_time_s / 60) / (self.distance_m / 1000), 2)
+
+
+class StravaActivitySplit(Base):
+    """
+    Split data (~1km segments) from Strava activity.
+
+    Contains aggregated metrics per kilometer - safe to store long-term.
+    Does NOT contain GPS coordinates or polylines.
+    """
+
+    __tablename__ = "strava_activity_splits"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    activity_id = Column(Integer, ForeignKey("strava_activities.id"), nullable=False, index=True)
+
+    # Split info
+    split_number = Column(Integer, nullable=False)  # 1, 2, 3...
+    distance_m = Column(Float, nullable=False)      # Usually ~1000m
+
+    # Time metrics
+    moving_time_s = Column(Integer, nullable=False)
+    elapsed_time_s = Column(Integer, nullable=False)
+
+    # Elevation (key for terrain classification!)
+    elevation_diff_m = Column(Float, nullable=True)  # +/- meters
+
+    # Performance
+    average_speed_mps = Column(Float, nullable=True)
+    average_heartrate = Column(Float, nullable=True)
+    pace_zone = Column(Integer, nullable=True)
+
+    # Relationship
+    activity = relationship("StravaActivity", back_populates="splits")
+
+    def __repr__(self):
+        return f"<Split #{self.split_number} {self.distance_m}m {self.elevation_diff_m}m>"
+
+    @property
+    def pace_min_km(self) -> Optional[float]:
+        """Pace in minutes per kilometer."""
+        if self.distance_m and self.moving_time_s and self.distance_m > 0:
+            return round((self.moving_time_s / 60) / (self.distance_m / 1000), 2)
+        return None
+
+    @property
+    def gradient_percent(self) -> Optional[float]:
+        """Gradient as percentage."""
+        if self.distance_m and self.elevation_diff_m is not None and self.distance_m > 0:
+            return round((self.elevation_diff_m / self.distance_m) * 100, 1)
+        return None
 
 
 class StravaSyncStatus(Base):

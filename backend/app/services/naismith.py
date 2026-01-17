@@ -5,23 +5,14 @@ Classic hiking time estimation formula from 1892.
 """
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Optional
+
+# Import enums from schemas (single source of truth)
+from app.schemas.prediction import ExperienceLevel, BackpackWeight
 
 
-class ExperienceLevel(str, Enum):
-    """Hiker experience level."""
-    BEGINNER = "beginner"
-    CASUAL = "casual"
-    REGULAR = "regular"
-    EXPERIENCED = "experienced"
-
-
-class BackpackWeight(str, Enum):
-    """Backpack weight category."""
-    LIGHT = "light"
-    MEDIUM = "medium"
-    HEAVY = "heavy"
+# Base speed constants
+NAISMITH_BASE_SPEED_KMH = 5.0  # km/h on flat terrain
+NAISMITH_CLIMB_RATE = 600.0   # meters per hour of additional time
 
 
 @dataclass

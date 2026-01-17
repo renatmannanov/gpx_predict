@@ -9,7 +9,8 @@ from app.models.user import User
 from app.models.gpx import GPXFile
 from app.models.prediction import Prediction
 from app.models.strava_token import StravaToken
-from app.models.strava_activity import StravaActivity, StravaSyncStatus
+from app.models.strava_activity import StravaActivity, StravaActivitySplit, StravaSyncStatus
+from app.models.user_profile import UserPerformanceProfile
 
 __all__ = [
     "Base",
@@ -18,5 +19,7 @@ __all__ = [
     "Prediction",
     "StravaToken",
     "StravaActivity",
+    "StravaActivitySplit",
     "StravaSyncStatus",
+    "UserPerformanceProfile",
 ]

@@ -19,12 +19,14 @@ from collections import deque
 
 import httpx
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
+from typing import Union
 
 from app.config import settings
 from app.models.user import User
 from app.models.strava_token import StravaToken
-from app.models.strava_activity import StravaActivity, StravaSyncStatus
+from app.models.strava_activity import StravaActivity, StravaActivitySplit, StravaSyncStatus
 
 logger = logging.getLogger(__name__)
 
@@ -125,10 +127,15 @@ sync_queue = SyncQueueManager()
 class StravaSyncService:
     """
     Service for syncing Strava activities.
+
+    Supports both sync and async sessions.
+    For async session, use async methods with 'await'.
+    For sync session (legacy), methods will work but block.
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Union[Session, AsyncSession]):
         self.db = db
+        self._is_async = isinstance(db, AsyncSession)
 
     async def sync_user_activities(
         self,
@@ -304,7 +311,11 @@ class StravaSyncService:
             token.refresh_token = new_tokens["refresh_token"]
             token.expires_at = new_tokens["expires_at"]
             token.updated_at = datetime.utcnow()
-            self.db.commit()
+
+            if self._is_async:
+                await self.db.commit()
+            else:
+                self.db.commit()
 
         return token.access_token
 
@@ -328,6 +339,188 @@ class StravaSyncService:
                 "https://www.strava.com/api/v3/athlete/activities",
                 headers={"Authorization": f"Bearer {access_token}"},
                 params=params
+            )
+            response.raise_for_status()
+            return response.json()
+
+    async def sync_activity_splits(
+        self,
+        user_id: str,
+        activity_id: int,
+        strava_activity_id: int
+    ) -> dict:
+        """
+        Sync splits for a specific activity.
+
+        Args:
+            user_id: User ID
+            activity_id: Local database activity ID
+            strava_activity_id: Strava's activity ID
+
+        Returns:
+            dict with sync results
+        """
+        # Get token
+        if self._is_async:
+            result = await self.db.execute(
+                select(StravaToken).where(StravaToken.user_id == user_id)
+            )
+            token = result.scalar_one_or_none()
+        else:
+            token = self.db.query(StravaToken).filter(
+                StravaToken.user_id == user_id
+            ).first()
+
+        if not token:
+            return {"status": "error", "reason": "no_token"}
+
+        try:
+            access_token = await self._get_valid_token(token)
+
+            # Fetch detailed activity with splits
+            activity_data = await self._fetch_activity_detail(
+                access_token,
+                strava_activity_id
+            )
+
+            splits_data = activity_data.get("splits_metric", [])
+            if not splits_data:
+                return {"status": "success", "splits_saved": 0, "reason": "no_splits"}
+
+            # Save splits
+            saved_count = 0
+            for split_data in splits_data:
+                split = StravaActivitySplit(
+                    activity_id=activity_id,
+                    split_number=split_data.get("split"),
+                    distance_m=split_data.get("distance"),
+                    moving_time_s=split_data.get("moving_time"),
+                    elapsed_time_s=split_data.get("elapsed_time"),
+                    elevation_diff_m=split_data.get("elevation_difference"),
+                    average_speed_mps=split_data.get("average_speed"),
+                    average_heartrate=split_data.get("average_heartrate"),
+                    pace_zone=split_data.get("pace_zone")
+                )
+                self.db.add(split)
+                saved_count += 1
+
+            # Mark activity as splits_synced
+            if self._is_async:
+                result = await self.db.execute(
+                    select(StravaActivity).where(StravaActivity.id == activity_id)
+                )
+                activity = result.scalar_one_or_none()
+            else:
+                activity = self.db.query(StravaActivity).filter(
+                    StravaActivity.id == activity_id
+                ).first()
+
+            if activity:
+                activity.splits_synced = 1
+
+            if self._is_async:
+                await self.db.commit()
+            else:
+                self.db.commit()
+
+            logger.info(f"Synced {saved_count} splits for activity {strava_activity_id}")
+
+            return {
+                "status": "success",
+                "splits_saved": saved_count
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to sync splits for activity {strava_activity_id}: {e}")
+            return {"status": "error", "error": str(e)}
+
+    async def sync_splits_for_user(
+        self,
+        user_id: str,
+        max_activities: int = 10,
+        activity_types: list[str] = None
+    ) -> dict:
+        """
+        Sync splits for user's activities that don't have splits yet.
+
+        Args:
+            user_id: User ID
+            max_activities: Maximum number of activities to sync splits for
+            activity_types: Filter by activity types (default: Hike, Walk)
+
+        Returns:
+            dict with sync results
+        """
+        if activity_types is None:
+            activity_types = ["Hike", "Walk"]
+
+        # Find activities without splits
+        if self._is_async:
+            query = select(StravaActivity).where(
+                StravaActivity.user_id == user_id,
+                StravaActivity.activity_type.in_(activity_types),
+                StravaActivity.splits_synced == 0
+            ).order_by(StravaActivity.start_date.desc()).limit(max_activities)
+            result = await self.db.execute(query)
+            activities = result.scalars().all()
+        else:
+            query = self.db.query(StravaActivity).filter(
+                StravaActivity.user_id == user_id,
+                StravaActivity.activity_type.in_(activity_types),
+                StravaActivity.splits_synced == 0
+            ).order_by(StravaActivity.start_date.desc()).limit(max_activities)
+            activities = query.all()
+
+        if not activities:
+            return {"status": "success", "activities_processed": 0, "reason": "no_activities_to_sync"}
+
+        results = {
+            "status": "success",
+            "activities_processed": 0,
+            "total_splits_saved": 0,
+            "errors": []
+        }
+
+        for activity in activities:
+            # Delay between API calls
+            if results["activities_processed"] > 0:
+                await asyncio.sleep(SyncConfig.API_CALL_DELAY)
+
+            result = await self.sync_activity_splits(
+                user_id=user_id,
+                activity_id=activity.id,
+                strava_activity_id=activity.strava_id
+            )
+
+            results["activities_processed"] += 1
+
+            if result["status"] == "success":
+                results["total_splits_saved"] += result.get("splits_saved", 0)
+            else:
+                results["errors"].append({
+                    "activity_id": activity.strava_id,
+                    "error": result.get("error", result.get("reason"))
+                })
+
+        logger.info(
+            f"Synced splits for user {user_id}: "
+            f"{results['activities_processed']} activities, "
+            f"{results['total_splits_saved']} splits"
+        )
+
+        return results
+
+    async def _fetch_activity_detail(
+        self,
+        access_token: str,
+        activity_id: int
+    ) -> dict:
+        """Fetch detailed activity from Strava API."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://www.strava.com/api/v3/activities/{activity_id}",
+                headers={"Authorization": f"Bearer {access_token}"},
+                params={"include_all_efforts": "false"}
             )
             response.raise_for_status()
             return response.json()

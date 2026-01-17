@@ -19,7 +19,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse, HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 from app.db.session import get_db
 from app.config import settings
@@ -27,8 +26,14 @@ from app.models.user import User
 from app.models.strava_token import StravaToken
 from app.models.strava_activity import StravaActivity, StravaSyncStatus
 from app.services.strava_sync import trigger_user_sync, get_sync_stats, StravaSyncService
-
-import httpx
+from app.services.strava import (
+    exchange_authorization_code,
+    refresh_access_token,
+    revoke_access,
+    fetch_athlete_stats,
+    StravaAPIError,
+    StravaAuthError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -132,10 +137,10 @@ async def strava_callback(
     state_data = _oauth_states.pop(state)
     telegram_id = state_data["telegram_id"]
 
-    # Exchange code for tokens
+    # Exchange code for tokens using shared service function
     try:
-        token_data = await _exchange_code(code)
-    except Exception as e:
+        token_data = await exchange_authorization_code(code)
+    except StravaAPIError as e:
         logger.error(f"Token exchange failed: {e}")
         return _error_page("Ошибка при получении токена от Strava")
 
@@ -244,9 +249,9 @@ async def disconnect_strava(
     ).first()
 
     if token:
-        # Try to revoke at Strava (best effort)
+        # Try to revoke at Strava (best effort) using shared service function
         try:
-            await _deauthorize(token.access_token)
+            await revoke_access(token.access_token)
         except Exception as e:
             logger.warning(f"Strava deauthorize failed: {e}")
 
@@ -286,13 +291,15 @@ async def get_strava_stats(
     if not token:
         raise HTTPException(status_code=404, detail="Strava token not found")
 
-    # Get valid access token (refresh if needed)
-    access_token = await _get_valid_token(token, db)
+    # Get valid access token (refresh if needed) using shared service function
+    access_token = await _get_valid_token_sync(token, db)
 
-    # Fetch stats from Strava
+    # Fetch stats from Strava using shared service function
     try:
-        stats = await _fetch_athlete_stats(access_token, token.strava_athlete_id)
-    except Exception as e:
+        stats = await fetch_athlete_stats(access_token, token.strava_athlete_id)
+    except StravaAuthError:
+        raise HTTPException(status_code=401, detail="Strava token expired")
+    except StravaAPIError as e:
         logger.error(f"Failed to fetch Strava stats: {e}")
         raise HTTPException(status_code=502, detail="Failed to fetch Strava data")
 
@@ -322,49 +329,19 @@ def _get_callback_url() -> str:
     return "http://localhost:8000/api/v1/auth/strava/callback"
 
 
-async def _exchange_code(code: str) -> dict:
-    """Exchange authorization code for tokens."""
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "https://www.strava.com/oauth/token",
-            data={
-                "client_id": settings.strava_client_id,
-                "client_secret": settings.strava_client_secret,
-                "code": code,
-                "grant_type": "authorization_code"
-            }
-        )
-        response.raise_for_status()
-        return response.json()
+async def _get_valid_token_sync(token: StravaToken, db: Session) -> str:
+    """
+    Get valid access token, refreshing if needed.
 
-
-async def _deauthorize(access_token: str) -> None:
-    """Revoke Strava access."""
-    async with httpx.AsyncClient() as client:
-        await client.post(
-            "https://www.strava.com/oauth/deauthorize",
-            headers={"Authorization": f"Bearer {access_token}"}
-        )
-
-
-async def _get_valid_token(token: StravaToken, db: Session) -> str:
-    """Get valid access token, refreshing if needed."""
+    This is a sync-session compatible wrapper that uses
+    the shared refresh_access_token function.
+    """
     # Check if expired (with 5 min buffer)
     if token.expires_at < datetime.utcnow().timestamp() + 300:
         logger.info(f"Refreshing Strava token for user {token.user_id}")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://www.strava.com/oauth/token",
-                data={
-                    "client_id": settings.strava_client_id,
-                    "client_secret": settings.strava_client_secret,
-                    "refresh_token": token.refresh_token,
-                    "grant_type": "refresh_token"
-                }
-            )
-            response.raise_for_status()
-            new_tokens = response.json()
+        # Use shared service function for token refresh
+        new_tokens = await refresh_access_token(token.refresh_token)
 
         token.access_token = new_tokens["access_token"]
         token.refresh_token = new_tokens["refresh_token"]
@@ -373,17 +350,6 @@ async def _get_valid_token(token: StravaToken, db: Session) -> str:
         db.commit()
 
     return token.access_token
-
-
-async def _fetch_athlete_stats(access_token: str, athlete_id: str) -> dict:
-    """Fetch athlete stats from Strava API."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://www.strava.com/api/v3/athletes/{athlete_id}/stats",
-            headers={"Authorization": f"Bearer {access_token}"}
-        )
-        response.raise_for_status()
-        return response.json()
 
 
 def _success_page(name: str) -> HTMLResponse:

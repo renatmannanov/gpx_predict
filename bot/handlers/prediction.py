@@ -111,7 +111,13 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
     if filename.lower().endswith('.gpx'):
         filename = filename[:-4]
 
-    result = f"<b>Прогноз для маршрута:</b>\n{filename}\n\n"
+    result = f"<b>Прогноз для маршрута:</b>\n{filename}\n"
+
+    # Show personalization info if used
+    if old_prediction.personalized:
+        result += f"🎯 <i>Персонализировано ({old_prediction.activities_used} активностей)</i>\n"
+
+    result += "\n"
 
     # Route summary - distance on new line
     result += (
@@ -123,13 +129,20 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
 
     # Moving time by methods
     result += "<b>Чистое время движения:</b>\n"
-    tobler_hours = comparison["totals"].get("tobler", 0)
-    naismith_hours = comparison["totals"].get("naismith", 0)
-    old_moving = old_prediction.time_breakdown.moving_time_hours if old_prediction.time_breakdown else 0
+    totals = comparison["totals"]
+    tobler_hours = totals.get("tobler", 0)
+    naismith_hours = totals.get("naismith", 0)
 
     result += f"  tobler: {format_time(tobler_hours)}\n"
     result += f"  naismith: {format_time(naismith_hours)}\n"
-    result += f"  old_naismith: {format_time(old_moving)}\n\n"
+
+    # Personalized methods (if user has profile)
+    if "tobler_personalized" in totals:
+        result += f"  🎯 tobler (ваш темп): {format_time(totals['tobler_personalized'])}\n"
+    if "naismith_personalized" in totals:
+        result += f"  🎯 naismith (ваш темп): {format_time(totals['naismith_personalized'])}\n"
+
+    result += "\n"
 
     # Additional time (was "Рекомендуем добавить")
     rest_hours = comparison.get("rest_time_hours", 0)
@@ -208,33 +221,35 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
             result += f"{emoji} {message}\n"
         result += "\n"
 
-    # Segments in expandable blockquote
+    return result
+
+
+def format_segments(comparison: dict) -> str:
+    """Format segments as a separate message in expandable blockquote."""
     seg_type_names = {
-        "ascent": "Подъём",
-        "descent": "Спуск",
-        "flat": "Ровный"
+        "ascent": "↑ Подъём",
+        "descent": "↓ Спуск",
+        "flat": "→ Ровный"
     }
 
-    segments_text = ""
+    content = ""
     for seg in comparison["segments"]:
         seg_type = seg_type_names.get(seg["segment_type"], seg["segment_type"])
         ele_str = f"+{seg['elevation_change_m']:.0f}" if seg['elevation_change_m'] >= 0 else f"{seg['elevation_change_m']:.0f}"
 
-        segments_text += (
-            f"Часть {seg['segment_number']}: {seg_type} "
-            f"({seg['distance_km']} км, {ele_str} м)\n"
-            f"  Градиент: {seg['gradient_percent']}% ({seg['gradient_degrees']}°)\n"
+        content += (
+            f"<b>{seg['segment_number']}. {seg_type}</b>\n"
+            f"  {seg['distance_km']} км, {ele_str} м\n"
+            f"  Градиент: {seg['gradient_percent']}%\n"
         )
 
+        # Show all methods for this segment
         for method_name, method_result in seg["methods"].items():
-            segments_text += f"  [{method_name}] {method_result['speed_kmh']} км/ч → {format_time(method_result['time_hours'])}\n"
+            content += f"  [{method_name}] {format_time(method_result['time_hours'])}\n"
 
-        segments_text += "\n"
+        content += "\n"
 
-    # Wrap segments in expandable blockquote
-    result += f"<blockquote expandable>Разбивка по участкам:\n\n{segments_text.strip()}</blockquote>"
-
-    return result
+    return f"<blockquote expandable><b>Разбивка по участкам:</b>\n\n{content.strip()}</blockquote>"
 
 
 # === GPX Upload ===
@@ -408,7 +423,10 @@ async def handle_elderly(callback: CallbackQuery, state: FSMContext):
     group_size = data.get("group_size", 1)
     gpx_name = data.get("gpx_name", "")
 
-    # Get comparison of methods
+    # Get telegram_id for personalization
+    telegram_id = str(callback.from_user.id)
+
+    # Get comparison of methods (with personalization if profile exists)
     comparison = None
     try:
         comparison = await api_client.compare_methods(
@@ -416,13 +434,14 @@ async def handle_elderly(callback: CallbackQuery, state: FSMContext):
             experience=experience,
             backpack=backpack,
             group_size=group_size,
+            telegram_id=telegram_id,
         )
     except APIError as e:
         logger.error(f"Comparison error: {e}")
     except Exception as e:
         logger.error(f"Comparison error: {e}")
 
-    # Make old prediction (for recommendations, warnings, etc.)
+    # Make prediction (with personalization if profile exists)
     try:
         prediction = await api_client.predict_hike(
             gpx_id=gpx_id,
@@ -432,6 +451,7 @@ async def handle_elderly(callback: CallbackQuery, state: FSMContext):
             has_children=data.get("has_children", False),
             has_elderly=has_elderly,
             is_round_trip=data.get("is_round_trip", False),
+            telegram_id=telegram_id,
         )
     except APIError as e:
         await callback.message.edit_text(f"Ошибка: {e.detail}")
@@ -447,8 +467,29 @@ async def handle_elderly(callback: CallbackQuery, state: FSMContext):
     gpx_info = data.get("gpx_info")
 
     if comparison:
+        # Main prediction message
         result = format_full_prediction(comparison, gpx_info, prediction)
         await callback.message.edit_text(result, parse_mode="HTML")
+
+        # Segments as separate message (may be long)
+        segments_text = format_segments(comparison)
+        # Split into chunks if too long (Telegram limit is 4096)
+        if len(segments_text) <= 4096:
+            await callback.message.answer(segments_text, parse_mode="HTML")
+        else:
+            # Split by segments (each segment block ends with \n\n)
+            chunks = []
+            current_chunk = "<b>Разбивка по участкам:</b>\n\n"
+            for segment_block in segments_text.split("\n\n")[1:]:  # Skip header
+                if len(current_chunk) + len(segment_block) + 2 > 4000:
+                    chunks.append(current_chunk.strip())
+                    current_chunk = ""
+                current_chunk += segment_block + "\n\n"
+            if current_chunk.strip():
+                chunks.append(current_chunk.strip())
+
+            for chunk in chunks:
+                await callback.message.answer(chunk, parse_mode="HTML")
     else:
         # Fallback to old format
         result = format_prediction(

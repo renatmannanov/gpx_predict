@@ -6,9 +6,10 @@ Splits a GPX route into macro-segments (major ascents/descents).
 
 from dataclasses import dataclass
 from typing import List, Tuple
-import math
 
 from app.services.calculators.base import MacroSegment, SegmentType
+from app.utils.geo import haversine
+from app.utils.elevation import smooth_elevations
 
 
 @dataclass
@@ -22,10 +23,16 @@ class Point:
 
 class RouteSegmenter:
     """
-    Segments a route into major ascent/descent sections.
+    Segments a route into macro-segments by direction (segment_by_direction).
 
-    Unlike micro-segments (every 500m), this creates segments
-    at points where the route changes direction (up vs down).
+    Creates segments based on ascent/descent direction for use in
+    Tobler/Naismith calculators. Unlike GPXParserService.segment_route()
+    which creates equal-sized segments for UI display, this class creates
+    segments at points where the route changes direction (up vs down).
+
+    Two segmentation strategies in the project:
+    - RouteSegmenter.segment_route() → MacroSegment (by direction, for calculators)
+    - GPXParserService.segment_route() → GPXSegment (by distance, for UI)
     """
 
     # Minimum segment length to avoid noise
@@ -43,13 +50,19 @@ class RouteSegmenter:
         points: List[Tuple[float, float, float]]
     ) -> List[MacroSegment]:
         """
-        Split route into macro-segments by direction.
+        Split route into macro-segments by direction (ascent/descent/flat).
+
+        Used by Tobler and Naismith calculators for accurate time estimation.
+        Each segment represents a continuous ascent, descent, or flat section.
 
         Args:
             points: List of (lat, lon, elevation) tuples
 
         Returns:
-            List of MacroSegment objects
+            List of MacroSegment objects with type ASCENT, DESCENT, or FLAT
+
+        See also:
+            GPXParserService.segment_route() for distance-based UI segments
         """
         if len(points) < 2:
             return []
@@ -77,7 +90,7 @@ class RouteSegmenter:
         for i, (lat, lon, ele) in enumerate(points):
             if i > 0:
                 prev_lat, prev_lon, _ = points[i - 1]
-                cumulative += cls._haversine(prev_lat, prev_lon, lat, lon)
+                cumulative += haversine(prev_lat, prev_lon, lat, lon)
 
             result.append(Point(
                 lat=lat,
@@ -90,26 +103,24 @@ class RouteSegmenter:
 
     @classmethod
     def _smooth_elevations(cls, points: List[Point]) -> List[Point]:
-        """Apply moving average smoothing to elevations."""
+        """Apply moving average smoothing to elevations using shared utility."""
         if len(points) <= cls.SMOOTHING_WINDOW:
             return points
 
-        half = cls.SMOOTHING_WINDOW // 2
-        smoothed = []
+        # Extract elevations and smooth them
+        elevations = [p.elevation for p in points]
+        smoothed_elevations = smooth_elevations(elevations, cls.SMOOTHING_WINDOW)
 
-        for i, p in enumerate(points):
-            start = max(0, i - half)
-            end = min(len(points), i + half + 1)
-            avg_ele = sum(points[j].elevation for j in range(start, end)) / (end - start)
-
-            smoothed.append(Point(
+        # Create new Point objects with smoothed elevations
+        return [
+            Point(
                 lat=p.lat,
                 lon=p.lon,
-                elevation=avg_ele,
+                elevation=smoothed_ele,
                 cumulative_distance_km=p.cumulative_distance_km
-            ))
-
-        return smoothed
+            )
+            for p, smoothed_ele in zip(points, smoothed_elevations)
+        ]
 
     @classmethod
     def _find_segments(cls, points: List[Point]) -> List[MacroSegment]:
@@ -201,10 +212,17 @@ class RouteSegmenter:
             else:
                 loss += abs(diff)
 
-        # Determine segment type
-        if direction == 'up':
+        # Determine segment type based on ACTUAL elevation change, not passed direction
+        # This fixes bug where direction didn't match actual gradient
+        elevation_change = points[-1].elevation - points[0].elevation
+        if distance > 0:
+            actual_gradient = (elevation_change / (distance * 1000)) * 100
+        else:
+            actual_gradient = 0
+
+        if actual_gradient > cls.FLAT_THRESHOLD_PERCENT:
             seg_type = SegmentType.ASCENT
-        elif direction == 'down':
+        elif actual_gradient < -cls.FLAT_THRESHOLD_PERCENT:
             seg_type = SegmentType.DESCENT
         else:
             seg_type = SegmentType.FLAT
@@ -218,18 +236,3 @@ class RouteSegmenter:
             start_elevation_m=round(points[0].elevation, 0),
             end_elevation_m=round(points[-1].elevation, 0)
         )
-
-    @staticmethod
-    def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        """Calculate distance between two points in km."""
-        R = 6371  # Earth radius in km
-
-        lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
-
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-
-        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-        c = 2 * math.asin(math.sqrt(a))
-
-        return R * c

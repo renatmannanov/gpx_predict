@@ -12,26 +12,14 @@ import uuid
 from app.models.base import Base
 from sqlalchemy.orm import relationship
 
+# Import enums from schemas (single source of truth)
+from app.schemas.prediction import ExperienceLevel, BackpackWeight
+
 
 class PredictionType(str, Enum):
     """Type of prediction."""
     HIKE = "hike"
     RUN = "run"
-
-
-class ExperienceLevel(str, Enum):
-    """Hiker experience level."""
-    BEGINNER = "beginner"
-    CASUAL = "casual"
-    REGULAR = "regular"
-    EXPERIENCED = "experienced"
-
-
-class BackpackWeight(str, Enum):
-    """Backpack weight category."""
-    LIGHT = "light"
-    MEDIUM = "medium"
-    HEAVY = "heavy"
 
 
 class Prediction(Base):

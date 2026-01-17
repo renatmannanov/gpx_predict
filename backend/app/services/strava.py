@@ -464,6 +464,60 @@ class StravaClient:
             params
         )
 
+    async def get_activity_with_splits(
+        self,
+        access_token: str,
+        activity_id: int
+    ) -> dict:
+        """
+        Get detailed activity info including splits_metric.
+
+        Splits contain per-kilometer aggregated data:
+        - distance, elapsed_time, moving_time
+        - elevation_difference (key for terrain analysis!)
+        - average_speed, average_heartrate
+        - pace_zone
+
+        Note: splits_metric is aggregated data (not GPS), safe to store long-term.
+
+        Returns:
+            {
+                "id": 123,
+                "name": "Morning Hike",
+                "splits_metric": [
+                    {
+                        "split": 1,
+                        "distance": 1007.7,
+                        "elapsed_time": 171,
+                        "moving_time": 170,
+                        "elevation_difference": 25.8,
+                        "average_speed": 5.93,
+                        "average_heartrate": 138.79,
+                        "pace_zone": 0
+                    },
+                    ...
+                ]
+            }
+        """
+        return await self._api_request(
+            "GET",
+            f"/activities/{activity_id}",
+            access_token,
+            params={"include_all_efforts": "false"}
+        )
+
+    def extract_splits(self, activity_data: dict) -> list[dict]:
+        """
+        Extract splits_metric from activity data.
+
+        Args:
+            activity_data: Full activity response from Strava API
+
+        Returns:
+            List of split dictionaries, empty if no splits available
+        """
+        return activity_data.get("splits_metric", [])
+
 
 # =============================================================================
 # Exceptions
@@ -487,6 +541,104 @@ class StravaAuthError(StravaError):
 class StravaRateLimitError(StravaError):
     """Rate limit exceeded."""
     pass
+
+
+# =============================================================================
+# Standalone API Functions (no db dependency)
+# =============================================================================
+
+async def exchange_authorization_code(code: str) -> dict:
+    """
+    Exchange authorization code for tokens.
+
+    Standalone function that doesn't require db session.
+    Use this from routes that have sync session.
+
+    Returns:
+        {
+            "access_token": "...",
+            "refresh_token": "...",
+            "expires_at": 1234567890,
+            "athlete": {"id": 123, "firstname": "...", ...}
+        }
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://www.strava.com/oauth/token",
+            data={
+                "client_id": settings.strava_client_id,
+                "client_secret": settings.strava_client_secret,
+                "code": code,
+                "grant_type": "authorization_code"
+            }
+        )
+
+        if response.status_code != 200:
+            logger.error(f"Strava token exchange failed: {response.text}")
+            raise StravaAPIError(f"Token exchange failed: {response.status_code}")
+
+        return response.json()
+
+
+async def refresh_access_token(refresh_token: str) -> dict:
+    """
+    Refresh an expired access token.
+
+    Standalone function that doesn't require db session.
+
+    Returns:
+        {
+            "access_token": "...",
+            "refresh_token": "...",
+            "expires_at": 1234567890
+        }
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://www.strava.com/oauth/token",
+            data={
+                "client_id": settings.strava_client_id,
+                "client_secret": settings.strava_client_secret,
+                "refresh_token": refresh_token,
+                "grant_type": "refresh_token"
+            }
+        )
+
+        if response.status_code != 200:
+            logger.error(f"Strava token refresh failed: {response.text}")
+            raise StravaAPIError(f"Token refresh failed: {response.status_code}")
+
+        return response.json()
+
+
+async def revoke_access(access_token: str) -> bool:
+    """Revoke Strava access. Standalone function."""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://www.strava.com/oauth/deauthorize",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        return response.status_code == 200
+
+
+async def fetch_athlete_stats(access_token: str, athlete_id: str) -> dict:
+    """
+    Fetch athlete stats from Strava API.
+
+    Standalone function for use from routes.
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://www.strava.com/api/v3/athletes/{athlete_id}/stats",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        if response.status_code == 401:
+            raise StravaAuthError("Invalid or expired token")
+        elif response.status_code != 200:
+            raise StravaAPIError(f"API error: {response.status_code}")
+
+        return response.json()
 
 
 # =============================================================================

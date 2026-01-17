@@ -25,8 +25,13 @@ from app.repositories.gpx import GPXRepository
 from app.services.gpx_parser import GPXParserService
 from app.services.naismith import get_total_multiplier, estimate_rest_time, HikerProfile
 from app.services.sun import get_sun_times
+from app.models.user import User
+from app.models.user_profile import UserPerformanceProfile
 
 router = APIRouter()
+
+
+from typing import Optional
 
 
 class CompareRequest(BaseModel):
@@ -35,6 +40,7 @@ class CompareRequest(BaseModel):
     experience: ExperienceLevel = ExperienceLevel.REGULAR
     backpack: BackpackWeight = BackpackWeight.LIGHT
     group_size: int = Field(default=1, ge=1, le=50)
+    telegram_id: Optional[str] = None  # For personalization
 
 
 @router.post("/hike", response_model=HikePrediction)
@@ -46,7 +52,17 @@ async def predict_hike(
     Predict hiking time for a route.
 
     Uses Naismith's rule with profile-based adjustments.
+    If telegram_id is provided, uses personalized data from Strava history.
     """
+    # Load user profile if telegram_id provided
+    user_profile = None
+    if request.telegram_id:
+        user = db.query(User).filter(User.telegram_id == request.telegram_id).first()
+        if user:
+            user_profile = db.query(UserPerformanceProfile).filter(
+                UserPerformanceProfile.user_id == user.id
+            ).first()
+
     try:
         prediction = PredictionService.predict_hike(
             gpx_id=request.gpx_id,
@@ -56,7 +72,8 @@ async def predict_hike(
             has_children=request.has_children,
             has_elderly=request.has_elderly,
             is_round_trip=request.is_round_trip,
-            db=db
+            db=db,
+            user_profile=user_profile
         )
         return prediction
     except ValueError as e:
@@ -94,8 +111,8 @@ async def compare_methods(
     """
     Compare different prediction methods on a route.
 
-    Returns segment-by-segment breakdown with both
-    Naismith and Tobler calculations.
+    Returns segment-by-segment breakdown with Naismith and Tobler calculations.
+    If telegram_id is provided and user has a profile, includes personalized methods.
     """
     # Get GPX file
     gpx_repo = GPXRepository(db)
@@ -106,6 +123,15 @@ async def compare_methods(
 
     if not gpx_file.gpx_content:
         raise HTTPException(status_code=400, detail="GPX file has no content")
+
+    # Load user profile if telegram_id provided
+    user_profile = None
+    if request.telegram_id:
+        user = db.query(User).filter(User.telegram_id == request.telegram_id).first()
+        if user:
+            user_profile = db.query(UserPerformanceProfile).filter(
+                UserPerformanceProfile.user_id == user.id
+            ).first()
 
     # Extract points
     try:
@@ -122,9 +148,9 @@ async def compare_methods(
     )
     multiplier = get_total_multiplier(profile)
 
-    # Run comparison
+    # Run comparison with optional personalization
     comparison_service = ComparisonService()
-    comparison = comparison_service.compare_route(points, multiplier)
+    comparison = comparison_service.compare_route(points, multiplier, user_profile=user_profile)
 
     # Format as text
     formatted = comparison_service.format_comparison(comparison)
@@ -180,7 +206,9 @@ async def compare_methods(
         method_descriptions=comparison.method_descriptions,
         sunrise=sunrise,
         sunset=sunset,
-        formatted_text=formatted
+        formatted_text=formatted,
+        personalized=comparison.personalized,
+        activities_used=comparison.activities_used
     )
 
 

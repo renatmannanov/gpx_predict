@@ -19,6 +19,7 @@ from app.services.calculators.comparison import (
     SegmentComparison,
     RouteComparison
 )
+from app.services.calculators.personalization import PersonalizationService
 
 __all__ = [
     "PaceCalculator",
@@ -32,4 +33,5 @@ __all__ = [
     "ComparisonService",
     "SegmentComparison",
     "RouteComparison",
+    "PersonalizationService",
 ]
