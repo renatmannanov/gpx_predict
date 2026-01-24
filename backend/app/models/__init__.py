@@ -11,6 +11,7 @@ from app.models.prediction import Prediction
 from app.models.strava_token import StravaToken
 from app.models.strava_activity import StravaActivity, StravaActivitySplit, StravaSyncStatus
 from app.models.user_profile import UserPerformanceProfile
+from app.models.user_run_profile import UserRunProfile
 
 __all__ = [
     "Base",
@@ -22,4 +23,5 @@ __all__ = [
     "StravaActivitySplit",
     "StravaSyncStatus",
     "UserPerformanceProfile",
+    "UserRunProfile",
 ]

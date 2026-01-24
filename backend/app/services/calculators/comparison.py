@@ -3,6 +3,7 @@ Comparison Service
 
 Compares multiple calculation methods side-by-side.
 Supports optional personalization based on user's Strava activity data.
+Supports optional fatigue modeling for long routes.
 """
 
 from dataclasses import dataclass, field
@@ -18,6 +19,7 @@ from app.services.calculators.naismith import NaismithCalculator
 from app.services.calculators.tobler import ToblerCalculator
 from app.services.calculators.segmenter import RouteSegmenter
 from app.services.calculators.personalization import PersonalizationService
+from app.services.calculators.fatigue import FatigueService, FatigueConfig
 from app.models.user_profile import UserPerformanceProfile
 
 
@@ -60,6 +62,10 @@ class RouteComparison:
     personalized: bool = False
     activities_used: int = 0
 
+    # Fatigue info
+    fatigue_applied: bool = False
+    fatigue_info: Dict = field(default_factory=dict)
+
 
 class ComparisonService:
     """
@@ -79,7 +85,9 @@ class ComparisonService:
         self,
         points: List[Tuple[float, float, float]],
         profile_multiplier: float = 1.0,
-        user_profile: Optional[UserPerformanceProfile] = None
+        user_profile: Optional[UserPerformanceProfile] = None,
+        use_extended_gradients: bool = False,
+        apply_fatigue: bool = False
     ) -> RouteComparison:
         """
         Compare all methods on a route.
@@ -88,6 +96,8 @@ class ComparisonService:
             points: List of (lat, lon, elevation) tuples
             profile_multiplier: Multiplier from hiker profile
             user_profile: Optional user profile for personalized calculations
+            use_extended_gradients: Use 7-category gradient system for personalization
+            apply_fatigue: Apply fatigue model to calculations
 
         Returns:
             RouteComparison with segment-by-segment and total results
@@ -118,9 +128,17 @@ class ComparisonService:
         activities_used = 0
 
         if PersonalizationService.is_profile_valid(user_profile):
-            personalization = PersonalizationService(user_profile)
+            personalization = PersonalizationService(
+                user_profile,
+                use_extended_gradients=use_extended_gradients
+            )
             is_personalized = True
             activities_used = user_profile.total_activities_analyzed
+
+        # Setup fatigue service
+        fatigue_service = None
+        if apply_fatigue:
+            fatigue_service = FatigueService.create_enabled()
 
         # Compare each segment
         segment_comparisons = []
@@ -130,6 +148,9 @@ class ComparisonService:
         if personalization:
             method_totals["tobler_personalized"] = 0.0
             method_totals["naismith_personalized"] = 0.0
+
+        # Track cumulative time per method for fatigue calculation
+        cumulative_times: Dict[str, float] = {k: 0.0 for k in method_totals.keys()}
 
         for segment in macro_segments:
             comparison = SegmentComparison(
@@ -147,6 +168,24 @@ class ComparisonService:
             # Calculate with base methods
             for calculator in self.calculators:
                 result = calculator.calculate_segment(segment, profile_multiplier)
+
+                # Apply fatigue if enabled
+                if fatigue_service:
+                    adjusted_time, fatigue_mult = fatigue_service.apply_to_segment(
+                        result.time_hours,
+                        cumulative_times[calculator.name]
+                    )
+                    # Update result with fatigue-adjusted time
+                    result = MethodResult(
+                        method_name=result.method_name,
+                        speed_kmh=result.speed_kmh,
+                        time_hours=round(adjusted_time, 4),
+                        formula_used=f"{result.formula_used} [fatigue ×{fatigue_mult:.2f}]"
+                    )
+                    cumulative_times[calculator.name] += adjusted_time
+                else:
+                    cumulative_times[calculator.name] += result.time_hours
+
                 comparison.methods[calculator.name] = result
                 method_totals[calculator.name] += result.time_hours
 
@@ -154,6 +193,23 @@ class ComparisonService:
             if personalization:
                 for base_method in ["tobler", "naismith"]:
                     result = personalization.calculate_segment(segment, base_method)
+
+                    # Apply fatigue if enabled
+                    if fatigue_service:
+                        adjusted_time, fatigue_mult = fatigue_service.apply_to_segment(
+                            result.time_hours,
+                            cumulative_times[result.method_name]
+                        )
+                        result = MethodResult(
+                            method_name=result.method_name,
+                            speed_kmh=result.speed_kmh,
+                            time_hours=round(adjusted_time, 4),
+                            formula_used=f"{result.formula_used} [fatigue ×{fatigue_mult:.2f}]"
+                        )
+                        cumulative_times[result.method_name] += adjusted_time
+                    else:
+                        cumulative_times[result.method_name] += result.time_hours
+
                     comparison.methods[result.method_name] = result
                     method_totals[result.method_name] += result.time_hours
 
@@ -170,6 +226,11 @@ class ComparisonService:
             descriptions["tobler_personalized"] = f"Tobler + ваш темп ({activities_used} активностей)"
             descriptions["naismith_personalized"] = f"Naismith + ваш темп ({activities_used} активностей)"
 
+        # Build fatigue info
+        fatigue_info = {}
+        if fatigue_service:
+            fatigue_info = fatigue_service.get_fatigue_info()
+
         return RouteComparison(
             total_distance_km=round(total_distance, 2),
             total_ascent_m=round(total_ascent, 0),
@@ -180,7 +241,9 @@ class ComparisonService:
             totals=method_totals,
             method_descriptions=descriptions,
             personalized=is_personalized,
-            activities_used=activities_used
+            activities_used=activities_used,
+            fatigue_applied=apply_fatigue,
+            fatigue_info=fatigue_info
         )
 
     def _empty_comparison(

@@ -5,8 +5,20 @@ Pydantic models for prediction requests and responses.
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict
 from enum import Enum
+
+
+class ActivityType(str, Enum):
+    """Type of activity for prediction."""
+    HIKE = "hike"
+    TRAIL_RUN = "trail_run"
+
+
+class GAPModeEnum(str, Enum):
+    """GAP calculation mode for trail running."""
+    STRAVA = "strava_gap"
+    MINETTI = "minetti_gap"
 
 
 class ExperienceLevel(str, Enum):
@@ -212,3 +224,123 @@ class RouteComparisonResponse(BaseModel):
     # Personalization info
     personalized: bool = False
     activities_used: int = 0
+
+    # Fatigue model info
+    fatigue_applied: bool = False
+    fatigue_info: Optional[dict] = None
+
+
+# === Trail Run Models ===
+
+class TrailRunCompareRequest(BaseModel):
+    """Request for trail run method comparison."""
+    gpx_id: str
+    telegram_id: Optional[str] = None
+
+    # Activity type
+    activity_type: ActivityType = ActivityType.TRAIL_RUN
+
+    # GAP mode
+    gap_mode: GAPModeEnum = GAPModeEnum.STRAVA
+
+    # Manual flat pace (if no Strava profile)
+    flat_pace_min_km: Optional[float] = Field(
+        default=None,
+        ge=2.5,
+        le=15.0,
+        description="Base flat pace in min/km (default 6:00/km if not provided)"
+    )
+
+    # Threshold options
+    apply_dynamic_threshold: bool = False
+    walk_threshold_override: Optional[float] = Field(
+        default=None,
+        ge=10.0,
+        le=40.0,
+        description="Manual override for walk threshold (%)"
+    )
+
+    # Fatigue
+    apply_fatigue: bool = False
+
+    # Extended gradients
+    use_extended_gradients: bool = True
+
+
+class SegmentMovementInfo(BaseModel):
+    """Movement info for a segment (trail run only)."""
+    mode: str              # "run" | "hike"
+    reason: str
+    threshold_used: float
+    confidence: float
+
+
+class TrailRunSegmentSchema(BaseModel):
+    """Segment prediction for trail running."""
+    segment_number: int
+    start_km: float
+    end_km: float
+    distance_km: float
+    elevation_change_m: float
+    gradient_percent: float
+
+    # Movement mode
+    movement: SegmentMovementInfo
+
+    # Time predictions by method
+    times: Dict[str, float]  # method_name → time_hours
+
+    # Fatigue info
+    fatigue_multiplier: float = 1.0
+
+
+class TrailRunSummarySchema(BaseModel):
+    """Summary statistics for trail run prediction."""
+    total_distance_km: float
+    total_elevation_gain_m: float
+    total_elevation_loss_m: float
+
+    # Time breakdown
+    running_time_hours: float
+    hiking_time_hours: float
+    running_distance_km: float
+    hiking_distance_km: float
+
+    # Flat equivalent
+    flat_equivalent_hours: float
+    elevation_impact_percent: float
+
+
+class TrailRunCompareResponse(BaseModel):
+    """Response for trail run comparison."""
+    # Activity type
+    activity_type: str = "trail_run"
+
+    # Segment breakdown
+    segments: List[TrailRunSegmentSchema]
+
+    # Totals by method (hours)
+    totals: Dict[str, float]
+
+    # Summary
+    summary: TrailRunSummarySchema
+
+    # Personalization info
+    personalized: bool = False
+    total_activities_used: int = 0
+    hike_activities_used: int = 0
+    run_activities_used: int = 0
+
+    # Threshold info
+    walk_threshold_used: float = 25.0
+    dynamic_threshold_applied: bool = False
+
+    # GAP mode used
+    gap_mode: str = "strava_gap"
+
+    # Fatigue model info
+    fatigue_applied: bool = False
+    fatigue_info: Optional[Dict] = None
+
+    # Formatted text output (for bot/debugging)
+    formatted_text: Optional[str] = None

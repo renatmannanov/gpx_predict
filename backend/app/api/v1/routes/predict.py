@@ -4,6 +4,8 @@ Prediction Routes
 Endpoints for time predictions.
 """
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
@@ -17,21 +19,26 @@ from app.schemas.prediction import (
     RouteComparisonResponse,
     MacroSegmentSchema,
     ExperienceLevel,
-    BackpackWeight
+    BackpackWeight,
+    TrailRunCompareRequest,
+    TrailRunCompareResponse,
+    TrailRunSegmentSchema,
+    TrailRunSummarySchema,
+    SegmentMovementInfo,
+    GAPModeEnum,
 )
 from app.services.prediction import PredictionService
 from app.services.calculators import ComparisonService
+from app.services.calculators.trail_run import TrailRunService, GAPMode
 from app.repositories.gpx import GPXRepository
 from app.services.gpx_parser import GPXParserService
 from app.services.naismith import get_total_multiplier, estimate_rest_time, HikerProfile
 from app.services.sun import get_sun_times
 from app.models.user import User
 from app.models.user_profile import UserPerformanceProfile
+from app.models.user_run_profile import UserRunProfile
 
 router = APIRouter()
-
-
-from typing import Optional
 
 
 class CompareRequest(BaseModel):
@@ -41,6 +48,10 @@ class CompareRequest(BaseModel):
     backpack: BackpackWeight = BackpackWeight.LIGHT
     group_size: int = Field(default=1, ge=1, le=50)
     telegram_id: Optional[str] = None  # For personalization
+    # Extended gradient system (7 categories vs legacy 3)
+    use_extended_gradients: bool = False
+    # Fatigue modeling (slowdown on long hikes)
+    apply_fatigue: bool = False
 
 
 @router.post("/hike", response_model=HikePrediction)
@@ -148,9 +159,15 @@ async def compare_methods(
     )
     multiplier = get_total_multiplier(profile)
 
-    # Run comparison with optional personalization
+    # Run comparison with optional personalization and fatigue
     comparison_service = ComparisonService()
-    comparison = comparison_service.compare_route(points, multiplier, user_profile=user_profile)
+    comparison = comparison_service.compare_route(
+        points,
+        multiplier,
+        user_profile=user_profile,
+        use_extended_gradients=request.use_extended_gradients,
+        apply_fatigue=request.apply_fatigue
+    )
 
     # Format as text
     formatted = comparison_service.format_comparison(comparison)
@@ -208,11 +225,180 @@ async def compare_methods(
         sunset=sunset,
         formatted_text=formatted,
         personalized=comparison.personalized,
-        activities_used=comparison.activities_used
+        activities_used=comparison.activities_used,
+        fatigue_applied=comparison.fatigue_applied,
+        fatigue_info=comparison.fatigue_info if comparison.fatigue_applied else None
     )
 
 
-# Future: Running prediction
-# @router.post("/run", response_model=RunPrediction)
-# async def predict_run(request: RunPredictRequest, db: Session = Depends(get_db)):
-#     pass
+@router.post("/trail-run/compare", response_model=TrailRunCompareResponse)
+async def compare_trail_run_methods(
+    request: TrailRunCompareRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Compare trail running prediction methods on a route.
+
+    Trail running uses different methods than hiking:
+    - GAP (Grade Adjusted Pace) for running segments
+    - Tobler for hiking segments (steep uphills/technical terrain)
+    - Automatic run/hike threshold detection
+    - Runner-specific fatigue model (earlier onset, downhill penalty)
+
+    If telegram_id is provided and user has profiles:
+    - Run profile: personalized running paces
+    - Hike profile: personalized hiking paces (for walking segments)
+    """
+    # Get GPX file
+    gpx_repo = GPXRepository(db)
+    gpx_file = gpx_repo.get_by_id(request.gpx_id)
+
+    if not gpx_file:
+        raise HTTPException(status_code=404, detail=f"GPX file not found: {request.gpx_id}")
+
+    if not gpx_file.gpx_content:
+        raise HTTPException(status_code=400, detail="GPX file has no content")
+
+    # Load user profiles if telegram_id provided
+    hike_profile = None
+    run_profile = None
+
+    if request.telegram_id:
+        user = db.query(User).filter(User.telegram_id == request.telegram_id).first()
+        if user:
+            hike_profile = db.query(UserPerformanceProfile).filter(
+                UserPerformanceProfile.user_id == user.id
+            ).first()
+            run_profile = db.query(UserRunProfile).filter(
+                UserRunProfile.user_id == user.id
+            ).first()
+
+    # Extract points
+    try:
+        points = GPXParserService.extract_points(gpx_file.gpx_content)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse GPX: {e}")
+
+    # Determine flat pace
+    flat_pace = request.flat_pace_min_km
+    if flat_pace is None:
+        if run_profile and run_profile.avg_flat_pace_min_km:
+            flat_pace = run_profile.avg_flat_pace_min_km
+        else:
+            flat_pace = 6.0  # Default 10 km/h
+
+    # Map GAP mode enum
+    gap_mode = GAPMode.STRAVA if request.gap_mode == GAPModeEnum.STRAVA else GAPMode.MINETTI
+
+    # Create trail run service
+    service = TrailRunService(
+        gap_mode=gap_mode,
+        flat_pace_min_km=flat_pace,
+        hike_profile=hike_profile,
+        run_profile=run_profile,
+        apply_fatigue=request.apply_fatigue,
+        apply_dynamic_threshold=request.apply_dynamic_threshold,
+        walk_threshold_override=request.walk_threshold_override,
+        use_extended_gradients=request.use_extended_gradients,
+    )
+
+    # Calculate
+    result = service.calculate_route(points)
+
+    # Convert segments to response schema
+    segments = []
+    for seg_result in result.segments:
+        segments.append(TrailRunSegmentSchema(
+            segment_number=seg_result.segment.segment_number,
+            start_km=0,  # Not tracked in MacroSegment
+            end_km=0,
+            distance_km=round(seg_result.segment.distance_km, 2),
+            elevation_change_m=round(seg_result.segment.elevation_change_m, 0),
+            gradient_percent=round(seg_result.segment.gradient_percent, 1),
+            movement=SegmentMovementInfo(
+                mode=seg_result.movement.mode.value,
+                reason=seg_result.movement.reason,
+                threshold_used=seg_result.movement.threshold_used,
+                confidence=seg_result.movement.confidence,
+            ),
+            times=seg_result.times,
+            fatigue_multiplier=round(seg_result.fatigue_multiplier, 3),
+        ))
+
+    # Build summary
+    summary = TrailRunSummarySchema(
+        total_distance_km=result.summary.total_distance_km,
+        total_elevation_gain_m=result.summary.total_elevation_gain_m,
+        total_elevation_loss_m=result.summary.total_elevation_loss_m,
+        running_time_hours=result.summary.running_time_hours,
+        hiking_time_hours=result.summary.hiking_time_hours,
+        running_distance_km=result.summary.running_distance_km,
+        hiking_distance_km=result.summary.hiking_distance_km,
+        flat_equivalent_hours=result.summary.flat_equivalent_hours,
+        elevation_impact_percent=result.summary.elevation_impact_percent,
+    )
+
+    # Format as text for bot
+    formatted = _format_trail_run_result(result, flat_pace)
+
+    return TrailRunCompareResponse(
+        activity_type="trail_run",
+        segments=segments,
+        totals=result.totals,
+        summary=summary,
+        personalized=result.personalized,
+        total_activities_used=result.total_activities_used,
+        hike_activities_used=result.hike_activities_used,
+        run_activities_used=result.run_activities_used,
+        walk_threshold_used=result.walk_threshold_used,
+        dynamic_threshold_applied=request.apply_dynamic_threshold,
+        gap_mode=result.gap_mode,
+        fatigue_applied=result.fatigue_applied,
+        fatigue_info=result.fatigue_info,
+        formatted_text=formatted,
+    )
+
+
+def _format_trail_run_result(result, flat_pace: float) -> str:
+    """Format trail run result as text for bot/debugging."""
+    lines = []
+
+    # Header
+    lines.append("🏃 TRAIL RUN PREDICTION")
+    lines.append("=" * 40)
+
+    # Summary
+    s = result.summary
+    lines.append(f"Distance: {s.total_distance_km:.1f} km")
+    lines.append(f"Elevation: +{s.total_elevation_gain_m:.0f}m / -{s.total_elevation_loss_m:.0f}m")
+    lines.append(f"Base pace: {int(flat_pace)}:{int((flat_pace % 1) * 60):02d}/km")
+    lines.append("")
+
+    # Time totals
+    lines.append("⏱ TIME ESTIMATES:")
+    for method, hours in sorted(result.totals.items()):
+        h = int(hours)
+        m = int((hours - h) * 60)
+        lines.append(f"  {method}: {h}h {m:02d}min")
+    lines.append("")
+
+    # Run/Hike breakdown
+    run_pct = (s.running_distance_km / s.total_distance_km * 100) if s.total_distance_km > 0 else 0
+    lines.append("🏃/🚶 BREAKDOWN:")
+    lines.append(f"  Running: {s.running_distance_km:.1f} km ({run_pct:.0f}%)")
+    lines.append(f"  Hiking:  {s.hiking_distance_km:.1f} km ({100-run_pct:.0f}%)")
+    lines.append(f"  Threshold: {result.walk_threshold_used:.0f}%")
+    lines.append("")
+
+    # Elevation impact
+    lines.append(f"📈 Elevation impact: +{s.elevation_impact_percent:.0f}%")
+
+    # Fatigue
+    if result.fatigue_applied:
+        lines.append(f"😓 Fatigue model: enabled")
+
+    # Personalization
+    if result.personalized:
+        lines.append(f"👤 Personalized: {result.total_activities_used} activities")
+
+    return "\n".join(lines)

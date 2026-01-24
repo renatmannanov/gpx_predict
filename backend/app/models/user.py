@@ -40,5 +40,12 @@ class User(Base):
         lazy="joined"
     )
 
+    run_profile = relationship(
+        "UserRunProfile",
+        back_populates="user",
+        uselist=False,
+        lazy="joined"
+    )
+
     def __repr__(self):
         return f"<User {self.id} ({self.name})>"

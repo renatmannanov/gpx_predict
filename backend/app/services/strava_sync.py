@@ -32,6 +32,20 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# Activity Type Constants
+# =============================================================================
+
+# Activity types for hiking profile calculation
+ACTIVITY_TYPES_FOR_HIKE_PROFILE = ["Hike", "Walk"]
+
+# Activity types for running profile calculation
+ACTIVITY_TYPES_FOR_RUN_PROFILE = ["Run", "TrailRun", "VirtualRun"]
+
+# All supported activity types
+ALL_SUPPORTED_ACTIVITY_TYPES = ACTIVITY_TYPES_FOR_HIKE_PROFILE + ACTIVITY_TYPES_FOR_RUN_PROFILE
+
+
+# =============================================================================
 # Sync Configuration
 # =============================================================================
 
@@ -209,7 +223,7 @@ class StravaSyncService:
             # Update sync status
             if activities:
                 dates = [
-                    datetime.fromisoformat(a["start_date"].replace("Z", "+00:00"))
+                    datetime.fromisoformat(a["start_date"].replace("Z", "+00:00")).replace(tzinfo=None)
                     for a in activities
                 ]
                 newest = max(dates)
@@ -452,7 +466,7 @@ class StravaSyncService:
             dict with sync results
         """
         if activity_types is None:
-            activity_types = ["Hike", "Walk"]
+            activity_types = ACTIVITY_TYPES_FOR_HIKE_PROFILE
 
         # Find activities without splits
         if self._is_async:
@@ -524,6 +538,29 @@ class StravaSyncService:
             )
             response.raise_for_status()
             return response.json()
+
+    async def sync_run_splits_for_user(
+        self,
+        user_id: str,
+        max_activities: int = 10
+    ) -> dict:
+        """
+        Sync splits for user's Run activities that don't have splits yet.
+
+        Convenience method for Run/TrailRun activities.
+
+        Args:
+            user_id: User ID
+            max_activities: Maximum number of activities to sync splits for
+
+        Returns:
+            dict with sync results
+        """
+        return await self.sync_splits_for_user(
+            user_id=user_id,
+            max_activities=max_activities,
+            activity_types=ACTIVITY_TYPES_FOR_RUN_PROFILE
+        )
 
 
 # =============================================================================
