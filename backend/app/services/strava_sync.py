@@ -27,6 +27,8 @@ from app.config import settings
 from app.models.user import User
 from app.models.strava_token import StravaToken
 from app.models.strava_activity import StravaActivity, StravaActivitySplit, StravaSyncStatus
+from app.models.notification import Notification
+from app.services.user_profile import UserProfileService
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +71,25 @@ class SyncConfig:
 
     # Delay between API calls (seconds) to respect rate limits
     API_CALL_DELAY = 1.5
+
+    # ==========================================================================
+    # Profile Recalculation Strategy (during initial sync)
+    # ==========================================================================
+    # Recalculate profile at these checkpoints to avoid spam:
+    # 1. After first 5 activities (quick feedback)
+    # 2. At 30% completion
+    # 3. At 60% completion
+    # 4. At 100% completion (initial sync done)
+    INITIAL_RECALC_AFTER_N_ACTIVITIES = 5
+    INITIAL_RECALC_PROGRESS_CHECKPOINTS = [30, 60]  # percent
+
+    # ==========================================================================
+    # Post-Initial Sync Strategy
+    # ==========================================================================
+    # After initial sync is complete, recalculate when:
+    # - At least N new activities with splits have been synced
+    # This avoids recalculating for every single new activity
+    POST_SYNC_RECALC_MIN_NEW_ACTIVITIES = 3
 
 
 # =============================================================================
@@ -214,11 +235,38 @@ class StravaSyncService:
                 per_page=max_activities
             )
 
-            # Save activities
+            # Save activities and sync splits for supported types
             saved_count = 0
+            splits_synced_count = 0
+            saved_activities = []
+
             for activity_data in activities:
-                if self._save_activity(user_id, activity_data):
+                activity = self._save_activity(user_id, activity_data)
+                if activity:
                     saved_count += 1
+                    saved_activities.append(activity)
+
+            # Commit to get activity IDs
+            self.db.commit()
+
+            # Sync splits for supported activity types (Hike, Walk, Run, TrailRun)
+            for activity in saved_activities:
+                if activity.activity_type in ALL_SUPPORTED_ACTIVITY_TYPES:
+                    # Delay between API calls to respect rate limits
+                    if splits_synced_count > 0:
+                        await asyncio.sleep(SyncConfig.API_CALL_DELAY)
+
+                    try:
+                        split_result = await self.sync_activity_splits(
+                            user_id=user_id,
+                            activity_id=activity.id,
+                            strava_activity_id=activity.strava_id
+                        )
+                        if split_result.get("status") == "success":
+                            splits_synced_count += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to sync splits for activity {activity.strava_id}: {e}")
+                        # Continue with other activities
 
             # Update sync status
             if activities:
@@ -235,21 +283,66 @@ class StravaSyncService:
                     sync_status.oldest_synced_date = oldest
 
             sync_status.total_activities_synced += saved_count
+            sync_status.activities_with_splits = (sync_status.activities_with_splits or 0) + splits_synced_count
             sync_status.last_sync_at = datetime.utcnow()
             sync_status.last_error = None
             sync_status.sync_in_progress = 0
 
+            # Check if we need to send progress notification
+            if (saved_count > 0
+                and sync_status.total_activities_synced % SyncConfig.PROGRESS_NOTIFICATION_INTERVAL == 0
+                and not sync_status.initial_sync_complete):
+                self._create_notification(
+                    user_id=user_id,
+                    notification_type="sync_progress",
+                    data={
+                        "progress_percent": int(
+                            (sync_status.total_activities_synced /
+                             (sync_status.total_activities_estimated or 100)) * 100
+                        ),
+                        "activities_synced": sync_status.total_activities_synced,
+                        "total_estimated": sync_status.total_activities_estimated or 0
+                    }
+                )
+
+            # Check if initial sync is complete (no more new activities)
+            was_initial_sync = not sync_status.initial_sync_complete
+            if was_initial_sync and len(activities) < max_activities:
+                sync_status.initial_sync_complete = 1
+                sync_status.last_recalc_checkpoint = 100  # Mark 100% checkpoint
+                # Create sync_complete notification
+                self._create_notification(
+                    user_id=user_id,
+                    notification_type="sync_complete",
+                    data={
+                        "activities_synced": sync_status.total_activities_synced,
+                        "activities_with_splits": sync_status.activities_with_splits or 0
+                    }
+                )
+                # Force final profile recalculation at 100% completion
+                logger.info(f"Initial sync complete for user {user_id}, forcing final profile recalc")
+                await self._force_final_profile_recalc(user_id)
+
             self.db.commit()
 
+            # Auto-recalculate profiles if we synced splits
+            if splits_synced_count > 0:
+                await self._auto_recalculate_profiles(
+                    user_id, saved_activities, sync_status, splits_synced_count
+                )
+
             logger.info(
-                f"Synced {saved_count} activities for user {user_id} "
-                f"(total: {sync_status.total_activities_synced})"
+                f"Synced {saved_count} activities for user {user_id}: "
+                f"{splits_synced_count} activities got splits synced "
+                f"(total activities: {sync_status.total_activities_synced}, "
+                f"total with splits: {sync_status.activities_with_splits})"
             )
 
             return {
                 "status": "success",
                 "fetched": len(activities),
                 "saved": saved_count,
+                "splits_synced": splits_synced_count,
                 "total": sync_status.total_activities_synced
             }
 
@@ -260,11 +353,245 @@ class StravaSyncService:
             self.db.commit()
             return {"status": "error", "error": str(e)}
 
-    def _save_activity(self, user_id: str, data: dict) -> bool:
+    def _create_notification(
+        self,
+        user_id: str,
+        notification_type: str,
+        data: Optional[dict] = None
+    ):
+        """Create a notification for the user."""
+        notification = Notification(
+            user_id=user_id,
+            type=notification_type,
+            data=data
+        )
+        self.db.add(notification)
+        logger.debug(f"Created notification {notification_type} for user {user_id}")
+
+    def _should_recalculate_profile(
+        self,
+        sync_status: StravaSyncStatus,
+        new_splits_count: int
+    ) -> bool:
+        """
+        Determine if profile should be recalculated based on sync progress.
+
+        During initial sync (4-point strategy):
+        1. After first 5 activities with splits
+        2. At 30% completion
+        3. At 60% completion
+        4. At 100% completion
+
+        After initial sync:
+        - When at least N new activities have been synced
+        """
+        if not sync_status.initial_sync_complete:
+            # Initial sync - use checkpoint strategy
+            return self._check_initial_sync_checkpoint(sync_status)
+        else:
+            # Post-initial sync - use activity count strategy
+            return self._check_post_sync_threshold(sync_status, new_splits_count)
+
+    def _check_initial_sync_checkpoint(self, sync_status: StravaSyncStatus) -> bool:
+        """
+        Check if we've reached a recalculation checkpoint during initial sync.
+
+        Checkpoints:
+        - 5: After first 5 activities with splits
+        - 30: At 30% completion
+        - 60: At 60% completion
+        - 100: At 100% completion (handled separately in sync_complete)
+        """
+        activities_with_splits = sync_status.activities_with_splits or 0
+        last_checkpoint = sync_status.last_recalc_checkpoint or 0
+        total_estimated = sync_status.total_activities_estimated or 100
+
+        # Checkpoint 1: After first 5 activities
+        if (last_checkpoint < 5 and
+            activities_with_splits >= SyncConfig.INITIAL_RECALC_AFTER_N_ACTIVITIES):
+            sync_status.last_recalc_checkpoint = 5
+            return True
+
+        # Checkpoint 2 & 3: At 30% and 60% completion
+        if total_estimated > 0:
+            current_percent = (activities_with_splits / total_estimated) * 100
+
+            for checkpoint in SyncConfig.INITIAL_RECALC_PROGRESS_CHECKPOINTS:
+                if last_checkpoint < checkpoint and current_percent >= checkpoint:
+                    sync_status.last_recalc_checkpoint = checkpoint
+                    return True
+
+        return False
+
+    def _check_post_sync_threshold(
+        self,
+        sync_status: StravaSyncStatus,
+        new_splits_count: int
+    ) -> bool:
+        """
+        Check if we should recalculate after initial sync is complete.
+
+        Returns True if enough new activities have accumulated.
+        """
+        # Track new activities since last recalc
+        sync_status.new_activities_since_recalc = (
+            (sync_status.new_activities_since_recalc or 0) + new_splits_count
+        )
+
+        if sync_status.new_activities_since_recalc >= SyncConfig.POST_SYNC_RECALC_MIN_NEW_ACTIVITIES:
+            # Reset counter
+            sync_status.new_activities_since_recalc = 0
+            return True
+
+        return False
+
+    async def _auto_recalculate_profiles(
+        self,
+        user_id: str,
+        saved_activities: list[StravaActivity],
+        sync_status: StravaSyncStatus,
+        new_splits_count: int
+    ):
+        """
+        Auto-recalculate user profiles based on sync progress.
+
+        Uses 4-point strategy during initial sync to avoid spam:
+        1. After 5 activities
+        2. At 30% completion
+        3. At 60% completion
+        4. At 100% completion
+        """
+        # Check if we should recalculate
+        if not self._should_recalculate_profile(sync_status, new_splits_count):
+            logger.debug(
+                f"Skipping profile recalc for user {user_id} "
+                f"(checkpoint: {sync_status.last_recalc_checkpoint}, "
+                f"new since recalc: {sync_status.new_activities_since_recalc})"
+            )
+            return
+
+        # Determine which profiles need recalculation
+        has_hike_activities = any(
+            a.activity_type in ACTIVITY_TYPES_FOR_HIKE_PROFILE
+            for a in saved_activities
+        )
+        has_run_activities = any(
+            a.activity_type in ACTIVITY_TYPES_FOR_RUN_PROFILE
+            for a in saved_activities
+        )
+
+        # Need AsyncSession for profile calculation
+        if not self._is_async:
+            logger.warning("Cannot auto-recalculate profiles with sync session")
+            return
+
+        try:
+            checkpoint = sync_status.last_recalc_checkpoint or 0
+            recalc_reason = f"checkpoint_{checkpoint}" if not sync_status.initial_sync_complete else "incremental"
+
+            # Recalculate hiking profile if we have hike/walk activities
+            if has_hike_activities:
+                hike_profile = await UserProfileService.calculate_profile_with_splits(
+                    user_id, self.db
+                )
+                if hike_profile:
+                    logger.info(
+                        f"Auto-recalculated hiking profile for user {user_id} "
+                        f"(reason: {recalc_reason})"
+                    )
+                    self._create_notification(
+                        user_id=user_id,
+                        notification_type="profile_updated",
+                        data={
+                            "profile_type": "hiking",
+                            "checkpoint": checkpoint,
+                            "activities_analyzed": hike_profile.total_hike_activities
+                        }
+                    )
+
+            # Recalculate running profile if we have run/trail activities
+            if has_run_activities:
+                run_profile = await UserProfileService.calculate_run_profile_with_splits(
+                    user_id, self.db
+                )
+                if run_profile:
+                    logger.info(
+                        f"Auto-recalculated running profile for user {user_id} "
+                        f"(reason: {recalc_reason})"
+                    )
+                    self._create_notification(
+                        user_id=user_id,
+                        notification_type="profile_updated",
+                        data={
+                            "profile_type": "running",
+                            "checkpoint": checkpoint,
+                            "activities_analyzed": run_profile.total_activities
+                        }
+                    )
+
+            if self._is_async:
+                await self.db.commit()
+
+        except Exception as e:
+            logger.error(f"Failed to auto-recalculate profiles for user {user_id}: {e}")
+            # Don't fail the whole sync if profile calculation fails
+
+    async def _force_final_profile_recalc(self, user_id: str):
+        """
+        Force final profile recalculation when initial sync is complete.
+
+        This is the 4th checkpoint (100%) - always recalculates both profiles.
+        """
+        if not self._is_async:
+            logger.warning("Cannot recalculate profiles with sync session")
+            return
+
+        try:
+            # Recalculate hiking profile
+            hike_profile = await UserProfileService.calculate_profile_with_splits(
+                user_id, self.db
+            )
+            if hike_profile:
+                logger.info(f"Final hiking profile recalc for user {user_id}")
+                self._create_notification(
+                    user_id=user_id,
+                    notification_type="profile_updated",
+                    data={
+                        "profile_type": "hiking",
+                        "checkpoint": 100,
+                        "activities_analyzed": hike_profile.total_hike_activities,
+                        "is_final": True
+                    }
+                )
+
+            # Recalculate running profile
+            run_profile = await UserProfileService.calculate_run_profile_with_splits(
+                user_id, self.db
+            )
+            if run_profile:
+                logger.info(f"Final running profile recalc for user {user_id}")
+                self._create_notification(
+                    user_id=user_id,
+                    notification_type="profile_updated",
+                    data={
+                        "profile_type": "running",
+                        "checkpoint": 100,
+                        "activities_analyzed": run_profile.total_activities,
+                        "is_final": True
+                    }
+                )
+
+            if self._is_async:
+                await self.db.commit()
+
+        except Exception as e:
+            logger.error(f"Failed final profile recalc for user {user_id}: {e}")
+
+    def _save_activity(self, user_id: str, data: dict) -> Optional[StravaActivity]:
         """
         Save a single activity to database.
 
-        Returns True if saved (new), False if already exists.
+        Returns StravaActivity if saved (new), None if already exists.
         """
         strava_id = data["id"]
 
@@ -274,7 +601,7 @@ class StravaSyncService:
         ).first()
 
         if existing:
-            return False
+            return None
 
         # Parse start date
         start_date = datetime.fromisoformat(
@@ -301,7 +628,8 @@ class StravaSyncService:
         )
 
         self.db.add(activity)
-        return True
+        self.db.flush()  # Get the ID assigned
+        return activity
 
     async def _get_valid_token(self, token: StravaToken) -> str:
         """Get valid access token, refreshing if needed."""
@@ -516,6 +844,41 @@ class StravaSyncService:
                     "error": result.get("error", result.get("reason"))
                 })
 
+        # Update activities_with_splits counter in sync status
+        if results["total_splits_saved"] > 0:
+            if self._is_async:
+                result = await self.db.execute(
+                    select(StravaSyncStatus).where(StravaSyncStatus.user_id == user_id)
+                )
+                sync_status = result.scalar_one_or_none()
+            else:
+                sync_status = self.db.query(StravaSyncStatus).filter(
+                    StravaSyncStatus.user_id == user_id
+                ).first()
+
+            if sync_status:
+                sync_status.activities_with_splits = (
+                    (sync_status.activities_with_splits or 0) +
+                    results["activities_processed"] -
+                    len(results["errors"])
+                )
+
+                # Create profile_updated notification
+                self._create_notification(
+                    user_id=user_id,
+                    notification_type="profile_updated",
+                    data={
+                        "profile_type": "hiking" if activity_types == ACTIVITY_TYPES_FOR_HIKE_PROFILE else "running",
+                        "activities_count": results["activities_processed"],
+                        "splits_count": results["total_splits_saved"]
+                    }
+                )
+
+                if self._is_async:
+                    await self.db.commit()
+                else:
+                    self.db.commit()
+
         logger.info(
             f"Synced splits for user {user_id}: "
             f"{results['activities_processed']} activities, "
@@ -561,6 +924,67 @@ class StravaSyncService:
             max_activities=max_activities,
             activity_types=ACTIVITY_TYPES_FOR_RUN_PROFILE
         )
+
+    async def sync_splits_prioritized(
+        self,
+        user_id: str,
+        max_activities: int = 20
+    ) -> dict:
+        """
+        Sync splits with priority based on user's preferred_activity_type.
+
+        First syncs splits for preferred activity type, then for other types.
+
+        Args:
+            user_id: User ID
+            max_activities: Maximum activities total
+
+        Returns:
+            dict with sync results
+        """
+        # Get user's preferred activity type
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"status": "error", "reason": "user_not_found"}
+
+        preferred = user.preferred_activity_type or "hiking"
+
+        # Determine priority types
+        if preferred == "running":
+            priority_types = ACTIVITY_TYPES_FOR_RUN_PROFILE
+            secondary_types = ACTIVITY_TYPES_FOR_HIKE_PROFILE
+        else:
+            priority_types = ACTIVITY_TYPES_FOR_HIKE_PROFILE
+            secondary_types = ACTIVITY_TYPES_FOR_RUN_PROFILE
+
+        results = {
+            "status": "success",
+            "priority_synced": 0,
+            "secondary_synced": 0,
+            "total_splits": 0
+        }
+
+        # Sync priority types first (more activities)
+        priority_result = await self.sync_splits_for_user(
+            user_id=user_id,
+            max_activities=max_activities // 2 + max_activities % 2,  # Give priority more
+            activity_types=priority_types
+        )
+        if priority_result["status"] == "success":
+            results["priority_synced"] = priority_result.get("activities_processed", 0)
+            results["total_splits"] += priority_result.get("total_splits_saved", 0)
+
+        # Sync secondary types
+        secondary_result = await self.sync_splits_for_user(
+            user_id=user_id,
+            max_activities=max_activities // 2,
+            activity_types=secondary_types
+        )
+        if secondary_result["status"] == "success":
+            results["secondary_synced"] = secondary_result.get("activities_processed", 0)
+            results["total_splits"] += secondary_result.get("total_splits_saved", 0)
+
+        return results
 
 
 # =============================================================================

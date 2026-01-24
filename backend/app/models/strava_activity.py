@@ -149,10 +149,19 @@ class StravaSyncStatus(Base):
 
     # Counts
     total_activities_synced = Column(Integer, default=0)
+    total_activities_estimated = Column(Integer, nullable=True)  # Estimate from Strava stats
+    activities_with_splits = Column(Integer, default=0)  # Activities with splits synced
 
     # Status
     sync_in_progress = Column(Integer, default=0)  # Boolean as int for SQLite
+    initial_sync_complete = Column(Integer, default=0)  # Boolean: first full sync done
     last_error = Column(String(500), nullable=True)
+
+    # Profile recalculation tracking
+    # During initial sync: tracks which checkpoint was last reached (0, 5, 30, 60, 100)
+    last_recalc_checkpoint = Column(Integer, default=0)
+    # After initial sync: count of new activities since last profile recalc
+    new_activities_since_recalc = Column(Integer, default=0)
 
     # Relationship
     user = relationship("User", backref="strava_sync_status")
