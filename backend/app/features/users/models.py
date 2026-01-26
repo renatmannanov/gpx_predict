@@ -61,6 +61,7 @@ class User(Base):
     notifications = relationship(
         "Notification",
         back_populates="user",
+        lazy="selectin",
         cascade="all, delete-orphan"
     )
 

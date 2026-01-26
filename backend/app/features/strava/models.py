@@ -110,6 +110,7 @@ class StravaActivity(Base):
     splits = relationship(
         "StravaActivitySplit",
         back_populates="activity",
+        lazy="selectin",
         cascade="all, delete-orphan"
     )
 

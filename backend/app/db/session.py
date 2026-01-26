@@ -60,6 +60,15 @@ if _async_url.startswith("sqlite"):
         _async_url,
         connect_args={"check_same_thread": False}
     )
+elif _async_url.startswith("postgresql"):
+    # PostgreSQL with connection pool settings
+    async_engine = create_async_engine(
+        _async_url,
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=30,
+        pool_recycle=1800,  # 30 minutes
+    )
 else:
     async_engine = create_async_engine(_async_url)
 

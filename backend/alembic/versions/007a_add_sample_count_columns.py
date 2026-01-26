@@ -1,6 +1,6 @@
 """Add sample count columns to user_run_profiles
 
-Revision ID: 537cb9c6ae39
+Revision ID: 007a_add_sample_count_columns
 Revises: 007_add_user_run_profiles
 Create Date: 2026-01-23 15:22:12.156239
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '537cb9c6ae39'
+revision: str = '007a_add_sample_count_columns'
 down_revision: Union[str, None] = '007_add_user_run_profiles'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

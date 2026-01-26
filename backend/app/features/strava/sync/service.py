@@ -8,14 +8,12 @@ Main entry point for syncing user activities.
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, Union
+from typing import Optional
 
-from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User
-from app.models.notification import Notification
+from app.features.users.models import User, Notification
 from app.services.user_profile import UserProfileService
 
 from ..models import StravaToken, StravaActivity, StravaSyncStatus
@@ -42,9 +40,8 @@ class StravaSyncService:
         result = await service.sync_user_activities(user_id)
     """
 
-    def __init__(self, db: Union[Session, AsyncSession]):
+    def __init__(self, db: AsyncSession):
         self.db = db
-        self._is_async = isinstance(db, AsyncSession)
         self.activity_sync = ActivitySyncService(db)
         self.splits_sync = SplitsSyncService(db)
 
@@ -59,25 +56,32 @@ class StravaSyncService:
         Returns dict with sync results.
         """
         # Get user and token
-        user = self.db.query(User).filter(User.id == user_id).first()
+        result = await self.db.execute(
+            select(User).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+
         if not user or not user.strava_connected:
             return {"status": "skipped", "reason": "not_connected"}
 
-        token = self.db.query(StravaToken).filter(
-            StravaToken.user_id == user_id
-        ).first()
+        result = await self.db.execute(
+            select(StravaToken).where(StravaToken.user_id == user_id)
+        )
+        token = result.scalar_one_or_none()
+
         if not token:
             return {"status": "skipped", "reason": "no_token"}
 
         # Get or create sync status
-        sync_status = self.db.query(StravaSyncStatus).filter(
-            StravaSyncStatus.user_id == user_id
-        ).first()
+        result = await self.db.execute(
+            select(StravaSyncStatus).where(StravaSyncStatus.user_id == user_id)
+        )
+        sync_status = result.scalar_one_or_none()
 
         if not sync_status:
             sync_status = StravaSyncStatus(user_id=user_id)
             self.db.add(sync_status)
-            self.db.flush()
+            await self.db.flush()
 
         # Check if sync is already in progress
         if sync_status.sync_in_progress:
@@ -85,7 +89,7 @@ class StravaSyncService:
 
         # Mark sync as in progress
         sync_status.sync_in_progress = 1
-        self.db.commit()
+        await self.db.commit()
 
         try:
             # Get valid access token
@@ -113,13 +117,13 @@ class StravaSyncService:
             saved_activities = []
 
             for activity_data in activities:
-                activity = self.activity_sync.save_activity(user_id, activity_data)
+                activity = await self.activity_sync.save_activity(user_id, activity_data)
                 if activity:
                     saved_count += 1
                     saved_activities.append(activity)
 
             # Commit to get activity IDs
-            self.db.commit()
+            await self.db.commit()
 
             # Sync splits for supported activity types
             for activity in saved_activities:
@@ -197,7 +201,7 @@ class StravaSyncService:
                 logger.info(f"Initial sync complete for user {user_id}")
                 await self._force_final_profile_recalc(user_id)
 
-            self.db.commit()
+            await self.db.commit()
 
             # Auto-recalculate profiles if we synced splits
             if splits_synced_count > 0:
@@ -222,7 +226,7 @@ class StravaSyncService:
             logger.error(f"Sync failed for user {user_id}: {e}")
             sync_status.last_error = str(e)[:500]
             sync_status.sync_in_progress = 0
-            self.db.commit()
+            await self.db.commit()
             return {"status": "error", "error": str(e)}
 
     def _create_notification(
@@ -314,10 +318,6 @@ class StravaSyncService:
             for a in saved_activities
         )
 
-        if not self._is_async:
-            logger.warning("Cannot auto-recalculate profiles with sync session")
-            return
-
         try:
             checkpoint = sync_status.last_recalc_checkpoint or 0
             recalc_reason = (
@@ -364,18 +364,13 @@ class StravaSyncService:
                         }
                     )
 
-            if self._is_async:
-                await self.db.commit()
+            await self.db.commit()
 
         except Exception as e:
             logger.error(f"Failed to auto-recalculate profiles for user {user_id}: {e}")
 
     async def _force_final_profile_recalc(self, user_id: str):
         """Force final profile recalculation when initial sync is complete."""
-        if not self._is_async:
-            logger.warning("Cannot recalculate profiles with sync session")
-            return
-
         try:
             hike_profile = await UserProfileService.calculate_profile_with_splits(
                 user_id, self.db
@@ -409,8 +404,7 @@ class StravaSyncService:
                     }
                 )
 
-            if self._is_async:
-                await self.db.commit()
+            await self.db.commit()
 
         except Exception as e:
             logger.error(f"Failed final profile recalc for user {user_id}: {e}")
@@ -436,21 +430,13 @@ class StravaSyncService:
             activity_types = ACTIVITY_TYPES_FOR_HIKE_PROFILE
 
         # Find activities without splits
-        if self._is_async:
-            query = select(StravaActivity).where(
-                StravaActivity.user_id == user_id,
-                StravaActivity.activity_type.in_(activity_types),
-                StravaActivity.splits_synced == 0
-            ).order_by(StravaActivity.start_date.desc()).limit(max_activities)
-            result = await self.db.execute(query)
-            activities = result.scalars().all()
-        else:
-            query = self.db.query(StravaActivity).filter(
-                StravaActivity.user_id == user_id,
-                StravaActivity.activity_type.in_(activity_types),
-                StravaActivity.splits_synced == 0
-            ).order_by(StravaActivity.start_date.desc()).limit(max_activities)
-            activities = query.all()
+        query = select(StravaActivity).where(
+            StravaActivity.user_id == user_id,
+            StravaActivity.activity_type.in_(activity_types),
+            StravaActivity.splits_synced == 0
+        ).order_by(StravaActivity.start_date.desc()).limit(max_activities)
+        result = await self.db.execute(query)
+        activities = result.scalars().all()
 
         if not activities:
             return {"status": "success", "activities_processed": 0, "reason": "no_activities_to_sync"}
@@ -484,15 +470,10 @@ class StravaSyncService:
 
         # Update activities_with_splits counter
         if results["total_splits_saved"] > 0:
-            if self._is_async:
-                result = await self.db.execute(
-                    select(StravaSyncStatus).where(StravaSyncStatus.user_id == user_id)
-                )
-                sync_status = result.scalar_one_or_none()
-            else:
-                sync_status = self.db.query(StravaSyncStatus).filter(
-                    StravaSyncStatus.user_id == user_id
-                ).first()
+            result = await self.db.execute(
+                select(StravaSyncStatus).where(StravaSyncStatus.user_id == user_id)
+            )
+            sync_status = result.scalar_one_or_none()
 
             if sync_status:
                 sync_status.activities_with_splits = (
@@ -516,10 +497,7 @@ class StravaSyncService:
                     }
                 )
 
-                if self._is_async:
-                    await self.db.commit()
-                else:
-                    self.db.commit()
+                await self.db.commit()
 
         logger.info(
             f"Synced splits for user {user_id}: "
@@ -551,7 +529,11 @@ class StravaSyncService:
 
         First syncs splits for preferred activity type, then for other types.
         """
-        user = self.db.query(User).filter(User.id == user_id).first()
+        result = await self.db.execute(
+            select(User).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+
         if not user:
             return {"status": "error", "reason": "user_not_found"}
 

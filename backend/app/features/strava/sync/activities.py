@@ -6,10 +6,10 @@ Handles fetching and saving activities from Strava API.
 
 import logging
 from datetime import datetime
-from typing import Optional, Union
+from typing import Optional
 
 import httpx
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -28,9 +28,8 @@ class ActivitySyncService:
     - Token refresh during sync
     """
 
-    def __init__(self, db: Union[Session, AsyncSession]):
+    def __init__(self, db: AsyncSession):
         self.db = db
-        self._is_async = isinstance(db, AsyncSession)
 
     async def fetch_activities(
         self,
@@ -67,7 +66,7 @@ class ActivitySyncService:
             response.raise_for_status()
             return response.json()
 
-    def save_activity(
+    async def save_activity(
         self,
         user_id: str,
         data: dict
@@ -85,9 +84,10 @@ class ActivitySyncService:
         strava_id = data["id"]
 
         # Check if already exists
-        existing = self.db.query(StravaActivity).filter(
-            StravaActivity.strava_id == strava_id
-        ).first()
+        result = await self.db.execute(
+            select(StravaActivity).where(StravaActivity.strava_id == strava_id)
+        )
+        existing = result.scalar_one_or_none()
 
         if existing:
             return None
@@ -117,7 +117,7 @@ class ActivitySyncService:
         )
 
         self.db.add(activity)
-        self.db.flush()  # Get the ID assigned
+        await self.db.flush()  # Get the ID assigned
         return activity
 
     async def get_valid_token(self, token: StravaToken) -> str:
@@ -151,9 +151,6 @@ class ActivitySyncService:
             token.expires_at = new_tokens["expires_at"]
             token.updated_at = datetime.utcnow()
 
-            if self._is_async:
-                await self.db.commit()
-            else:
-                self.db.commit()
+            await self.db.commit()
 
         return token.access_token

@@ -5,11 +5,9 @@ Handles fetching and saving per-kilometer split data from Strava activities.
 """
 
 import logging
-from typing import Union
 
 import httpx
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import StravaActivity, StravaActivitySplit, StravaToken
@@ -28,9 +26,8 @@ class SplitsSyncService:
     - Marking activities as synced
     """
 
-    def __init__(self, db: Union[Session, AsyncSession]):
+    def __init__(self, db: AsyncSession):
         self.db = db
-        self._is_async = isinstance(db, AsyncSession)
         self._activity_service = ActivitySyncService(db)
 
     async def fetch_activity_detail(
@@ -75,15 +72,10 @@ class SplitsSyncService:
             dict with sync results: {"status": "success/error", ...}
         """
         # Get token
-        if self._is_async:
-            result = await self.db.execute(
-                select(StravaToken).where(StravaToken.user_id == user_id)
-            )
-            token = result.scalar_one_or_none()
-        else:
-            token = self.db.query(StravaToken).filter(
-                StravaToken.user_id == user_id
-            ).first()
+        result = await self.db.execute(
+            select(StravaToken).where(StravaToken.user_id == user_id)
+        )
+        token = result.scalar_one_or_none()
 
         if not token:
             return {"status": "error", "reason": "no_token"}
@@ -119,23 +111,15 @@ class SplitsSyncService:
                 saved_count += 1
 
             # Mark activity as splits_synced
-            if self._is_async:
-                result = await self.db.execute(
-                    select(StravaActivity).where(StravaActivity.id == activity_id)
-                )
-                activity = result.scalar_one_or_none()
-            else:
-                activity = self.db.query(StravaActivity).filter(
-                    StravaActivity.id == activity_id
-                ).first()
+            result = await self.db.execute(
+                select(StravaActivity).where(StravaActivity.id == activity_id)
+            )
+            activity = result.scalar_one_or_none()
 
             if activity:
                 activity.splits_synced = 1
 
-            if self._is_async:
-                await self.db.commit()
-            else:
-                self.db.commit()
+            await self.db.commit()
 
             logger.info(f"Synced {saved_count} splits for activity {strava_activity_id}")
 
