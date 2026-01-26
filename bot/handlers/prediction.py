@@ -11,12 +11,14 @@ from aiogram.fsm.context import FSMContext
 
 from states.prediction import PredictionStates
 from keyboards.prediction import (
+    get_activity_type_keyboard,
     get_experience_keyboard,
     get_backpack_keyboard,
     get_group_size_keyboard,
     get_yes_no_keyboard,
     get_route_type_keyboard,
 )
+from handlers.trail_run import start_trail_run_flow
 from services.api_client import api_client, APIError
 from config import settings
 
@@ -304,24 +306,91 @@ async def handle_document(message: Message, state: FSMContext):
         gpx_info=gpx_info,
     )
 
-    # Show GPX info
+    # Show GPX info and ask for activity type
     await message.answer(format_gpx_info(gpx_info))
+    await message.answer(
+        "Какой прогноз нужен?",
+        reply_markup=get_activity_type_keyboard()
+    )
+    await state.set_state(PredictionStates.selecting_activity_type)
 
-    # If route is a loop (start ≈ end), skip route type question
-    if gpx_info.is_loop:
-        await state.update_data(is_round_trip=False)  # Already a complete route
-        await message.answer(
+
+# === Activity Type Selection ===
+
+@router.callback_query(PredictionStates.selecting_activity_type, F.data.startswith("activity:"))
+async def handle_activity_type(callback: CallbackQuery, state: FSMContext):
+    """Handle activity type selection after GPX upload."""
+    activity_type = callback.data.split(":")[1]
+    await state.update_data(activity_type=activity_type)
+
+    if activity_type == "trail_run":
+        # Trail run flow - delegate to trail_run handler
+        data = await state.get_data()
+        gpx_id = data.get("gpx_id")
+        gpx_info = data.get("gpx_info")
+
+        # Convert gpx_info to dict for trail_run module
+        gpx_info_dict = {
+            "gpx_id": gpx_info.gpx_id,
+            "name": gpx_info.name,
+            "filename": gpx_info.filename,
+            "distance_km": gpx_info.distance_km,
+            "elevation_gain_m": gpx_info.elevation_gain_m,
+            "elevation_loss_m": gpx_info.elevation_loss_m,
+            "max_elevation_m": gpx_info.max_elevation_m,
+            "min_elevation_m": gpx_info.min_elevation_m,
+            "is_loop": gpx_info.is_loop,
+        }
+
+        await callback.message.edit_text("🏃 Переходим к настройке Trail Run...")
+        await start_trail_run_flow(callback.message, state, gpx_id, gpx_info_dict)
+    else:
+        # Hiking flow - continue with existing logic
+        data = await state.get_data()
+        gpx_info = data.get("gpx_info")
+
+        # First handle route type question for non-loop routes
+        if gpx_info and not gpx_info.is_loop:
+            # Linear route - ask if round trip first
+            await callback.message.edit_text(
+                "Это маршрут в одну сторону или туда-обратно?",
+                reply_markup=get_route_type_keyboard()
+            )
+            await state.set_state(PredictionStates.selecting_route_type)
+        else:
+            # Loop route - skip route type, proceed to experience check
+            await state.update_data(is_round_trip=False)
+            await _proceed_to_experience_or_backpack(callback, state)
+
+    await callback.answer()
+
+
+async def _proceed_to_experience_or_backpack(callback: CallbackQuery, state: FSMContext):
+    """
+    Check if user has hike profile and skip experience question if so.
+    Otherwise ask about experience.
+    """
+    telegram_id = str(callback.from_user.id)
+
+    # Check if user has personalized hike profile
+    hike_profile = await api_client.get_hike_profile(telegram_id)
+    has_profile = hike_profile and hike_profile.get("avg_flat_pace_min_km")
+
+    if has_profile:
+        # User has profile - skip experience question, go directly to backpack
+        await state.update_data(experience="personalized")  # marker for personalized mode
+        await callback.message.edit_text(
+            "🎯 Использую твой персональный профиль!\n\nКакой вес рюкзака?",
+            reply_markup=get_backpack_keyboard()
+        )
+        await state.set_state(PredictionStates.selecting_backpack)
+    else:
+        # No profile - ask about experience
+        await callback.message.edit_text(
             "Какой у тебя опыт походов?",
             reply_markup=get_experience_keyboard()
         )
         await state.set_state(PredictionStates.selecting_experience)
-    else:
-        # Linear route (A→B), ask if round trip
-        await message.answer(
-            "Это маршрут в одну сторону или туда-обратно?",
-            reply_markup=get_route_type_keyboard()
-        )
-        await state.set_state(PredictionStates.selecting_route_type)
 
 
 # === Route Type Selection ===
@@ -332,11 +401,8 @@ async def handle_route_type(callback: CallbackQuery, state: FSMContext):
     is_round_trip = callback.data.split(":")[1] == "roundtrip"
     await state.update_data(is_round_trip=is_round_trip)
 
-    await callback.message.edit_text(
-        "Какой у тебя опыт походов?",
-        reply_markup=get_experience_keyboard()
-    )
-    await state.set_state(PredictionStates.selecting_experience)
+    # Check if user has profile - if yes, skip experience question
+    await _proceed_to_experience_or_backpack(callback, state)
     await callback.answer()
 
 

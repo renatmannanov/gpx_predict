@@ -25,6 +25,7 @@ from app.config import settings
 from app.models.user import User
 from app.models.strava_token import StravaToken
 from app.models.strava_activity import StravaActivity, StravaSyncStatus
+from app.models.notification import Notification
 from app.services.strava_sync import trigger_user_sync, get_sync_stats, StravaSyncService
 from app.services.strava import (
     exchange_authorization_code,
@@ -193,6 +194,15 @@ async def strava_callback(
         f"Strava connected: telegram_id={telegram_id}, "
         f"athlete_id={athlete_id}"
     )
+
+    # Create notification for successful Strava connection
+    notification = Notification(
+        user_id=user.id,
+        type="strava_connected",
+        data={"athlete_name": athlete.get("firstname", "Пользователь")}
+    )
+    db.add(notification)
+    db.commit()
 
     # Trigger background sync for new user
     await trigger_user_sync(user.id)

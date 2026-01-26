@@ -616,6 +616,292 @@ class APIClient:
             logger.error(f"Sync splits failed: {e}")
             return {"success": False, "message": str(e)}
 
+    # =========================================================================
+    # User Info & Onboarding
+    # =========================================================================
+
+    async def get_user_info(self, telegram_id: str) -> Optional[dict]:
+        """
+        Get user info including onboarding status.
+
+        Args:
+            telegram_id: User's Telegram ID
+
+        Returns:
+            Dict with user info or None if user doesn't exist
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/users/{telegram_id}"
+
+        try:
+            async with session.get(url) as resp:
+                if resp.status == 404:
+                    return None
+                if resp.status != 200:
+                    return None
+                return await resp.json()
+        except Exception as e:
+            logger.error(f"Get user info failed: {e}")
+            return None
+
+    async def complete_onboarding(self, telegram_id: str, activity_type: str) -> bool:
+        """
+        Complete user onboarding.
+
+        Args:
+            telegram_id: User's Telegram ID
+            activity_type: Preferred activity type ("hiking" or "running")
+
+        Returns:
+            True if successful
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/users/{telegram_id}/onboarding"
+
+        try:
+            async with session.post(url, json={"activity_type": activity_type}) as resp:
+                return resp.status == 200
+        except Exception as e:
+            logger.error(f"Complete onboarding failed: {e}")
+            return False
+
+    async def update_preferences(self, telegram_id: str, activity_type: str) -> bool:
+        """
+        Update user preferences.
+
+        Args:
+            telegram_id: User's Telegram ID
+            activity_type: Preferred activity type
+
+        Returns:
+            True if successful
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/users/{telegram_id}/preferences"
+
+        try:
+            async with session.put(url, json={"preferred_activity_type": activity_type}) as resp:
+                return resp.status == 200
+        except Exception as e:
+            logger.error(f"Update preferences failed: {e}")
+            return False
+
+    async def create_user(self, telegram_id: str) -> Optional[dict]:
+        """
+        Create user or get existing one.
+
+        Args:
+            telegram_id: User's Telegram ID
+
+        Returns:
+            User info dict or None on error
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/users/{telegram_id}/create"
+
+        try:
+            async with session.post(url) as resp:
+                if resp.status != 200:
+                    return None
+                return await resp.json()
+        except Exception as e:
+            logger.error(f"Create user failed: {e}")
+            return None
+
+    # =========================================================================
+    # Profiles (Hiking & Running)
+    # =========================================================================
+
+    async def get_hike_profile(self, telegram_id: str) -> Optional[dict]:
+        """
+        Get user's hiking (performance) profile.
+
+        Args:
+            telegram_id: User's Telegram ID
+
+        Returns:
+            Profile dict or None
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/profile/{telegram_id}"
+
+        try:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    return None
+                return await resp.json()
+        except Exception as e:
+            logger.error(f"Get hike profile failed: {e}")
+            return None
+
+    async def get_run_profile(self, telegram_id: str) -> Optional[dict]:
+        """
+        Get user's running profile.
+
+        Args:
+            telegram_id: User's Telegram ID
+
+        Returns:
+            Profile dict or None
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/profile/{telegram_id}/run"
+
+        try:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    return None
+                return await resp.json()
+        except Exception as e:
+            logger.error(f"Get run profile failed: {e}")
+            return None
+
+    async def recalculate_profile(self, telegram_id: str, profile_type: str = "hiking") -> bool:
+        """
+        Recalculate user's profile.
+
+        Args:
+            telegram_id: User's Telegram ID
+            profile_type: "hiking" or "running"
+
+        Returns:
+            True if successful
+        """
+        session = await self._get_session()
+
+        if profile_type == "running":
+            url = f"{self.base_url}/api/v1/profile/{telegram_id}/run/calculate"
+        else:
+            url = f"{self.base_url}/api/v1/profile/{telegram_id}/calculate"
+
+        try:
+            async with session.post(url) as resp:
+                return resp.status == 200
+        except Exception as e:
+            logger.error(f"Recalculate profile failed: {e}")
+            return False
+
+    # =========================================================================
+    # Notifications
+    # =========================================================================
+
+    async def get_notifications(
+        self,
+        telegram_id: str,
+        unread_only: bool = True,
+        limit: int = 10
+    ) -> list[dict]:
+        """
+        Get user notifications.
+
+        Args:
+            telegram_id: User's Telegram ID
+            unread_only: Only return unread notifications
+            limit: Maximum notifications to return
+
+        Returns:
+            List of notification dicts
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/notifications/{telegram_id}"
+        params = {"unread_only": str(unread_only).lower(), "limit": limit}
+
+        try:
+            async with session.get(url, params=params) as resp:
+                if resp.status != 200:
+                    return []
+                data = await resp.json()
+                return data.get("notifications", [])
+        except Exception as e:
+            logger.error(f"Get notifications failed: {e}")
+            return []
+
+    async def mark_notifications_read(
+        self,
+        telegram_id: str,
+        notification_ids: Optional[list[int]] = None
+    ) -> bool:
+        """
+        Mark notifications as read.
+
+        Args:
+            telegram_id: User's Telegram ID
+            notification_ids: Specific IDs to mark, or None for all
+
+        Returns:
+            True if successful
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/notifications/{telegram_id}/read"
+
+        try:
+            payload = {"notification_ids": notification_ids}
+            async with session.post(url, json=payload) as resp:
+                return resp.status == 200
+        except Exception as e:
+            logger.error(f"Mark notifications read failed: {e}")
+            return False
+
+    # =========================================================================
+    # Trail Run Prediction
+    # =========================================================================
+
+    async def predict_trail_run(
+        self,
+        gpx_id: str,
+        telegram_id: Optional[str] = None,
+        gap_mode: str = "strava_gap",
+        flat_pace_min_km: Optional[float] = None,
+        apply_fatigue: bool = False,
+        walk_threshold_override: Optional[float] = None,
+    ) -> Optional[dict]:
+        """
+        Get trail run prediction.
+
+        Args:
+            gpx_id: ID of uploaded GPX file
+            telegram_id: User's Telegram ID for personalization
+            gap_mode: GAP calculation mode ("strava_gap" or "minetti_gap")
+            flat_pace_min_km: Base flat pace (uses profile if not set)
+            apply_fatigue: Whether to apply fatigue model
+            walk_threshold_override: Override walk threshold %
+
+        Returns:
+            Prediction dict or None on error
+        """
+        session = await self._get_session()
+        url = f"{self.base_url}/api/v1/predict/trail-run/compare"
+
+        payload = {
+            "gpx_id": gpx_id,
+            "gap_mode": gap_mode,
+            "apply_fatigue": apply_fatigue,
+            "use_extended_gradients": True,
+        }
+
+        if telegram_id:
+            payload["telegram_id"] = telegram_id
+        if flat_pace_min_km:
+            payload["flat_pace_min_km"] = flat_pace_min_km
+        if walk_threshold_override:
+            payload["walk_threshold_override"] = walk_threshold_override
+
+        logger.info(f"Requesting trail run prediction for GPX: {gpx_id}")
+
+        try:
+            async with session.post(url, json=payload) as resp:
+                data = await resp.json()
+
+                if resp.status != 200:
+                    detail = data.get("detail", "Unknown error")
+                    logger.error(f"Trail run prediction failed: {resp.status} - {detail}")
+                    return None
+
+                return data
+        except Exception as e:
+            logger.error(f"Trail run prediction failed: {e}")
+            return None
+
 
 # Global client instance
 api_client = APIClient()

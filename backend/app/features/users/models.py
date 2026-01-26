@@ -35,6 +35,10 @@ class User(Base):
     strava_athlete_id = Column(String(20), nullable=True)
     strava_connected = Column(Boolean, default=False)
 
+    # Onboarding
+    preferred_activity_type = Column(String(20), nullable=True)  # "hiking" | "running"
+    onboarding_complete = Column(Boolean, default=False)
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
