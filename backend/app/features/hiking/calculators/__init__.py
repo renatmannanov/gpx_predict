@@ -1,0 +1,1 @@
+"""Hiking time calculators."""
