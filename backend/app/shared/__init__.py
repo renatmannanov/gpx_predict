@@ -10,6 +10,7 @@ from .geo import (
     calculate_gradient,
     gradient_to_percent,
     gradient_to_degrees,
+    calculate_total_distance,
     EARTH_RADIUS_KM,
 )
 from .elevation import (
@@ -29,6 +30,7 @@ __all__ = [
     "calculate_gradient",
     "gradient_to_percent",
     "gradient_to_degrees",
+    "calculate_total_distance",
     "EARTH_RADIUS_KM",
     # elevation
     "smooth_elevations",

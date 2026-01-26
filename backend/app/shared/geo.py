@@ -66,3 +66,23 @@ def gradient_to_percent(gradient: float) -> float:
 def gradient_to_degrees(gradient: float) -> float:
     """Convert gradient decimal to degrees."""
     return math.degrees(math.atan(gradient))
+
+
+def calculate_total_distance(points: list[tuple[float, float, float]]) -> float:
+    """
+    Calculate total distance for a route.
+
+    Args:
+        points: List of (lat, lon, elevation) tuples
+
+    Returns:
+        Total distance in kilometers
+    """
+    total = 0.0
+
+    for i in range(1, len(points)):
+        lat1, lon1, _ = points[i - 1]
+        lat2, lon2, _ = points[i]
+        total += haversine(lat1, lon1, lat2, lon2)
+
+    return total
