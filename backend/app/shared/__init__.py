@@ -1,10 +1,41 @@
 """
 Shared utilities (NOT business logic).
 
-Contains:
-- geo.py - Geographic calculations (haversine)
-- elevation.py - Elevation smoothing
-- constants.py - Enums and constants
-- formatters.py - Time/pace formatters
-- repository.py - Base repository class
+Usage:
+    from app.shared import haversine, smooth_elevations
+    from app.shared.formatters import format_time_hours
 """
+from .geo import (
+    haversine,
+    calculate_gradient,
+    gradient_to_percent,
+    gradient_to_degrees,
+    EARTH_RADIUS_KM,
+)
+from .elevation import (
+    smooth_elevations,
+    calculate_elevation_changes,
+)
+from .formatters import (
+    format_time_hours,
+    format_pace,
+    format_distance_km,
+    format_elevation,
+)
+
+__all__ = [
+    # geo
+    "haversine",
+    "calculate_gradient",
+    "gradient_to_percent",
+    "gradient_to_degrees",
+    "EARTH_RADIUS_KM",
+    # elevation
+    "smooth_elevations",
+    "calculate_elevation_changes",
+    # formatters
+    "format_time_hours",
+    "format_pace",
+    "format_distance_km",
+    "format_elevation",
+]
