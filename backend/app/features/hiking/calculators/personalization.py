@@ -1,0 +1,247 @@
+"""
+Hike Personalization Service
+
+Applies user Hike/Walk performance profile to route segments
+for personalized hiking time estimation.
+
+Inherits from BasePersonalizationService and uses Tobler's hiking
+function as the fallback calculator when profile data is missing.
+
+Activity types: Hike, Walk
+"""
+
+import math
+from typing import Optional
+
+from app.features.hiking.models import UserHikingProfile
+from app.features.hiking.calculators.personalization_base import (
+    BasePersonalizationService,
+    MIN_ACTIVITIES_FOR_PROFILE,
+    FLAT_GRADIENT_MIN,
+    FLAT_GRADIENT_MAX,
+)
+
+
+# Fallback speeds for hiking (km/h) - based on Tobler's hiking function
+DEFAULT_FLAT_SPEED_KMH = 5.0      # Tobler flat speed
+DEFAULT_UPHILL_SPEED_KMH = 3.3   # ~18 min/km
+DEFAULT_DOWNHILL_SPEED_KMH = 6.0  # ~10 min/km (optimal descent)
+
+
+class HikePersonalizationService(BasePersonalizationService):
+    """
+    Personalization service for Hike/Walk activities.
+
+    Uses user's Strava Hike/Walk performance profile to calculate
+    personalized hiking times. Falls back to Tobler's hiking function
+    when profile data is missing.
+
+    Supports both 3-category (legacy) and 7-category (extended)
+    gradient classification systems.
+    """
+
+    def __init__(
+        self,
+        profile: UserHikingProfile,
+        use_extended_gradients: bool = False
+    ):
+        """
+        Initialize with user's hiking performance profile.
+
+        Args:
+            profile: UserHikingProfile with pace data from Strava Hike/Walk
+            use_extended_gradients: If True, use 7-category gradient system.
+                                   If False, use legacy 3-category system.
+        """
+        super().__init__(use_extended_gradients)
+        self.profile = profile
+
+    def _get_pace_legacy(self, gradient_percent: float) -> float:
+        """
+        Get pace using legacy 3-category system: flat, uphill, downhill.
+
+        Args:
+            gradient_percent: Segment gradient as percentage
+
+        Returns:
+            Pace in minutes per kilometer
+        """
+        if gradient_percent > FLAT_GRADIENT_MAX:
+            # Uphill
+            return self.profile.avg_uphill_pace_min_km or self._estimate_uphill_pace()
+        elif gradient_percent < FLAT_GRADIENT_MIN:
+            # Downhill
+            return self.profile.avg_downhill_pace_min_km or self._estimate_downhill_pace()
+        else:
+            # Flat
+            return self.profile.avg_flat_pace_min_km or (60 / DEFAULT_FLAT_SPEED_KMH)
+
+    def _get_pace_for_category(self, category: str) -> Optional[float]:
+        """
+        Map 7-category gradient to profile fields.
+
+        Args:
+            category: One of the 7 gradient categories
+
+        Returns:
+            Pace in min/km from profile, or None if not available
+        """
+        mapping = {
+            'steep_downhill': self.profile.avg_steep_downhill_pace_min_km,
+            'moderate_downhill': self.profile.avg_moderate_downhill_pace_min_km,
+            'gentle_downhill': self.profile.avg_gentle_downhill_pace_min_km,
+            'flat': self.profile.avg_flat_pace_min_km,
+            'gentle_uphill': self.profile.avg_gentle_uphill_pace_min_km,
+            'moderate_uphill': self.profile.avg_moderate_uphill_pace_min_km,
+            'steep_uphill': self.profile.avg_steep_uphill_pace_min_km,
+        }
+        return mapping.get(category)
+
+    def _get_default_speed(self) -> float:
+        """Default flat speed for hiking: 5 km/h (Tobler)."""
+        return DEFAULT_FLAT_SPEED_KMH
+
+    def _estimate_pace_for_gradient(self, gradient_percent: float) -> float:
+        """
+        Estimate pace using Tobler's hiking function, scaled by user's flat pace.
+
+        Uses Tobler as theoretical base, then scales proportionally
+        to the user's actual flat pace if available.
+
+        Args:
+            gradient_percent: Gradient as percentage
+
+        Returns:
+            Estimated pace in min/km
+        """
+        # Get user's flat pace as baseline
+        flat_pace = self.profile.avg_flat_pace_min_km
+        if flat_pace:
+            flat_speed = 60 / flat_pace
+        else:
+            flat_speed = DEFAULT_FLAT_SPEED_KMH
+
+        # Calculate speed using Tobler's function
+        tobler_speed = self._tobler_speed(gradient_percent / 100)
+
+        # Scale factor: user's flat vs Tobler's flat (5 km/h)
+        scale_factor = flat_speed / 5.0
+
+        estimated_speed = tobler_speed * scale_factor
+
+        # Convert to pace
+        return 60 / estimated_speed if estimated_speed > 0 else 60 / DEFAULT_FLAT_SPEED_KMH
+
+    def _tobler_speed(self, gradient_decimal: float) -> float:
+        """
+        Calculate speed using Tobler's hiking function.
+
+        Formula: v = 6 * exp(-3.5 * |s + 0.05|)
+        where s is gradient as decimal (0.10 = 10%), positive = uphill
+
+        Args:
+            gradient_decimal: Gradient as decimal (0.10 = 10%)
+
+        Returns:
+            Speed in km/h
+        """
+        exponent = -3.5 * abs(gradient_decimal + 0.05)
+        return 6.0 * math.exp(exponent)
+
+    def _estimate_uphill_pace(self) -> float:
+        """
+        Estimate uphill pace from flat pace (legacy fallback).
+
+        Uses Naismith-like assumption: ~50% slower on uphills.
+
+        Returns:
+            Estimated uphill pace in min/km
+        """
+        if self.profile.avg_flat_pace_min_km:
+            return self.profile.avg_flat_pace_min_km * 1.5
+        return 60 / DEFAULT_UPHILL_SPEED_KMH
+
+    def _estimate_downhill_pace(self) -> float:
+        """
+        Estimate downhill pace from flat pace (legacy fallback).
+
+        Assumes ~20% faster on moderate descents.
+
+        Returns:
+            Estimated downhill pace in min/km
+        """
+        if self.profile.avg_flat_pace_min_km:
+            return self.profile.avg_flat_pace_min_km * 0.83
+        return 60 / DEFAULT_DOWNHILL_SPEED_KMH
+
+    @staticmethod
+    def is_profile_valid(profile: Optional[UserHikingProfile]) -> bool:
+        """
+        Check if hiking profile has enough data for personalization.
+
+        Requirements:
+        - Profile exists
+        - Has flat pace data
+        - Has analyzed at least MIN_ACTIVITIES_FOR_PROFILE activities
+
+        Args:
+            profile: UserHikingProfile or None
+
+        Returns:
+            True if profile is valid for personalization
+        """
+        if not profile:
+            return False
+        if not profile.avg_flat_pace_min_km:
+            return False
+        if profile.total_activities_analyzed < MIN_ACTIVITIES_FOR_PROFILE:
+            return False
+        return True
+
+    @staticmethod
+    def get_profile_summary(
+        profile: Optional[UserHikingProfile],
+        include_extended: bool = False
+    ) -> dict:
+        """
+        Get summary of profile data for API response.
+
+        Args:
+            profile: UserHikingProfile or None
+            include_extended: Include extended 7-category data
+
+        Returns:
+            Dict with profile summary or empty dict if no profile
+        """
+        if not profile:
+            return {}
+
+        summary = {
+            "activities_analyzed": profile.total_activities_analyzed,
+            "flat_pace_min_km": profile.avg_flat_pace_min_km,
+            "uphill_pace_min_km": profile.avg_uphill_pace_min_km,
+            "downhill_pace_min_km": profile.avg_downhill_pace_min_km,
+            "has_split_data": getattr(profile, 'has_split_data', False),
+            "has_extended_gradient_data": getattr(profile, 'has_extended_gradient_data', False),
+        }
+
+        if include_extended:
+            summary["extended_gradients"] = {
+                "steep_downhill_pace": profile.avg_steep_downhill_pace_min_km,
+                "moderate_downhill_pace": profile.avg_moderate_downhill_pace_min_km,
+                "gentle_downhill_pace": profile.avg_gentle_downhill_pace_min_km,
+                "gentle_uphill_pace": profile.avg_gentle_uphill_pace_min_km,
+                "moderate_uphill_pace": profile.avg_moderate_uphill_pace_min_km,
+                "steep_uphill_pace": profile.avg_steep_uphill_pace_min_km,
+            }
+
+        return summary
+
+
+# =============================================================================
+# Backward compatibility alias
+# =============================================================================
+# Existing code uses: from personalization import PersonalizationService
+# This alias ensures backward compatibility without changes to imports
+
+PersonalizationService = HikePersonalizationService

@@ -23,6 +23,8 @@ class UserPerformanceProfile(Base):
     - Personal "vertical ability" coefficient
 
     All pace values are in minutes per kilometer.
+
+    Note: Also aliased as UserHikingProfile in app.features.hiking
     """
 
     __tablename__ = "user_performance_profiles"
@@ -132,3 +134,7 @@ class UserPerformanceProfile(Base):
             "has_extended_gradient_data": self.has_extended_gradient_data,
             "last_calculated_at": self.last_calculated_at.isoformat() if self.last_calculated_at else None,
         }
+
+
+# Alias for new code
+UserHikingProfile = UserPerformanceProfile
