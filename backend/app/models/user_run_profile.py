@@ -17,7 +17,7 @@ class UserRunProfile(Base):
     """
     User's running performance profile from Strava Run/TrailRun activities.
 
-    Similar to UserPerformanceProfile (hiking) but:
+    Similar to UserHikingProfile but:
     - Different activity types (Run, TrailRun, VirtualRun)
     - Includes walk threshold detection
     - Uses GAP-based fallbacks instead of Tobler

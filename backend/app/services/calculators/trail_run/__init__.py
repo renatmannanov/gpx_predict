@@ -1,19 +1,12 @@
 """
-Trail Running calculators package.
+DEPRECATED: Use app.features.trail_run
 
-Contains specialized calculators for trail running predictions:
-
-Part 1:
-- GAPCalculator: Grade Adjusted Pace for trail running
-
-Part 2:
-- HikeRunThresholdService: Determines run vs walk segments
-- RunnerFatigueService: Fatigue model for runners
-
-Part 3:
-- TrailRunService: Orchestrator for all trail running components
+Re-exports for backward compatibility.
+These will be removed in a future version.
 """
 
+# Import from local files (old location) for backward compatibility
+# This avoids circular import issues during the transition period
 from .gap_calculator import (
     GAPCalculator,
     GAPMode,
@@ -45,29 +38,26 @@ from .trail_run_service import (
 )
 
 __all__ = [
-    # GAP Calculator (Part 1)
-    'GAPCalculator',
-    'GAPMode',
-    'GAPResult',
-    'STRAVA_GAP_TABLE',
-    'compare_gap_modes',
-
-    # Hike/Run Threshold (Part 2)
-    'HikeRunThresholdService',
-    'HikeRunDecision',
-    'MovementMode',
-
-    # Runner Fatigue (Part 2)
-    'RunnerFatigueService',
-    'RunnerFatigueConfig',
-    'FATIGUE_THRESHOLD_HOURS',
-    'LINEAR_DEGRADATION',
-    'QUADRATIC_DEGRADATION',
-    'DOWNHILL_FATIGUE_MULTIPLIER',
-
-    # Trail Run Service (Part 3)
-    'TrailRunService',
-    'TrailRunResult',
-    'TrailRunSummary',
-    'SegmentResult',
+    # Service
+    "TrailRunService",
+    "TrailRunResult",
+    "TrailRunSummary",
+    "SegmentResult",
+    # GAP Calculator
+    "GAPCalculator",
+    "GAPMode",
+    "GAPResult",
+    "STRAVA_GAP_TABLE",
+    "compare_gap_modes",
+    # Threshold
+    "HikeRunThresholdService",
+    "HikeRunDecision",
+    "MovementMode",
+    # Fatigue
+    "RunnerFatigueService",
+    "RunnerFatigueConfig",
+    "FATIGUE_THRESHOLD_HOURS",
+    "LINEAR_DEGRADATION",
+    "QUADRATIC_DEGRADATION",
+    "DOWNHILL_FATIGUE_MULTIPLIER",
 ]
