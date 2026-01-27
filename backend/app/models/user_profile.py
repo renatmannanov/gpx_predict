@@ -1,7 +1,7 @@
 """
-User Performance Profile Model
+User Hiking Profile Model
 
-Stores calculated performance metrics from Strava activities.
+Stores calculated performance metrics from Strava hiking activities.
 Used for personalizing hiking time predictions.
 """
 
@@ -13,9 +13,9 @@ from sqlalchemy.orm import relationship
 from app.models.base import Base
 
 
-class UserPerformanceProfile(Base):
+class UserHikingProfile(Base):
     """
-    User's performance profile calculated from Strava activities.
+    User's hiking performance profile calculated from Strava activities.
 
     Metrics are computed from activity splits to determine:
     - Base pace on flat terrain
@@ -23,11 +23,9 @@ class UserPerformanceProfile(Base):
     - Personal "vertical ability" coefficient
 
     All pace values are in minutes per kilometer.
-
-    Note: Also aliased as UserHikingProfile in app.features.hiking
     """
 
-    __tablename__ = "user_performance_profiles"
+    __tablename__ = "user_hiking_profiles"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String(36), ForeignKey("users.id"), unique=True, nullable=False)
@@ -73,10 +71,10 @@ class UserPerformanceProfile(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationship
-    user = relationship("User", back_populates="performance_profile")
+    user = relationship("User", back_populates="hiking_profile")
 
     def __repr__(self):
-        return f"<UserPerformanceProfile user={self.user_id} flat_pace={self.avg_flat_pace_min_km}>"
+        return f"<UserHikingProfile user={self.user_id} flat_pace={self.avg_flat_pace_min_km}>"
 
     @property
     def has_split_data(self) -> bool:
@@ -136,5 +134,5 @@ class UserPerformanceProfile(Base):
         }
 
 
-# Alias for new code
-UserHikingProfile = UserPerformanceProfile
+# Backward compatibility alias
+UserPerformanceProfile = UserHikingProfile

@@ -23,6 +23,15 @@ from .formatters import (
     format_distance_km,
     format_elevation,
 )
+from .constants import (
+    ActivityType,
+    StravaActivityType,
+    PredictionType,
+    STRAVA_TO_ACTIVITY_TYPE,
+    STRAVA_TYPES_FOR_HIKING,
+    STRAVA_TYPES_FOR_TRAIL_RUN,
+    ALL_SUPPORTED_STRAVA_TYPES,
+)
 
 __all__ = [
     # geo
@@ -40,4 +49,12 @@ __all__ = [
     "format_pace",
     "format_distance_km",
     "format_elevation",
+    # constants
+    "ActivityType",
+    "StravaActivityType",
+    "PredictionType",
+    "STRAVA_TO_ACTIVITY_TYPE",
+    "STRAVA_TYPES_FOR_HIKING",
+    "STRAVA_TYPES_FOR_TRAIL_RUN",
+    "ALL_SUPPORTED_STRAVA_TYPES",
 ]

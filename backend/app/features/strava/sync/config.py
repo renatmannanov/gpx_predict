@@ -4,15 +4,17 @@ Strava sync configuration constants.
 Contains all configuration values for sync behavior.
 """
 
+from app.shared.constants import (
+    STRAVA_TYPES_FOR_HIKING,
+    STRAVA_TYPES_FOR_TRAIL_RUN,
+    ALL_SUPPORTED_STRAVA_TYPES,
+)
 
-# Activity types for hiking profile calculation
-ACTIVITY_TYPES_FOR_HIKE_PROFILE = ["Hike", "Walk"]
 
-# Activity types for running profile calculation
-ACTIVITY_TYPES_FOR_RUN_PROFILE = ["Run", "TrailRun", "VirtualRun"]
-
-# All supported activity types
-ALL_SUPPORTED_ACTIVITY_TYPES = ACTIVITY_TYPES_FOR_HIKE_PROFILE + ACTIVITY_TYPES_FOR_RUN_PROFILE
+# Re-export with consistent naming
+ACTIVITY_TYPES_FOR_HIKE_PROFILE = STRAVA_TYPES_FOR_HIKING
+ACTIVITY_TYPES_FOR_RUN_PROFILE = STRAVA_TYPES_FOR_TRAIL_RUN
+ALL_SUPPORTED_ACTIVITY_TYPES = ALL_SUPPORTED_STRAVA_TYPES
 
 
 class SyncConfig:

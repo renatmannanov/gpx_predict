@@ -44,8 +44,8 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    performance_profile = relationship(
-        "UserPerformanceProfile",
+    hiking_profile = relationship(
+        "UserHikingProfile",
         back_populates="user",
         uselist=False,
         lazy="joined"
@@ -57,6 +57,12 @@ class User(Base):
         uselist=False,
         lazy="joined"
     )
+
+    # Backward compatibility alias
+    @property
+    def performance_profile(self):
+        """Deprecated: use hiking_profile instead."""
+        return self.hiking_profile
 
     notifications = relationship(
         "Notification",
