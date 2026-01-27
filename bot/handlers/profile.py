@@ -14,23 +14,11 @@ from keyboards.profile import (
     get_empty_profile_keyboard,
 )
 from services.api_client import api_client
+from utils.formatters import format_pace
 
 logger = logging.getLogger(__name__)
 
 router = Router()
-
-
-# =============================================================================
-# Formatters
-# =============================================================================
-
-def format_pace(pace_min_km: float | None) -> str:
-    """Format pace as MM:SS/km."""
-    if pace_min_km is None:
-        return "—"
-    minutes = int(pace_min_km)
-    seconds = int((pace_min_km - minutes) * 60)
-    return f"{minutes}:{seconds:02d}"
 
 
 def format_hike_profile(profile: dict) -> str:

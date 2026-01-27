@@ -18,30 +18,11 @@ from keyboards.trail_run import (
     get_gap_mode_keyboard,
 )
 from services.api_client import api_client
+from utils.formatters import format_time, format_pace
 
 logger = logging.getLogger(__name__)
 
 router = Router()
-
-
-# =============================================================================
-# Formatters
-# =============================================================================
-
-def format_pace(pace_min_km: float) -> str:
-    """Format pace as MM:SS/km."""
-    minutes = int(pace_min_km)
-    seconds = int((pace_min_km - minutes) * 60)
-    return f"{minutes}:{seconds:02d}"
-
-
-def format_time(hours: float) -> str:
-    """Format hours as Hч MMмин."""
-    h = int(hours)
-    m = int((hours - h) * 60)
-    if h > 0:
-        return f"{h}ч {m:02d}мин"
-    return f"{m}мин"
 
 
 def format_trail_run_result(result: dict, gpx_name: str) -> str:

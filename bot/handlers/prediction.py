@@ -20,6 +20,7 @@ from keyboards.prediction import (
 )
 from handlers.trail_run import start_trail_run_flow
 from services.api_client import api_client, APIError
+from utils.formatters import format_time
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -37,18 +38,6 @@ def format_gpx_info(info) -> str:
         f"Макс. высота: {info.max_elevation_m:.0f} м\n"
         f"Мин. высота: {info.min_elevation_m:.0f} м"
     )
-
-
-def format_time(hours: float) -> str:
-    """Format hours as Xч Yмин."""
-    h = int(hours)
-    m = int((hours - h) * 60)
-    if h > 0 and m > 0:
-        return f"{h}ч {m}мин"
-    elif h > 0:
-        return f"{h}ч"
-    else:
-        return f"{m}мин"
 
 
 def format_prediction(prediction, gpx_name: str, gpx_info=None) -> str:
