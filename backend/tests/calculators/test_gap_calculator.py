@@ -10,7 +10,7 @@ import pytest
 from math import exp
 
 from app.services.calculators.base import MacroSegment, SegmentType
-from app.services.calculators.trail_run import (
+from app.features.trail_run.calculators import (
     GAPCalculator,
     GAPMode,
     GAPResult,

@@ -15,12 +15,15 @@ from app.services.calculators.base import (
     MethodResult,
     SegmentType
 )
-from app.services.calculators.naismith import NaismithCalculator
-from app.services.calculators.tobler import ToblerCalculator
 from app.services.calculators.segmenter import RouteSegmenter
-from app.services.calculators.personalization import PersonalizationService
-from app.services.calculators.fatigue import FatigueService, FatigueConfig
-from app.models.user_profile import UserPerformanceProfile
+from app.features.hiking.calculators import (
+    NaismithCalculator,
+    ToblerCalculator,
+    PersonalizationService,
+    FatigueService,
+    FatigueConfig,
+)
+from app.features.hiking.models import UserHikingProfile
 
 
 @dataclass
@@ -85,7 +88,7 @@ class ComparisonService:
         self,
         points: List[Tuple[float, float, float]],
         profile_multiplier: float = 1.0,
-        user_profile: Optional[UserPerformanceProfile] = None,
+        user_profile: Optional[UserHikingProfile] = None,
         use_extended_gradients: bool = False,
         apply_fatigue: bool = False
     ) -> RouteComparison:
@@ -248,7 +251,7 @@ class ComparisonService:
 
     def _empty_comparison(
         self,
-        user_profile: Optional[UserPerformanceProfile] = None
+        user_profile: Optional[UserHikingProfile] = None
     ) -> RouteComparison:
         """Return empty comparison for invalid routes."""
         totals = {c.name: 0.0 for c in self.calculators}

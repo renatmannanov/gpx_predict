@@ -4,7 +4,7 @@ Tobler Calculator
 Tobler's Hiking Function (1993) - exponential speed model.
 """
 
-import math
+from app.shared.formulas import tobler_hiking_speed
 from app.services.calculators.base import (
     PaceCalculator,
     MacroSegment,
@@ -88,11 +88,7 @@ class ToblerCalculator(PaceCalculator):
         Returns:
             Speed in km/h
         """
-        # Tobler's hiking function
-        exponent = -self.DECAY_RATE * abs(gradient - self.OPTIMAL_GRADIENT)
-        speed = self.MAX_SPEED * math.exp(exponent)
-
-        return speed
+        return tobler_hiking_speed(gradient)
 
     @classmethod
     def speed_at_gradient(cls, gradient_percent: float) -> float:
@@ -106,5 +102,4 @@ class ToblerCalculator(PaceCalculator):
             Speed in km/h
         """
         gradient_decimal = gradient_percent / 100
-        exponent = -cls.DECAY_RATE * abs(gradient_decimal - cls.OPTIMAL_GRADIENT)
-        return cls.MAX_SPEED * math.exp(exponent)
+        return tobler_hiking_speed(gradient_decimal)

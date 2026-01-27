@@ -9,7 +9,7 @@ when sample count is too low for reliable personalization.
 from typing import Optional
 
 from app.models.user_run_profile import UserRunProfile
-from app.services.calculators.personalization_base import (
+from app.features.hiking.calculators.personalization_base import (
     BasePersonalizationService,
     MIN_ACTIVITIES_FOR_PROFILE,
     FLAT_GRADIENT_MIN,

@@ -7,7 +7,7 @@ Tests the run vs walk decision logic for trail running.
 import pytest
 
 from app.services.calculators.base import MacroSegment, SegmentType
-from app.services.calculators.trail_run.hike_run_threshold import (
+from app.features.trail_run.calculators import (
     HikeRunThresholdService,
     HikeRunDecision,
     MovementMode,

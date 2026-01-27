@@ -6,7 +6,7 @@ Tests the fatigue model adapted for trail runners.
 
 import pytest
 
-from app.services.calculators.trail_run.runner_fatigue import (
+from app.features.trail_run.calculators.fatigue import (
     RunnerFatigueService,
     RunnerFatigueConfig,
     FATIGUE_THRESHOLD_HOURS,

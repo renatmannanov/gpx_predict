@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import MagicMock
 
 from app.services.calculators.base import MacroSegment, SegmentType
-from app.services.calculators.personalization_run import (
+from app.features.trail_run.calculators.personalization import (
     RunPersonalizationService,
     DEFAULT_FLAT_PACE_MIN_KM,
 )

@@ -16,8 +16,7 @@ from typing import List, Optional, Dict, Any
 
 from app.services.calculators.base import MacroSegment
 from app.services.calculators.segmenter import RouteSegmenter
-from app.services.calculators.tobler import ToblerCalculator
-from app.features.hiking.calculators.personalization import HikePersonalizationService
+from app.features.hiking.calculators import ToblerCalculator, HikePersonalizationService
 from app.features.trail_run.calculators.personalization import RunPersonalizationService
 from app.features.trail_run.calculators.gap import GAPCalculator, GAPMode
 from app.features.trail_run.calculators.threshold import (

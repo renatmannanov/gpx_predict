@@ -1,96 +1,125 @@
 """
-Pace Calculators
+DEPRECATED: Use app.features.hiking.calculators or app.features.trail_run.calculators
 
-Different algorithms for calculating hiking/running time.
+This module re-exports for backward compatibility.
+These will be removed in a future version.
 
-Includes:
-- Base classes (PaceCalculator, MacroSegment, etc.)
-- Hiking calculators (Tobler, Naismith)
-- Trail running calculators (GAP)
-- Personalization services (Hike, with Run coming in Part 2)
-- Fatigue modeling
-- Comparison/orchestration services
+Migration guide:
+- from app.services.calculators import ToblerCalculator
+  → from app.features.hiking.calculators import ToblerCalculator
+
+- from app.services.calculators import GAPCalculator
+  → from app.features.trail_run.calculators import GAPCalculator
 """
 
-# Base classes
+# =============================================================================
+# Base classes - stay here (shared between hiking and trail_run)
+# =============================================================================
 from app.services.calculators.base import (
     PaceCalculator,
     MacroSegment,
     SegmentType,
     MethodResult,
-    CalculationResult
+    CalculationResult,
+    SegmentCalculation,
 )
 
-# Core calculators
-from app.services.calculators.naismith import NaismithCalculator
-from app.services.calculators.tobler import ToblerCalculator
+# Segmenter - stays here (shared utility)
 from app.services.calculators.segmenter import RouteSegmenter
 
-# Comparison service
+# Comparison service - stays here (orchestrates both hiking and trail_run)
 from app.services.calculators.comparison import (
     ComparisonService,
     SegmentComparison,
-    RouteComparison
+    RouteComparison,
 )
 
-# Personalization
-from app.services.calculators.personalization_base import (
+# =============================================================================
+# Hiking calculators - re-export from features/hiking/calculators
+# =============================================================================
+from app.features.hiking.calculators import (
+    ToblerCalculator,
+    NaismithCalculator,
+    HikePersonalizationService,
+    HikeFatigueService,
+    FatigueConfig,
+    # Backward compatibility aliases
+    PersonalizationService,
+    FatigueService,
+    # Base classes and constants
     BasePersonalizationService,
     GRADIENT_THRESHOLDS,
     MIN_ACTIVITIES_FOR_PROFILE,
-)
-from app.services.calculators.personalization import (
-    PersonalizationService,  # Backward compatibility alias
-    HikePersonalizationService,
+    FLAT_GRADIENT_MIN,
+    FLAT_GRADIENT_MAX,
 )
 
-# Fatigue
-from app.services.calculators.fatigue import FatigueService, FatigueConfig
-
-# Trail running
-from app.services.calculators.trail_run import (
+# =============================================================================
+# Trail run calculators - re-export from features/trail_run/calculators
+# =============================================================================
+from app.features.trail_run.calculators import (
     GAPCalculator,
     GAPMode,
     GAPResult,
     STRAVA_GAP_TABLE,
     compare_gap_modes,
+    HikeRunThresholdService,
+    HikeRunDecision,
+    MovementMode,
+    RunPersonalizationService,
+    RunnerFatigueService,
+    RunnerFatigueConfig,
+    FATIGUE_THRESHOLD_HOURS,
+    LINEAR_DEGRADATION,
+    QUADRATIC_DEGRADATION,
+    DOWNHILL_FATIGUE_MULTIPLIER,
 )
 
 __all__ = [
-    # Base
+    # Base classes (stay here)
     "PaceCalculator",
     "MacroSegment",
     "SegmentType",
     "MethodResult",
     "CalculationResult",
+    "SegmentCalculation",
 
-    # Calculators
-    "NaismithCalculator",
-    "ToblerCalculator",
+    # Segmenter (stays here)
     "RouteSegmenter",
 
-    # Comparison
+    # Comparison (stays here)
     "ComparisonService",
     "SegmentComparison",
     "RouteComparison",
 
-    # Personalization base
+    # Hiking calculators (from features/hiking)
+    "ToblerCalculator",
+    "NaismithCalculator",
+    "HikePersonalizationService",
+    "HikeFatigueService",
+    "FatigueConfig",
+    "PersonalizationService",  # deprecated alias
+    "FatigueService",  # deprecated alias
     "BasePersonalizationService",
     "GRADIENT_THRESHOLDS",
     "MIN_ACTIVITIES_FOR_PROFILE",
+    "FLAT_GRADIENT_MIN",
+    "FLAT_GRADIENT_MAX",
 
-    # Hike personalization
-    "PersonalizationService",      # Backward compatibility
-    "HikePersonalizationService",
-
-    # Fatigue
-    "FatigueService",
-    "FatigueConfig",
-
-    # Trail running (GAP)
+    # Trail run calculators (from features/trail_run)
     "GAPCalculator",
     "GAPMode",
     "GAPResult",
     "STRAVA_GAP_TABLE",
     "compare_gap_modes",
+    "HikeRunThresholdService",
+    "HikeRunDecision",
+    "MovementMode",
+    "RunPersonalizationService",
+    "RunnerFatigueService",
+    "RunnerFatigueConfig",
+    "FATIGUE_THRESHOLD_HOURS",
+    "LINEAR_DEGRADATION",
+    "QUADRATIC_DEGRADATION",
+    "DOWNHILL_FATIGUE_MULTIPLIER",
 ]

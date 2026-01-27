@@ -7,12 +7,8 @@ Tests the main orchestrator for trail running predictions.
 import pytest
 from unittest.mock import MagicMock
 
-from app.services.calculators.trail_run import (
-    TrailRunService,
-    TrailRunResult,
-    GAPMode,
-    MovementMode,
-)
+from app.features.trail_run import TrailRunService, TrailRunResult
+from app.features.trail_run.calculators import GAPMode, MovementMode
 
 
 # =============================================================================

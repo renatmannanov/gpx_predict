@@ -11,14 +11,14 @@ import pytest
 from unittest.mock import MagicMock
 
 from app.services.calculators.base import MacroSegment, SegmentType
-from app.services.calculators.personalization_base import (
+from app.features.hiking.calculators.personalization_base import (
     BasePersonalizationService,
     GRADIENT_THRESHOLDS,
     MIN_ACTIVITIES_FOR_PROFILE,
     FLAT_GRADIENT_MIN,
     FLAT_GRADIENT_MAX,
 )
-from app.services.calculators.personalization import (
+from app.features.hiking.calculators.personalization import (
     PersonalizationService,
     HikePersonalizationService,
     DEFAULT_FLAT_SPEED_KMH,

@@ -23,6 +23,10 @@ from .formatters import (
     format_distance_km,
     format_elevation,
 )
+from .formulas import (
+    tobler_hiking_speed,
+    naismith_base_time,
+)
 from .constants import (
     ActivityType,
     StravaActivityType,
@@ -49,6 +53,9 @@ __all__ = [
     "format_pace",
     "format_distance_km",
     "format_elevation",
+    # formulas
+    "tobler_hiking_speed",
+    "naismith_base_time",
     # constants
     "ActivityType",
     "StravaActivityType",

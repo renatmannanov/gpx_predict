@@ -10,8 +10,9 @@ function as the fallback calculator when profile data is missing.
 Activity types: Hike, Walk
 """
 
-import math
 from typing import Optional
+
+from app.shared.formulas import tobler_hiking_speed
 
 from app.features.hiking.models import UserHikingProfile
 from app.features.hiking.calculators.personalization_base import (
@@ -122,7 +123,7 @@ class HikePersonalizationService(BasePersonalizationService):
             flat_speed = DEFAULT_FLAT_SPEED_KMH
 
         # Calculate speed using Tobler's function
-        tobler_speed = self._tobler_speed(gradient_percent / 100)
+        tobler_speed = tobler_hiking_speed(gradient_percent / 100)
 
         # Scale factor: user's flat vs Tobler's flat (5 km/h)
         scale_factor = flat_speed / 5.0
@@ -131,22 +132,6 @@ class HikePersonalizationService(BasePersonalizationService):
 
         # Convert to pace
         return 60 / estimated_speed if estimated_speed > 0 else 60 / DEFAULT_FLAT_SPEED_KMH
-
-    def _tobler_speed(self, gradient_decimal: float) -> float:
-        """
-        Calculate speed using Tobler's hiking function.
-
-        Formula: v = 6 * exp(-3.5 * |s + 0.05|)
-        where s is gradient as decimal (0.10 = 10%), positive = uphill
-
-        Args:
-            gradient_decimal: Gradient as decimal (0.10 = 10%)
-
-        Returns:
-            Speed in km/h
-        """
-        exponent = -3.5 * abs(gradient_decimal + 0.05)
-        return 6.0 * math.exp(exponent)
 
     def _estimate_uphill_pace(self) -> float:
         """
