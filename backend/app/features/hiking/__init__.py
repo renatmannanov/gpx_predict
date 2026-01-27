@@ -14,6 +14,7 @@ Available components:
 from .models import UserHikingProfile
 from .schemas import HikePredictRequest, HikePrediction, MethodComparison
 from .service import HikingPredictionService
+from .repository import HikingProfileRepository
 
 # Backward compatibility
 UserPerformanceProfile = UserHikingProfile
@@ -25,4 +26,6 @@ __all__ = [
     "HikePrediction",
     "MethodComparison",
     "HikingPredictionService",
+    # Repository
+    "HikingProfileRepository",
 ]

@@ -42,6 +42,12 @@ from .client import (
     extract_best_efforts,
     aggregate_activities,
 )
+from .repository import (
+    StravaTokenRepository,
+    StravaActivityRepository,
+    StravaActivitySplitRepository,
+    SyncStatusRepository,
+)
 
 __all__ = [
     # Models
@@ -66,4 +72,9 @@ __all__ = [
     "fetch_athlete_stats",
     "extract_best_efforts",
     "aggregate_activities",
+    # Repositories
+    "StravaTokenRepository",
+    "StravaActivityRepository",
+    "StravaActivitySplitRepository",
+    "SyncStatusRepository",
 ]

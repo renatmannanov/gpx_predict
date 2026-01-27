@@ -36,6 +36,7 @@ from .constants import (
     STRAVA_TYPES_FOR_TRAIL_RUN,
     ALL_SUPPORTED_STRAVA_TYPES,
 )
+from .repository import BaseRepository
 
 __all__ = [
     # geo
@@ -64,4 +65,6 @@ __all__ = [
     "STRAVA_TYPES_FOR_HIKING",
     "STRAVA_TYPES_FOR_TRAIL_RUN",
     "ALL_SUPPORTED_STRAVA_TYPES",
+    # repository
+    "BaseRepository",
 ]

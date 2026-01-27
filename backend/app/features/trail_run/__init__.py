@@ -15,6 +15,7 @@ Components:
 from .models import UserRunProfile
 from .schemas import TrailRunRequest, TrailRunPrediction, GAPMethod
 from .service import TrailRunService, TrailRunResult, TrailRunSummary, SegmentResult
+from .repository import TrailRunProfileRepository
 
 __all__ = [
     # Models
@@ -28,4 +29,6 @@ __all__ = [
     "TrailRunResult",
     "TrailRunSummary",
     "SegmentResult",
+    # Repository
+    "TrailRunProfileRepository",
 ]
