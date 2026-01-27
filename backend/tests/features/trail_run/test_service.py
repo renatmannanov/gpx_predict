@@ -69,6 +69,9 @@ def mock_run_profile():
     profile.has_profile_data = True
     profile.has_extended_gradient_data = True
 
+    # Return enough samples for personalization
+    profile.get_sample_count.return_value = 10
+
     return profile
 
 

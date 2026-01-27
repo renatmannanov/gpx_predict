@@ -11,7 +11,7 @@ Personalization:
 """
 from .tobler import ToblerCalculator
 from .naismith import NaismithCalculator
-from .personalization import HikePersonalizationService
+from .personalization import HikePersonalizationService, DEFAULT_FLAT_SPEED_KMH
 from .fatigue import HikeFatigueService, FatigueConfig
 
 # Backward compatibility
@@ -40,4 +40,5 @@ __all__ = [
     "MIN_ACTIVITIES_FOR_PROFILE",
     "FLAT_GRADIENT_MIN",
     "FLAT_GRADIENT_MAX",
+    "DEFAULT_FLAT_SPEED_KMH",
 ]

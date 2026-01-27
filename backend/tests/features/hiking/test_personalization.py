@@ -1,5 +1,5 @@
 """
-Tests for personalization services.
+Tests for hiking personalization services.
 
 Tests both:
 - BasePersonalizationService (abstract base class logic)
@@ -18,9 +18,9 @@ from app.features.hiking.calculators.personalization_base import (
     FLAT_GRADIENT_MIN,
     FLAT_GRADIENT_MAX,
 )
-from app.features.hiking.calculators.personalization import (
-    PersonalizationService,
+from app.features.hiking.calculators import (
     HikePersonalizationService,
+    PersonalizationService,
     DEFAULT_FLAT_SPEED_KMH,
 )
 

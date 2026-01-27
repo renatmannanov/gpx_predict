@@ -10,7 +10,7 @@ Components:
 
 from .gap import GAPCalculator, GAPMode, GAPResult, STRAVA_GAP_TABLE, compare_gap_modes
 from .threshold import HikeRunThresholdService, HikeRunDecision, MovementMode
-from .personalization import RunPersonalizationService
+from .personalization import RunPersonalizationService, DEFAULT_FLAT_PACE_MIN_KM
 from .fatigue import (
     RunnerFatigueService,
     RunnerFatigueConfig,
@@ -33,6 +33,7 @@ __all__ = [
     "MovementMode",
     # Personalization
     "RunPersonalizationService",
+    "DEFAULT_FLAT_PACE_MIN_KM",
     # Fatigue
     "RunnerFatigueService",
     "RunnerFatigueConfig",

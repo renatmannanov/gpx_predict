@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import MagicMock
 
 from app.services.calculators.base import MacroSegment, SegmentType
-from app.features.trail_run.calculators.personalization import (
+from app.features.trail_run.calculators import (
     RunPersonalizationService,
     DEFAULT_FLAT_PACE_MIN_KM,
 )
@@ -35,6 +35,9 @@ def mock_run_profile():
 
     profile.walk_threshold_percent = 25.0
 
+    # Return enough samples for personalization (MIN_SAMPLES_FOR_CATEGORY = 5)
+    profile.get_sample_count.return_value = 10
+
     return profile
 
 
@@ -54,6 +57,9 @@ def mock_minimal_profile():
     profile.avg_steep_uphill_pace_min_km = None
 
     profile.walk_threshold_percent = 25.0
+
+    # Low sample count triggers GAP fallback
+    profile.get_sample_count.return_value = 2
 
     return profile
 
