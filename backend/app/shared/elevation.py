@@ -5,6 +5,9 @@ This is the SINGLE SOURCE OF TRUTH for elevation calculations.
 """
 from typing import List, Tuple
 
+# Default smoothing window size (should be odd)
+DEFAULT_SMOOTHING_WINDOW = 5
+
 
 def smooth_elevations(
     elevations: List[float],

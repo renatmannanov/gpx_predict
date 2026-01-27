@@ -24,9 +24,6 @@ from app.services.calculators.base import (
     SegmentCalculation,
 )
 
-# Segmenter - stays here (shared utility)
-from app.services.calculators.segmenter import RouteSegmenter
-
 # Comparison service - stays here (orchestrates both hiking and trail_run)
 from app.services.calculators.comparison import (
     ComparisonService,
@@ -75,6 +72,12 @@ from app.features.trail_run.calculators import (
     DOWNHILL_FATIGUE_MULTIPLIER,
 )
 
+# =============================================================================
+# Segmenter - import LAST to avoid circular imports
+# (segmenter.py re-exports from features/gpx/segmenter which imports from base)
+# =============================================================================
+from app.features.gpx.segmenter import RouteSegmenter
+
 __all__ = [
     # Base classes (stay here)
     "PaceCalculator",
@@ -84,7 +87,7 @@ __all__ = [
     "CalculationResult",
     "SegmentCalculation",
 
-    # Segmenter (stays here)
+    # Segmenter (now in features/gpx)
     "RouteSegmenter",
 
     # Comparison (stays here)

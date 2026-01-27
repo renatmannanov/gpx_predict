@@ -15,7 +15,7 @@ from app.services.calculators.base import (
     MethodResult,
     SegmentType
 )
-from app.services.calculators.segmenter import RouteSegmenter
+from app.features.gpx.segmenter import RouteSegmenter
 from app.features.hiking.calculators import (
     NaismithCalculator,
     ToblerCalculator,
