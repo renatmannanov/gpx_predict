@@ -19,14 +19,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse, HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
+from app.db.session import get_db, get_async_db
 from app.config import settings
 from app.models.user import User
 from app.models.strava_token import StravaToken
 from app.models.strava_activity import StravaActivity, StravaSyncStatus
 from app.models.notification import Notification
 from app.services.strava_sync import trigger_user_sync, get_sync_stats, StravaSyncService
+from app.features.strava import StravaClient
+from app.features.users import UserRepository
 from app.services.strava import (
     exchange_authorization_code,
     refresh_access_token,
@@ -282,31 +285,28 @@ async def disconnect_strava(
 @router.get("/strava/stats/{telegram_id}", response_model=StravaStats)
 async def get_strava_stats(
     telegram_id: str,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get athlete statistics from Strava.
 
     Returns aggregated metrics (safe to cache).
     """
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user_repo = UserRepository(db)
+    strava_client = StravaClient(db)
 
+    user = await user_repo.get_by_telegram_id(telegram_id)
     if not user or not user.strava_connected:
         raise HTTPException(status_code=404, detail="Strava not connected")
 
-    token = db.query(StravaToken).filter(
-        StravaToken.user_id == user.id
-    ).first()
-
-    if not token:
+    # Get valid access token (refresh if needed) using StravaClient
+    access_token = await strava_client.get_valid_token(user.id)
+    if not access_token:
         raise HTTPException(status_code=404, detail="Strava token not found")
 
-    # Get valid access token (refresh if needed) using shared service function
-    access_token = await _get_valid_token_sync(token, db)
-
-    # Fetch stats from Strava using shared service function
+    # Fetch stats from Strava
     try:
-        stats = await fetch_athlete_stats(access_token, token.strava_athlete_id)
+        stats = await fetch_athlete_stats(access_token, user.strava_athlete_id)
     except StravaAuthError:
         raise HTTPException(status_code=401, detail="Strava token expired")
     except StravaAPIError as e:
@@ -337,29 +337,6 @@ def _get_callback_url() -> str:
     """Get OAuth callback URL."""
     # For local development
     return "http://localhost:8000/api/v1/auth/strava/callback"
-
-
-async def _get_valid_token_sync(token: StravaToken, db: Session) -> str:
-    """
-    Get valid access token, refreshing if needed.
-
-    This is a sync-session compatible wrapper that uses
-    the shared refresh_access_token function.
-    """
-    # Check if expired (with 5 min buffer)
-    if token.expires_at < datetime.utcnow().timestamp() + 300:
-        logger.info(f"Refreshing Strava token for user {token.user_id}")
-
-        # Use shared service function for token refresh
-        new_tokens = await refresh_access_token(token.refresh_token)
-
-        token.access_token = new_tokens["access_token"]
-        token.refresh_token = new_tokens["refresh_token"]
-        token.expires_at = new_tokens["expires_at"]
-        token.updated_at = datetime.utcnow()
-        db.commit()
-
-    return token.access_token
 
 
 def _success_page(name: str) -> HTMLResponse:

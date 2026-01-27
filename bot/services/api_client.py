@@ -503,12 +503,12 @@ class APIClient:
             return False
 
     # =========================================================================
-    # User Profile (Personalization)
+    # User Profile (Personalization) - Uses new /profiles/ endpoints
     # =========================================================================
 
     async def get_user_profile(self, telegram_id: str) -> Optional[UserProfile]:
         """
-        Get user's performance profile.
+        Get user's hiking performance profile.
 
         Args:
             telegram_id: User's Telegram ID
@@ -517,7 +517,8 @@ class APIClient:
             UserProfile or None if no profile exists
         """
         session = await self._get_session()
-        url = f"{self.base_url}/api/v1/profile/{telegram_id}"
+        # New endpoint: /api/v1/profiles/{telegram_id}/hiking
+        url = f"{self.base_url}/api/v1/profiles/{telegram_id}/hiking"
 
         try:
             async with session.get(url) as resp:
@@ -541,7 +542,7 @@ class APIClient:
 
     async def calculate_profile(self, telegram_id: str, use_splits: bool = True) -> Optional[UserProfile]:
         """
-        Calculate or recalculate user's performance profile.
+        Calculate or recalculate user's hiking performance profile.
 
         Args:
             telegram_id: User's Telegram ID
@@ -551,7 +552,8 @@ class APIClient:
             UserProfile or None if calculation failed
         """
         session = await self._get_session()
-        url = f"{self.base_url}/api/v1/profile/{telegram_id}/calculate"
+        # New endpoint: /api/v1/profiles/{telegram_id}/hiking/calculate
+        url = f"{self.base_url}/api/v1/profiles/{telegram_id}/hiking/calculate"
         params = {"use_splits": "true" if use_splits else "false"}
 
         try:
@@ -568,7 +570,7 @@ class APIClient:
 
                 profile_data = data.get("profile", {})
                 return UserProfile(
-                    has_profile=profile_data.get("has_profile", False),
+                    has_profile=True,
                     avg_flat_pace_min_km=profile_data.get("avg_flat_pace_min_km"),
                     avg_uphill_pace_min_km=profile_data.get("avg_uphill_pace_min_km"),
                     avg_downhill_pace_min_km=profile_data.get("avg_downhill_pace_min_km"),
@@ -581,20 +583,27 @@ class APIClient:
             logger.error(f"Calculate profile failed: {e}")
             return None
 
-    async def sync_splits(self, telegram_id: str, max_activities: int = 20) -> dict:
+    async def sync_splits(
+        self,
+        telegram_id: str,
+        max_activities: int = 20,
+        activity_types: str = "hike,walk"
+    ) -> dict:
         """
         Sync splits data from Strava activities.
 
         Args:
             telegram_id: User's Telegram ID
             max_activities: Maximum activities to sync splits for
+            activity_types: Comma-separated activity types
 
         Returns:
             Dict with sync results
         """
         session = await self._get_session()
-        url = f"{self.base_url}/api/v1/strava/sync-splits/{telegram_id}"
-        params = {"max_activities": max_activities}
+        # New endpoint: /api/v1/profiles/{telegram_id}/sync-splits
+        url = f"{self.base_url}/api/v1/profiles/{telegram_id}/sync-splits"
+        params = {"max_activities": max_activities, "activity_types": activity_types}
 
         try:
             async with session.post(url, params=params) as resp:
@@ -709,7 +718,7 @@ class APIClient:
             return None
 
     # =========================================================================
-    # Profiles (Hiking & Running)
+    # Profiles (Hiking & Running) - Uses new /profiles/ endpoints
     # =========================================================================
 
     async def get_hike_profile(self, telegram_id: str) -> Optional[dict]:
@@ -723,7 +732,8 @@ class APIClient:
             Profile dict or None
         """
         session = await self._get_session()
-        url = f"{self.base_url}/api/v1/profile/{telegram_id}"
+        # New endpoint: /api/v1/profiles/{telegram_id}/hiking
+        url = f"{self.base_url}/api/v1/profiles/{telegram_id}/hiking"
 
         try:
             async with session.get(url) as resp:
@@ -745,7 +755,8 @@ class APIClient:
             Profile dict or None
         """
         session = await self._get_session()
-        url = f"{self.base_url}/api/v1/profile/{telegram_id}/run"
+        # New endpoint: /api/v1/profiles/{telegram_id}/trail-run
+        url = f"{self.base_url}/api/v1/profiles/{telegram_id}/trail-run"
 
         try:
             async with session.get(url) as resp:
@@ -769,10 +780,12 @@ class APIClient:
         """
         session = await self._get_session()
 
+        # New endpoints: /api/v1/profiles/{telegram_id}/hiking/calculate
+        #                /api/v1/profiles/{telegram_id}/trail-run/calculate
         if profile_type == "running":
-            url = f"{self.base_url}/api/v1/profile/{telegram_id}/run/calculate"
+            url = f"{self.base_url}/api/v1/profiles/{telegram_id}/trail-run/calculate"
         else:
-            url = f"{self.base_url}/api/v1/profile/{telegram_id}/calculate"
+            url = f"{self.base_url}/api/v1/profiles/{telegram_id}/hiking/calculate"
 
         try:
             async with session.post(url) as resp:

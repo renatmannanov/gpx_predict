@@ -1,7 +1,15 @@
 """
-User Profile Routes
+User Profile Routes (DEPRECATED)
 
-Endpoints for user performance profile management.
+DEPRECATED: These endpoints are deprecated in favor of /api/v1/profiles/...
+New endpoints:
+- GET  /api/v1/profiles/{telegram_id}/hiking      (was: /profile/{telegram_id})
+- GET  /api/v1/profiles/{telegram_id}/trail-run   (was: /profile/{telegram_id}/run)
+- POST /api/v1/profiles/{telegram_id}/hiking/calculate
+- POST /api/v1/profiles/{telegram_id}/trail-run/calculate
+- POST /api/v1/profiles/{telegram_id}/sync-splits
+
+These legacy endpoints will be removed in a future version.
 """
 
 import logging
