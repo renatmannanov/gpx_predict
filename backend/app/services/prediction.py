@@ -38,7 +38,7 @@ from app.services.naismith import (
 from app.repositories.gpx import GPXRepository
 from app.services.gpx_parser import GPXParserService, GPXSegment
 from app.services.sun import get_sun_times
-from app.models.user_profile import UserPerformanceProfile
+from app.features.hiking import UserHikingProfile as UserPerformanceProfile
 
 logger = logging.getLogger(__name__)
 

@@ -11,6 +11,14 @@ Migration guide:
 - from app.services.calculators import GAPCalculator
   → from app.features.trail_run.calculators import GAPCalculator
 """
+import warnings
+
+warnings.warn(
+    "app.services.calculators is deprecated. "
+    "Use app.features.hiking.calculators or app.features.trail_run.calculators instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 # =============================================================================
 # Base classes - stay here (shared between hiking and trail_run)

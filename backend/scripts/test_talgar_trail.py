@@ -24,9 +24,9 @@ from sqlalchemy.orm import Session
 import gpxpy
 
 from app.models.gpx import GPXFile
-from app.services.calculators.segmenter import RouteSegmenter
-from app.services.calculators.trail_run import GAPCalculator, GAPMode, compare_gap_modes
-from app.services.calculators.tobler import ToblerCalculator
+from app.features.gpx import RouteSegmenter
+from app.features.trail_run.calculators import GAPCalculator, GAPMode, compare_gap_modes
+from app.features.hiking.calculators import ToblerCalculator
 from app.services.calculators.comparison import ComparisonService
 
 

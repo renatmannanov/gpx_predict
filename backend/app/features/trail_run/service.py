@@ -14,8 +14,8 @@ This is the main entry point for trail running predictions.
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
-from app.services.calculators.base import MacroSegment
-from app.services.calculators.segmenter import RouteSegmenter
+from app.shared.calculator_types import MacroSegment
+from app.features.gpx import RouteSegmenter
 from app.features.hiking.calculators import ToblerCalculator, HikePersonalizationService
 from app.features.trail_run.calculators.personalization import RunPersonalizationService
 from app.features.trail_run.calculators.gap import GAPCalculator, GAPMode

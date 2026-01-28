@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session
 import gpxpy
 
 from app.models.gpx import GPXFile
-from app.services.calculators.segmenter import RouteSegmenter
-from app.services.calculators.trail_run import (
+from app.features.gpx import RouteSegmenter
+from app.features.trail_run.calculators import (
     HikeRunThresholdService, MovementMode,
 )
 

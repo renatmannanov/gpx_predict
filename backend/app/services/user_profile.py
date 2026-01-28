@@ -12,8 +12,8 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user_profile import UserPerformanceProfile
-from app.models.user_run_profile import UserRunProfile
+from app.features.hiking import UserHikingProfile as UserPerformanceProfile
+from app.features.trail_run import UserTrailRunProfile as UserRunProfile
 from app.models.strava_activity import StravaActivity
 
 logger = logging.getLogger(__name__)
