@@ -7,13 +7,16 @@ Time prediction for hiking routes.
 ```python
 from app.features.hiking import (
     UserHikingProfile,
-    HikingPredictionService,
+    HikingProfileRepository,
     HikePrediction,
 )
 from app.features.hiking.calculators import (
     ToblerCalculator,
     NaismithCalculator,
 )
+
+# For predictions, use the cross-feature PredictionService:
+from app.services.prediction import PredictionService
 ```
 
 ## Calculators
@@ -30,7 +33,8 @@ from app.features.hiking.calculators import (
 |------|-------------|
 | models.py | UserHikingProfile (re-export from app.models) |
 | schemas.py | Pydantic schemas |
-| service.py | Main service (stub) |
+| service.py | Re-exports schemas |
+| repository.py | Data access for profiles |
 | calculators/tobler.py | Tobler calculator |
 | calculators/naismith.py | Naismith calculator |
 | calculators/personalization.py | Personalization service |
