@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.hiking import UserHikingProfile as UserPerformanceProfile
 from app.features.trail_run import UserRunProfile
-from app.models.strava_activity import StravaActivity
+from app.features.strava import StravaActivity
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ class UserProfileService:
             UserPerformanceProfile or None if insufficient data
         """
         # Import here to avoid circular dependency
-        from app.models.strava_activity import StravaActivitySplit
+        from app.features.strava import StravaActivitySplit
 
         # Get all splits for user's hiking activities
         result = await db.execute(
@@ -495,7 +495,7 @@ class UserProfileService:
         Returns:
             UserRunProfile or None if insufficient data
         """
-        from app.models.strava_activity import StravaActivitySplit
+        from app.features.strava import StravaActivitySplit
 
         # Get all splits for user's running activities
         result = await db.execute(

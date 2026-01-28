@@ -10,7 +10,7 @@ from collections import deque
 from datetime import datetime, timedelta
 from typing import Optional
 
-from app.models.user import User
+from app.features.users import User
 
 from ..models import StravaSyncStatus
 from .config import SyncConfig

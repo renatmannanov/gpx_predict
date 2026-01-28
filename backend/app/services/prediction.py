@@ -35,8 +35,7 @@ from app.services.naismith import (
     HikerProfile,
     NAISMITH_BASE_SPEED_KMH
 )
-from app.repositories.gpx import GPXRepository
-from app.services.gpx_parser import GPXParserService, GPXSegment
+from app.features.gpx import GPXRepository, GPXParserService, GPXSegment
 from app.services.sun import get_sun_times
 from app.features.hiking import UserHikingProfile as UserPerformanceProfile
 

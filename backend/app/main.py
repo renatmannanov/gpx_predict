@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.db.session import init_db, SessionLocal
 from app.api.v1.router import api_router
-from app.services.strava_sync import background_sync
+from app.features.strava.sync import background_sync
 
 
 # === Logging Setup ===

@@ -25,7 +25,7 @@ from app.features.users import UserRepository
 from app.features.hiking import HikingProfileRepository
 from app.features.trail_run import TrailRunProfileRepository
 from app.services.user_profile import UserProfileService
-from app.services.strava_sync import StravaSyncService
+from app.features.strava.sync import StravaSyncService
 
 logger = logging.getLogger(__name__)
 

@@ -9,8 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_async_db
 from app.schemas.gpx import GPXUploadResponse, GPXInfo
-from app.services.gpx_parser import GPXParserService
-from app.repositories.gpx import GPXRepository
+from app.features.gpx import GPXParserService, GPXRepository
 
 router = APIRouter()
 

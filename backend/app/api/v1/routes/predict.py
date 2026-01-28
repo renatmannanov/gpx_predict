@@ -31,8 +31,7 @@ from app.services.prediction import PredictionService
 from app.services.calculators import ComparisonService
 from app.features.trail_run import TrailRunService
 from app.features.trail_run.calculators import GAPMode
-from app.repositories.gpx import GPXRepository
-from app.services.gpx_parser import GPXParserService
+from app.features.gpx import GPXRepository, GPXParserService
 from app.services.naismith import get_total_multiplier, estimate_rest_time, HikerProfile
 from app.services.sun import get_sun_times
 from app.features.users import UserRepository

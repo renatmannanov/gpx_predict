@@ -257,7 +257,7 @@ class StravaClient:
         Returns:
             StravaToken instance
         """
-        from app.models.user import User
+        from app.features.users import User
 
         athlete_id = str(token_data["athlete"]["id"])
 
@@ -303,7 +303,7 @@ class StravaClient:
 
         Returns True if tokens were deleted.
         """
-        from app.models.user import User
+        from app.features.users import User
 
         result = await self.db.execute(
             select(StravaToken).where(StravaToken.user_id == user_id)

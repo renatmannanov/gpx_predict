@@ -23,18 +23,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_async_db
 from app.config import settings
-from app.models.strava_token import StravaToken
-from app.models.strava_activity import StravaActivity, StravaSyncStatus
-from app.services.strava_sync import trigger_user_sync, get_sync_stats, StravaSyncService
-from app.features.strava import StravaClient
-from app.features.users import UserRepository, NotificationRepository
-from app.services.strava import (
+from app.features.strava import (
+    StravaToken,
+    StravaActivity,
+    StravaSyncStatus,
+    StravaClient,
+    StravaAPIError,
+    StravaAuthError,
     exchange_authorization_code,
     revoke_access,
     fetch_athlete_stats,
-    StravaAPIError,
-    StravaAuthError,
 )
+from app.features.strava.sync import trigger_user_sync, get_sync_stats, StravaSyncService
+from app.features.users import UserRepository, NotificationRepository
 
 logger = logging.getLogger(__name__)
 
