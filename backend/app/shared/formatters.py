@@ -1,7 +1,11 @@
 """
 Formatting utilities for display.
 
-Used by both backend and bot.
+SINGLE SOURCE OF TRUTH - used by both backend and bot.
+Bot imports these functions via bot/utils/formatters.py.
+
+If you need to change formatting logic, change it HERE.
+Bot may override specific functions for compact display.
 """
 
 

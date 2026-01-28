@@ -38,7 +38,7 @@
 | **Phase 8** | [phase8_remove_stubs.md](phase8_remove_stubs.md) | ✅ Завершено | 🟢 Низкая | ~30 | `refactor/phase-8-stubs` |
 | **Phase 9** | [phase9_update_imports.md](phase9_update_imports.md) | ✅ Завершено | 🟢 Низкая | ~60 | `refactor/v2` |
 | **Phase 10** | [phase10_async_migration.md](phase10_async_migration.md) | ✅ Завершено | 🟡 Средняя | ~600 | `refactor/phase-10-async` |
-| **Phase 11** | [phase11_shared_package.md](phase11_shared_package.md) | ⏸️ Опционально | 🟡 Средняя | ~150 | 1-2 часа |
+| **Phase 11** | [phase11_shared_package.md](phase11_shared_package.md) | ✅ Завершено | 🟡 Средняя | ~50 | `refactor/phase-11-shared` |
 
 **Объём v2.1:** ~840 строк изменений (~7% от v2)
 
