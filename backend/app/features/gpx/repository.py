@@ -5,7 +5,8 @@ Data access layer for GPX files.
 """
 
 from typing import Optional
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import GPXFile
 from .schemas import GPXInfo
@@ -14,10 +15,10 @@ from .schemas import GPXInfo
 class GPXRepository:
     """Repository for GPX file operations."""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-    def create(
+    async def create(
         self,
         filename: str,
         content: bytes,
@@ -52,12 +53,12 @@ class GPXRepository:
         )
 
         self.db.add(gpx_file)
-        self.db.commit()
-        self.db.refresh(gpx_file)
+        await self.db.commit()
+        await self.db.refresh(gpx_file)
 
         return gpx_file
 
-    def get_by_id(self, gpx_id: str) -> Optional[GPXFile]:
+    async def get_by_id(self, gpx_id: str) -> Optional[GPXFile]:
         """
         Get GPX file by ID.
 
@@ -67,7 +68,10 @@ class GPXRepository:
         Returns:
             GPXFile if found, None otherwise
         """
-        return self.db.query(GPXFile).filter(GPXFile.id == gpx_id).first()
+        result = await self.db.execute(
+            select(GPXFile).where(GPXFile.id == gpx_id)
+        )
+        return result.scalar_one_or_none()
 
     def to_info(self, gpx_file: GPXFile) -> GPXInfo:
         """

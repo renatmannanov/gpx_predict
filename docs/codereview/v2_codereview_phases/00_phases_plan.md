@@ -2,30 +2,62 @@
 
 > **Проект:** GPX Predictor
 > **Дата начала:** 2026-01-24
-> **Обновлено:** 2026-01-27
+> **Обновлено:** 2026-01-28
 > **Цель:** Привести кодовую базу в AI-friendly состояние и подготовить к production
 
 ---
 
-## Фазы рефакторинга
+## Фазы рефакторинга v2 (ЗАВЕРШЕНО)
 
 | Фаза | Файл | Статус | Зависимости | Строк | Ветка |
 |------|------|--------|-------------|-------|-------|
-| **Phase 0a** | [phase0a_structure.md](phase0a_structure.md) | ⏳ Не начато | Нет | ~50 | `refactor/phase-0a-structure` |
-| **Phase 0b** | [phase0b_shared.md](phase0b_shared.md) | ⏳ Не начато | 0a | ~100 | `refactor/phase-0b-shared` |
-| **Phase 0c** | [phase0c_hiking.md](phase0c_hiking.md) | ⏳ Не начато | 0b | ~200 | `refactor/phase-0c-hiking` |
-| **Phase 0d** | [phase0d_trail_run.md](phase0d_trail_run.md) | ⏳ Не начато | 0b | ~150 | `refactor/phase-0d-trail-run` |
-| **Phase 0e** | [phase0e_strava.md](phase0e_strava.md) | ⏳ Не начато | 0b | ~300 | `refactor/phase-0e-strava` |
-| **Phase 0f** | [phase0f_gpx_users.md](phase0f_gpx_users.md) | ⏳ Не начато | 0b | ~150 | `refactor/phase-0f-gpx-users` |
-| **Phase 1** | [phase1_database.md](phase1_database.md) | ⏳ Не начато | 0a | ~250 | `refactor/phase-1-database` |
-| **Phase 2** | [phase2_naming.md](phase2_naming.md) | ⏳ Не начато | 0c, 0d | ~200 | `refactor/phase-2-naming` |
-| **Phase 3** | [phase3_calculators.md](phase3_calculators.md) | ⏳ Не начато | 0c | ~150 | `refactor/phase-3-calculators` |
-| **Phase 5** | [phase5_repositories.md](phase5_repositories.md) | ⏳ Не начато | 0f, 1 | ~300 | `refactor/phase-5-repositories` |
-| **Phase 6** | [phase6_api.md](phase6_api.md) | ⏳ Не начато | 2, 5 | ~200 | `refactor/phase-6-api` |
+| **Phase 0a** | [phase0a_structure.md](phase0a_structure.md) | ✅ Завершено | Нет | ~50 | `refactor/phase-0a-structure` |
+| **Phase 0b** | [phase0b_shared.md](phase0b_shared.md) | ✅ Завершено | 0a | ~100 | `refactor/phase-0b-shared` |
+| **Phase 0c** | [phase0c_hiking.md](phase0c_hiking.md) | ✅ Завершено | 0b | ~200 | `refactor/phase-0c-hiking` |
+| **Phase 0d** | [phase0d_trail_run.md](phase0d_trail_run.md) | ✅ Завершено | 0b | ~150 | `refactor/phase-0d-trail-run` |
+| **Phase 0e** | [phase0e_strava.md](phase0e_strava.md) | ✅ Завершено | 0b | ~300 | `refactor/phase-0e-strava` |
+| **Phase 0f** | [phase0f_gpx_users.md](phase0f_gpx_users.md) | ✅ Завершено | 0b | ~150 | `refactor/phase-0f-gpx-users` |
+| **Phase 1** | [phase1_database.md](phase1_database.md) | ✅ Завершено | 0a | ~250 | `refactor/phase-1-database` |
+| **Phase 2** | [phase2_naming.md](phase2_naming.md) | ✅ Завершено | 0c, 0d | ~200 | `refactor/phase-2-naming` |
+| **Phase 3** | [phase3_calculators.md](phase3_calculators.md) | ✅ Завершено | 0c | ~150 | `refactor/phase-3-calculators` |
 | **Phase 4** | [phase4_bot.md](phase4_bot.md) | ✅ Завершено | 6 | ~300 | `refactor/phase-4-bot` |
-| **Phase 7** | [phase7_tests.md](phase7_tests.md) | ⏳ Не начато | Все | ~150 | `refactor/phase-7-tests` |
+| **Phase 5** | [phase5_repositories.md](phase5_repositories.md) | ✅ Завершено | 0f, 1 | ~300 | `refactor/phase-5-repositories` |
+| **Phase 6** | [phase6_api.md](phase6_api.md) | ✅ Завершено | 2, 5 | ~200 | `refactor/phase-6-api` |
+| **Phase 7** | [phase7_tests.md](phase7_tests.md) | ✅ Завершено | Все | ~150 | `refactor/phase-7-tests` |
 
-**Общий объём:** ~2300 строк изменений
+**Объём v2:** ~2300 строк изменений ✅
+
+---
+
+## Фазы cleanup v2.1 (НОВЫЕ)
+
+> См. [v2.1_cleanup_plan.md](v2.1_cleanup_plan.md) для деталей
+
+| Фаза | Файл | Статус | Сложность | Строк | Время |
+|------|------|--------|-----------|-------|-------|
+| **Phase 8** | [phase8_remove_stubs.md](phase8_remove_stubs.md) | ✅ Завершено | 🟢 Низкая | ~30 | `refactor/phase-8-stubs` |
+| **Phase 9** | [phase9_update_imports.md](phase9_update_imports.md) | ✅ Завершено | 🟢 Низкая | ~60 | `refactor/v2` |
+| **Phase 10** | [phase10_async_migration.md](phase10_async_migration.md) | ✅ Завершено | 🟡 Средняя | ~600 | `refactor/phase-10-async` |
+| **Phase 11** | [phase11_shared_package.md](phase11_shared_package.md) | ⏸️ Опционально | 🟡 Средняя | ~150 | 1-2 часа |
+
+**Объём v2.1:** ~840 строк изменений (~7% от v2)
+
+### Порядок выполнения v2.1
+
+```
+Phase 8 (stubs) ─► Phase 9 (imports) ─► Phase 10 (async) ─► Phase 11 (shared)
+     5 мин            30 мин              2-4 часа          опционально
+```
+
+### Что обязательно перед production:
+- ✅ Phase 8 - убрать путаницу со stubs
+- ✅ Phase 9 - чистые импорты
+- ✅ Phase 10 - единый async подход
+
+### Что опционально:
+- ⏸️ Phase 11 - дублирование форматтеров некритично
+
+**Общий объём v2 + v2.1:** ~3140 строк изменений
 
 ---
 
@@ -107,6 +139,9 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 | 2026-01-26 | Phase 6 (API) перед Phase 4 (Bot) |
 | 2026-01-26 | Добавлена Phase 7 (Tests) |
 | 2026-01-26 | Одна git ветка на фазу/подфазу |
+| 2026-01-28 | v2 завершено, добавлен cleanup v2.1 |
+| 2026-01-28 | prediction.py остаётся в services/ (кросс-фичёвый) |
+| 2026-01-28 | Phase 11 (shared package) опционально |
 
 ---
 
@@ -156,4 +191,4 @@ pytest tests/ -v
 
 ---
 
-*Last updated: 2026-01-26*
+*Last updated: 2026-01-28*

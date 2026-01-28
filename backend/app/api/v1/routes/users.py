@@ -7,10 +7,10 @@ Endpoints for user management, onboarding, and preferences.
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
-from app.models.user import User
+from app.db.session import get_async_db
+from app.features.users import UserRepository
 
 router = APIRouter()
 
@@ -48,20 +48,22 @@ class UserUpdateResponse(BaseModel):
 # === Endpoints ===
 
 @router.get("/me")
-async def get_current_user(db: Session = Depends(get_db)):
+async def get_current_user(db: AsyncSession = Depends(get_async_db)):
     """Get current user profile."""
     # TODO: Implement authentication
     return {"message": "Not implemented yet"}
 
 
 @router.get("/{telegram_id}", response_model=UserInfoSchema)
-async def get_user_info(telegram_id: str, db: Session = Depends(get_db)):
+async def get_user_info(telegram_id: str, db: AsyncSession = Depends(get_async_db)):
     """
     Get user info by Telegram ID.
 
     Returns user's onboarding status, Strava connection, and preferences.
     """
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_telegram_id(telegram_id)
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -78,7 +80,7 @@ async def get_user_info(telegram_id: str, db: Session = Depends(get_db)):
 async def complete_onboarding(
     telegram_id: str,
     request: OnboardingCompleteRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Complete user onboarding.
@@ -93,16 +95,14 @@ async def complete_onboarding(
             detail="activity_type must be 'hiking' or 'running'"
         )
 
-    # Find or create user
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
-    if not user:
-        user = User(telegram_id=telegram_id)
-        db.add(user)
+    user_repo = UserRepository(db)
 
-    # Update onboarding status
-    user.onboarding_complete = True
-    user.preferred_activity_type = request.activity_type
-    db.commit()
+    # Find or create user
+    user, created = await user_repo.get_or_create(telegram_id)
+
+    # Complete onboarding
+    await user_repo.complete_onboarding(user, request.activity_type)
+    await db.commit()
 
     return UserUpdateResponse(
         success=True,
@@ -114,14 +114,16 @@ async def complete_onboarding(
 async def update_preferences(
     telegram_id: str,
     request: PreferencesUpdateRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Update user preferences.
 
     Can update preferred_activity_type.
     """
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_telegram_id(telegram_id)
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -132,9 +134,9 @@ async def update_preferences(
                 status_code=400,
                 detail="preferred_activity_type must be 'hiking' or 'running'"
             )
-        user.preferred_activity_type = request.preferred_activity_type
+        await user_repo.update(user, preferred_activity_type=request.preferred_activity_type)
 
-    db.commit()
+    await db.commit()
 
     return UserUpdateResponse(
         success=True,
@@ -145,19 +147,18 @@ async def update_preferences(
 @router.post("/{telegram_id}/create", response_model=UserInfoSchema)
 async def create_user(
     telegram_id: str,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Create a new user or return existing one.
 
     Used by bot to ensure user exists before starting onboarding.
     """
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
-    if not user:
-        user = User(telegram_id=telegram_id)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+    user_repo = UserRepository(db)
+    user, created = await user_repo.get_or_create(telegram_id)
+
+    if created:
+        await db.commit()
 
     return UserInfoSchema(
         telegram_id=user.telegram_id,

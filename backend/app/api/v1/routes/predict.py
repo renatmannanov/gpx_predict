@@ -7,10 +7,10 @@ Endpoints for time predictions.
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
-from app.db.session import get_db
+from app.db.session import get_async_db
 from app.schemas.prediction import (
     HikePredictRequest,
     HikePrediction,
@@ -35,9 +35,9 @@ from app.repositories.gpx import GPXRepository
 from app.services.gpx_parser import GPXParserService
 from app.services.naismith import get_total_multiplier, estimate_rest_time, HikerProfile
 from app.services.sun import get_sun_times
-from app.models.user import User
-from app.models.user_profile import UserPerformanceProfile
-from app.models.user_run_profile import UserRunProfile
+from app.features.users import UserRepository
+from app.features.hiking import HikingProfileRepository
+from app.features.trail_run import TrailRunProfileRepository
 
 router = APIRouter()
 
@@ -58,7 +58,7 @@ class CompareRequest(BaseModel):
 @router.post("/hike", response_model=HikePrediction)
 async def predict_hike(
     request: HikePredictRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Predict hiking time for a route.
@@ -69,11 +69,12 @@ async def predict_hike(
     # Load user profile if telegram_id provided
     user_profile = None
     if request.telegram_id:
-        user = db.query(User).filter(User.telegram_id == request.telegram_id).first()
+        user_repo = UserRepository(db)
+        hiking_repo = HikingProfileRepository(db)
+
+        user = await user_repo.get_by_telegram_id(request.telegram_id)
         if user:
-            user_profile = db.query(UserPerformanceProfile).filter(
-                UserPerformanceProfile.user_id == user.id
-            ).first()
+            user_profile = await hiking_repo.get_by_user_id(user.id)
 
     try:
         prediction = PredictionService.predict_hike(
@@ -95,7 +96,7 @@ async def predict_hike(
 @router.post("/group", response_model=GroupPrediction)
 async def predict_group(
     request: GroupPredictRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Predict hiking time for a group.
@@ -118,7 +119,7 @@ async def predict_group(
 @router.post("/compare", response_model=RouteComparisonResponse)
 async def compare_methods(
     request: CompareRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Compare different prediction methods on a route.
@@ -128,7 +129,7 @@ async def compare_methods(
     """
     # Get GPX file
     gpx_repo = GPXRepository(db)
-    gpx_file = gpx_repo.get_by_id(request.gpx_id)
+    gpx_file = await gpx_repo.get_by_id(request.gpx_id)
 
     if not gpx_file:
         raise HTTPException(status_code=404, detail=f"GPX file not found: {request.gpx_id}")
@@ -139,11 +140,12 @@ async def compare_methods(
     # Load user profile if telegram_id provided
     user_profile = None
     if request.telegram_id:
-        user = db.query(User).filter(User.telegram_id == request.telegram_id).first()
+        user_repo = UserRepository(db)
+        hiking_repo = HikingProfileRepository(db)
+
+        user = await user_repo.get_by_telegram_id(request.telegram_id)
         if user:
-            user_profile = db.query(UserPerformanceProfile).filter(
-                UserPerformanceProfile.user_id == user.id
-            ).first()
+            user_profile = await hiking_repo.get_by_user_id(user.id)
 
     # Extract points
     try:
@@ -235,7 +237,7 @@ async def compare_methods(
 @router.post("/trail-run/compare", response_model=TrailRunCompareResponse)
 async def compare_trail_run_methods(
     request: TrailRunCompareRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Compare trail running prediction methods on a route.
@@ -252,7 +254,7 @@ async def compare_trail_run_methods(
     """
     # Get GPX file
     gpx_repo = GPXRepository(db)
-    gpx_file = gpx_repo.get_by_id(request.gpx_id)
+    gpx_file = await gpx_repo.get_by_id(request.gpx_id)
 
     if not gpx_file:
         raise HTTPException(status_code=404, detail=f"GPX file not found: {request.gpx_id}")
@@ -265,14 +267,14 @@ async def compare_trail_run_methods(
     run_profile = None
 
     if request.telegram_id:
-        user = db.query(User).filter(User.telegram_id == request.telegram_id).first()
+        user_repo = UserRepository(db)
+        hiking_repo = HikingProfileRepository(db)
+        run_repo = TrailRunProfileRepository(db)
+
+        user = await user_repo.get_by_telegram_id(request.telegram_id)
         if user:
-            hike_profile = db.query(UserPerformanceProfile).filter(
-                UserPerformanceProfile.user_id == user.id
-            ).first()
-            run_profile = db.query(UserRunProfile).filter(
-                UserRunProfile.user_id == user.id
-            ).first()
+            hike_profile = await hiking_repo.get_by_user_id(user.id)
+            run_profile = await run_repo.get_by_user_id(user.id)
 
     # Extract points
     try:

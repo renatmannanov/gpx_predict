@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.hiking import UserHikingProfile as UserPerformanceProfile
-from app.features.trail_run import UserTrailRunProfile as UserRunProfile
+from app.features.trail_run import UserRunProfile
 from app.models.strava_activity import StravaActivity
 
 logger = logging.getLogger(__name__)

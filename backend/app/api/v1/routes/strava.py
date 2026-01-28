@@ -18,21 +18,18 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse, HTMLResponse
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db, get_async_db
+from app.db.session import get_async_db
 from app.config import settings
-from app.models.user import User
 from app.models.strava_token import StravaToken
 from app.models.strava_activity import StravaActivity, StravaSyncStatus
-from app.models.notification import Notification
 from app.services.strava_sync import trigger_user_sync, get_sync_stats, StravaSyncService
 from app.features.strava import StravaClient
-from app.features.users import UserRepository
+from app.features.users import UserRepository, NotificationRepository
 from app.services.strava import (
     exchange_authorization_code,
-    refresh_access_token,
     revoke_access,
     fetch_athlete_stats,
     StravaAPIError,
@@ -121,7 +118,7 @@ async def strava_callback(
     scope: str = Query(None),
     state: str = Query(None),
     error: str = Query(None),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Handle Strava OAuth callback.
@@ -151,24 +148,26 @@ async def strava_callback(
     athlete = token_data.get("athlete", {})
     athlete_id = str(athlete.get("id"))
 
+    user_repo = UserRepository(db)
+    notification_repo = NotificationRepository(db)
+
     # Find or create user
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user = await user_repo.get_by_telegram_id(telegram_id)
 
     if not user:
         # Create new user
-        user = User(
+        user = await user_repo.create(
             telegram_id=telegram_id,
             name=f"{athlete.get('firstname', '')} {athlete.get('lastname', '')}".strip(),
             strava_athlete_id=athlete_id,
             strava_connected=True
         )
-        db.add(user)
-        db.flush()
 
     # Save or update tokens
-    existing_token = db.query(StravaToken).filter(
-        StravaToken.user_id == user.id
-    ).first()
+    result = await db.execute(
+        select(StravaToken).where(StravaToken.user_id == user.id)
+    )
+    existing_token = result.scalar_one_or_none()
 
     if existing_token:
         existing_token.access_token = token_data["access_token"]
@@ -188,10 +187,9 @@ async def strava_callback(
         db.add(new_token)
 
     # Update user
-    user.strava_athlete_id = athlete_id
-    user.strava_connected = True
+    await user_repo.update_strava_connection(user, connected=True, athlete_id=athlete_id)
 
-    db.commit()
+    await db.commit()
 
     logger.info(
         f"Strava connected: telegram_id={telegram_id}, "
@@ -199,13 +197,12 @@ async def strava_callback(
     )
 
     # Create notification for successful Strava connection
-    notification = Notification(
+    await notification_repo.create_notification(
         user_id=user.id,
-        type="strava_connected",
+        notification_type="strava_connected",
         data={"athlete_name": athlete.get("firstname", "Пользователь")}
     )
-    db.add(notification)
-    db.commit()
+    await db.commit()
 
     # Trigger background sync for new user
     await trigger_user_sync(user.id)
@@ -220,17 +217,19 @@ async def strava_callback(
 @router.get("/strava/status/{telegram_id}", response_model=StravaStatus)
 async def get_strava_status(
     telegram_id: str,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Check Strava connection status for a user."""
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_telegram_id(telegram_id)
 
     if not user or not user.strava_connected:
         return StravaStatus(connected=False)
 
-    token = db.query(StravaToken).filter(
-        StravaToken.user_id == user.id
-    ).first()
+    result = await db.execute(
+        select(StravaToken).where(StravaToken.user_id == user.id)
+    )
+    token = result.scalar_one_or_none()
 
     return StravaStatus(
         connected=True,
@@ -243,7 +242,7 @@ async def get_strava_status(
 @router.post("/strava/disconnect/{telegram_id}")
 async def disconnect_strava(
     telegram_id: str,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Disconnect Strava account.
@@ -252,14 +251,16 @@ async def disconnect_strava(
     - Deletes stored tokens
     - Clears cached data
     """
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_telegram_id(telegram_id)
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    token = db.query(StravaToken).filter(
-        StravaToken.user_id == user.id
-    ).first()
+    result = await db.execute(
+        select(StravaToken).where(StravaToken.user_id == user.id)
+    )
+    token = result.scalar_one_or_none()
 
     if token:
         # Try to revoke at Strava (best effort) using shared service function
@@ -268,10 +269,10 @@ async def disconnect_strava(
         except Exception as e:
             logger.warning(f"Strava deauthorize failed: {e}")
 
-        db.delete(token)
+        await db.delete(token)
 
-    user.strava_connected = False
-    db.commit()
+    await user_repo.update_strava_connection(user, connected=False)
+    await db.commit()
 
     logger.info(f"Strava disconnected for telegram_id={telegram_id}")
 
@@ -471,36 +472,43 @@ async def get_strava_activities(
     activity_type: Optional[str] = Query(None, description="Filter by type: Run, Hike, Walk"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get synced activities for a user.
 
     Returns activities from local database (not live from Strava).
     """
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_telegram_id(telegram_id)
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Build query
-    query = db.query(StravaActivity).filter(StravaActivity.user_id == user.id)
+    # Build base query
+    base_query = select(StravaActivity).where(StravaActivity.user_id == user.id)
 
     if activity_type:
-        query = query.filter(StravaActivity.activity_type == activity_type)
+        base_query = base_query.where(StravaActivity.activity_type == activity_type)
 
     # Get total count
-    total = query.count()
+    count_result = await db.execute(
+        select(func.count()).select_from(
+            base_query.subquery()
+        )
+    )
+    total = count_result.scalar() or 0
 
     # Get activities with pagination
-    activities = query.order_by(
-        StravaActivity.start_date.desc()
-    ).offset(offset).limit(limit).all()
+    query = base_query.order_by(StravaActivity.start_date.desc()).offset(offset).limit(limit)
+    result = await db.execute(query)
+    activities = result.scalars().all()
 
     # Get sync status
-    sync_status = db.query(StravaSyncStatus).filter(
-        StravaSyncStatus.user_id == user.id
-    ).first()
+    sync_result = await db.execute(
+        select(StravaSyncStatus).where(StravaSyncStatus.user_id == user.id)
+    )
+    sync_status = sync_result.scalar_one_or_none()
 
     return ActivitiesResponse(
         activities=[
@@ -529,17 +537,19 @@ async def get_strava_activities(
 @router.get("/strava/sync-status/{telegram_id}", response_model=SyncStatusResponse)
 async def get_user_sync_status(
     telegram_id: str,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Get sync status for a user."""
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_telegram_id(telegram_id)
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    sync_status = db.query(StravaSyncStatus).filter(
-        StravaSyncStatus.user_id == user.id
-    ).first()
+    result = await db.execute(
+        select(StravaSyncStatus).where(StravaSyncStatus.user_id == user.id)
+    )
+    sync_status = result.scalar_one_or_none()
 
     if not sync_status:
         return SyncStatusResponse(
@@ -561,14 +571,15 @@ async def get_user_sync_status(
 async def trigger_sync(
     telegram_id: str,
     immediate: bool = Query(False, description="Sync immediately instead of queuing"),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Manually trigger sync for a user.
 
     If immediate=True, syncs now. Otherwise adds to priority queue.
     """
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_telegram_id(telegram_id)
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
