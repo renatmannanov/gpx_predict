@@ -40,7 +40,8 @@ class TelegramNotifier:
         self,
         chat_id: str,
         text: str,
-        parse_mode: str = "HTML"
+        parse_mode: str = "HTML",
+        reply_markup: Optional[dict] = None
     ) -> bool:
         """
         Send message to Telegram chat.
@@ -49,6 +50,7 @@ class TelegramNotifier:
             chat_id: Telegram chat/user ID
             text: Message text (HTML supported)
             parse_mode: Parse mode (HTML or Markdown)
+            reply_markup: Optional inline keyboard markup
 
         Returns:
             True if sent successfully, False otherwise
@@ -61,14 +63,18 @@ class TelegramNotifier:
             return False
 
         try:
+            payload = {
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": parse_mode
+            }
+            if reply_markup:
+                payload["reply_markup"] = reply_markup
+
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
                     f"{self.API_URL}/bot{self.bot_token}/sendMessage",
-                    json={
-                        "chat_id": chat_id,
-                        "text": text,
-                        "parse_mode": parse_mode
-                    }
+                    json=payload
                 )
 
                 if response.status_code == 200:

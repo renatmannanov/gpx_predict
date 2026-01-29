@@ -85,9 +85,22 @@ class NotificationService:
                 logger.debug(f"No formatter for notification type: {notification_type}")
                 return
 
+            # For strava_connected during onboarding - add button to continue
+            reply_markup = None
+            if notification_type == "strava_connected" and not user.onboarding_complete:
+                reply_markup = {
+                    "inline_keyboard": [[
+                        {"text": "✅ Отлично, продолжить", "callback_data": "onboarding:continue"}
+                    ]]
+                }
+
             # Send via Telegram
             notifier = get_telegram_notifier()
-            await notifier.send_message(chat_id=user.telegram_id, text=text)
+            await notifier.send_message(
+                chat_id=user.telegram_id,
+                text=text,
+                reply_markup=reply_markup
+            )
 
         except Exception as e:
             # Don't fail the main operation if push fails

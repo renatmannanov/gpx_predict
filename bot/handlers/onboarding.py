@@ -316,6 +316,17 @@ async def handle_skipped_continue(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(
     F.data == "onboarding:continue",
+    OnboardingStates.offering_strava
+)
+async def handle_strava_connected_from_push(callback: CallbackQuery, state: FSMContext):
+    """Handle 'Continue' from push notification when Strava connected during onboarding."""
+    await callback.answer()
+    await state.set_state(OnboardingStates.waiting_strava_callback)
+    await show_usage_step(callback.message, state)
+
+
+@router.callback_query(
+    F.data == "onboarding:continue",
     OnboardingStates.waiting_strava_callback
 )
 async def handle_strava_connected_continue(callback: CallbackQuery, state: FSMContext):
@@ -365,17 +376,3 @@ async def handle_finish(callback: CallbackQuery, state: FSMContext):
     )
 
 
-async def notify_strava_connected(message: Message, state: FSMContext):
-    """
-    Notify user that Strava was connected during onboarding.
-
-    Called from strava callback handler when user is in onboarding.
-    """
-    current_state = await state.get_state()
-    if current_state == OnboardingStates.offering_strava.state:
-        await state.set_state(OnboardingStates.waiting_strava_callback)
-        await message.answer(
-            STRAVA_CONNECTED_TEXT,
-            reply_markup=get_strava_connected_keyboard(),
-            parse_mode="HTML"
-        )
