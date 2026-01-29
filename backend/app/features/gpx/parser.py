@@ -77,8 +77,8 @@ class GPXParserService:
 
         # Calculate metrics using shared utilities
         distance_km = calculate_total_distance(points)
-        elevation_gain, elevation_loss = calculate_elevation_changes(points)
         elevations = [p[2] for p in points]
+        elevation_gain, elevation_loss = calculate_elevation_changes(elevations)
 
         # Check if route is a loop (start and end within 500m)
         start_end_distance = haversine(

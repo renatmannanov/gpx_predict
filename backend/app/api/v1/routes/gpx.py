@@ -8,8 +8,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_async_db
-from app.schemas.gpx import GPXUploadResponse, GPXInfo
-from app.features.gpx import GPXParserService, GPXRepository
+from app.features.gpx import GPXParserService, GPXRepository, GPXInfo, GPXUploadResponse
 
 router = APIRouter()
 

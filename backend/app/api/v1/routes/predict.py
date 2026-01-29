@@ -76,7 +76,7 @@ async def predict_hike(
             user_profile = await hiking_repo.get_by_user_id(user.id)
 
     try:
-        prediction = PredictionService.predict_hike(
+        prediction = await PredictionService.predict_hike(
             gpx_id=request.gpx_id,
             experience=request.experience,
             backpack=request.backpack,
@@ -104,7 +104,7 @@ async def predict_group(
     for splitting, meeting points, etc.
     """
     try:
-        prediction = PredictionService.predict_group(
+        prediction = await PredictionService.predict_group(
             gpx_id=request.gpx_id,
             members=request.members,
             is_round_trip=request.is_round_trip,
