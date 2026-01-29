@@ -21,6 +21,7 @@ from .schemas import (
     NotificationResponse,
 )
 from .repository import UserRepository, NotificationRepository
+from .notification_service import NotificationService
 
 __all__ = [
     # Models
@@ -34,4 +35,6 @@ __all__ = [
     # Repositories
     "UserRepository",
     "NotificationRepository",
+    # Services
+    "NotificationService",
 ]

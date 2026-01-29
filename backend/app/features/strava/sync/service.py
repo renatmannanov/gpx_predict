@@ -13,7 +13,8 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.users.models import User, Notification
+from app.features.users.models import User
+from app.features.users import NotificationService
 from app.services.user_profile import UserProfileService
 
 from ..models import StravaToken, StravaActivity, StravaSyncStatus
@@ -44,6 +45,7 @@ class StravaSyncService:
         self.db = db
         self.activity_sync = ActivitySyncService(db)
         self.splits_sync = SplitsSyncService(db)
+        self.notification_service = NotificationService(db)
 
     async def sync_user_activities(
         self,
@@ -172,7 +174,7 @@ class StravaSyncService:
             if (saved_count > 0
                 and sync_status.total_activities_synced % SyncConfig.PROGRESS_NOTIFICATION_INTERVAL == 0
                 and not sync_status.initial_sync_complete):
-                self._create_notification(
+                await self._create_notification(
                     user_id=user_id,
                     notification_type="sync_progress",
                     data={
@@ -190,7 +192,7 @@ class StravaSyncService:
             if was_initial_sync and len(activities) < max_activities:
                 sync_status.initial_sync_complete = 1
                 sync_status.last_recalc_checkpoint = 100
-                self._create_notification(
+                await self._create_notification(
                     user_id=user_id,
                     notification_type="sync_complete",
                     data={
@@ -229,20 +231,18 @@ class StravaSyncService:
             await self.db.commit()
             return {"status": "error", "error": str(e)}
 
-    def _create_notification(
+    async def _create_notification(
         self,
         user_id: str,
         notification_type: str,
         data: Optional[dict] = None
     ):
-        """Create a notification for the user."""
-        notification = Notification(
+        """Create a notification and send push to Telegram."""
+        await self.notification_service.create_and_send(
             user_id=user_id,
-            type=notification_type,
+            notification_type=notification_type,
             data=data
         )
-        self.db.add(notification)
-        logger.debug(f"Created notification {notification_type} for user {user_id}")
 
     def _should_recalculate_profile(
         self,
@@ -335,7 +335,7 @@ class StravaSyncService:
                         f"Auto-recalculated hiking profile for user {user_id} "
                         f"(reason: {recalc_reason})"
                     )
-                    self._create_notification(
+                    await self._create_notification(
                         user_id=user_id,
                         notification_type="profile_updated",
                         data={
@@ -354,7 +354,7 @@ class StravaSyncService:
                         f"Auto-recalculated running profile for user {user_id} "
                         f"(reason: {recalc_reason})"
                     )
-                    self._create_notification(
+                    await self._create_notification(
                         user_id=user_id,
                         notification_type="profile_updated",
                         data={
@@ -377,7 +377,7 @@ class StravaSyncService:
             )
             if hike_profile:
                 logger.info(f"Final hiking profile recalc for user {user_id}")
-                self._create_notification(
+                await self._create_notification(
                     user_id=user_id,
                     notification_type="profile_updated",
                     data={
@@ -393,7 +393,7 @@ class StravaSyncService:
             )
             if run_profile:
                 logger.info(f"Final running profile recalc for user {user_id}")
-                self._create_notification(
+                await self._create_notification(
                     user_id=user_id,
                     notification_type="profile_updated",
                     data={
@@ -487,7 +487,7 @@ class StravaSyncService:
                     if activity_types == ACTIVITY_TYPES_FOR_HIKE_PROFILE
                     else "running"
                 )
-                self._create_notification(
+                await self._create_notification(
                     user_id=user_id,
                     notification_type="profile_updated",
                     data={

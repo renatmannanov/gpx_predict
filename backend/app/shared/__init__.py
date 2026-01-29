@@ -37,6 +37,8 @@ from .constants import (
     ALL_SUPPORTED_STRAVA_TYPES,
 )
 from .repository import BaseRepository
+from .telegram import TelegramNotifier, get_telegram_notifier
+from .notification_formatter import format_notification
 
 __all__ = [
     # geo
@@ -67,4 +69,9 @@ __all__ = [
     "ALL_SUPPORTED_STRAVA_TYPES",
     # repository
     "BaseRepository",
+    # telegram
+    "TelegramNotifier",
+    "get_telegram_notifier",
+    # notification formatter
+    "format_notification",
 ]

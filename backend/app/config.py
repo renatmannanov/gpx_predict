@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     )
     strava_webhook_verify_token: Optional[str] = Field(default=None)
 
+    # === Telegram ===
+    telegram_bot_token: Optional[str] = Field(
+        default=None,
+        description="Telegram Bot token for push notifications"
+    )
+
     @field_validator('database_url')
     @classmethod
     def fix_postgres_url(cls, v: str) -> str:

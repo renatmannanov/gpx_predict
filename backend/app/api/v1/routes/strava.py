@@ -35,7 +35,7 @@ from app.features.strava import (
     fetch_athlete_stats,
 )
 from app.features.strava.sync import trigger_user_sync, get_sync_stats, StravaSyncService
-from app.features.users import UserRepository, NotificationRepository
+from app.features.users import UserRepository, NotificationRepository, NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -197,8 +197,9 @@ async def strava_callback(
         f"athlete_id={athlete_id}"
     )
 
-    # Create notification for successful Strava connection
-    await notification_repo.create_notification(
+    # Create notification for successful Strava connection (with push)
+    notification_service = NotificationService(db)
+    await notification_service.create_and_send(
         user_id=user.id,
         notification_type="strava_connected",
         data={"athlete_name": athlete.get("firstname", "Пользователь")}
