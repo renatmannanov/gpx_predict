@@ -23,7 +23,14 @@ from app.config import settings
 from app.models.base import Base
 
 # Import all models to ensure they are registered with Base.metadata
-from app.models import user, prediction, gpx  # noqa
+from app.features.users.models import User, Notification  # noqa
+from app.features.gpx.models import GPXFile  # noqa
+from app.features.strava.models import (  # noqa
+    StravaToken, StravaActivity, StravaActivitySplit, StravaSyncStatus
+)
+from app.models.prediction import Prediction  # noqa
+from app.models.user_profile import UserPerformanceProfile  # noqa
+from app.models.user_run_profile import UserRunProfile  # noqa
 
 # this is the Alembic Config object
 config = context.config
@@ -77,7 +84,8 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=target_metadata
+            target_metadata=target_metadata,
+            version_table_pk=False,  # Allow longer version numbers
         )
 
         with context.begin_transaction():

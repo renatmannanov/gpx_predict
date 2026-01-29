@@ -92,10 +92,10 @@ class ActivitySyncService:
         if existing:
             return None
 
-        # Parse start date
+        # Parse start date (convert to naive UTC datetime for PostgreSQL)
         start_date = datetime.fromisoformat(
             data["start_date"].replace("Z", "+00:00")
-        )
+        ).replace(tzinfo=None)
 
         activity = StravaActivity(
             user_id=user_id,

@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.db.session import init_db, SessionLocal
+from app.db.session import init_db, AsyncSessionLocal
 from app.api.v1.router import api_router
 from app.features.strava.sync import background_sync
 
@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
 
     # Start background Strava sync
     if settings.strava_client_id and settings.strava_client_secret:
-        await background_sync.start(SessionLocal)
+        await background_sync.start(AsyncSessionLocal)
         logger.info("Strava background sync started")
 
     yield

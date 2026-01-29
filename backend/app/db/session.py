@@ -97,6 +97,13 @@ def init_db() -> None:
     """Initialize database tables."""
     from app.models.base import Base
     # Import all models to register them
-    from app.models import user, prediction, gpx  # noqa
+    from app.features.users.models import User, Notification  # noqa
+    from app.features.gpx.models import GPXFile  # noqa
+    from app.features.strava.models import (  # noqa
+        StravaToken, StravaActivity, StravaActivitySplit, StravaSyncStatus
+    )
+    from app.models.prediction import Prediction  # noqa
+    from app.models.user_profile import UserPerformanceProfile  # noqa
+    from app.models.user_run_profile import UserRunProfile  # noqa
 
     Base.metadata.create_all(bind=engine)

@@ -6,14 +6,72 @@
 2. **ВСЕГДА** читай `docs/ARCHITECTURE_CALCULATIONS.md` перед изменением расчётов
 3. **ВСЕГДА** проверяй `docs/CODE_REVIEW.md` для известных проблем
 
+---
+
+## Структура проекта (после рефакторинга v2)
+
+```
+backend/app/
+├── api/v1/routes/           # API endpoints
+├── features/                # Feature-based modules (NEW!)
+│   ├── gpx/                 # GPX parsing & storage
+│   │   ├── parser.py        # GPXParserService
+│   │   ├── segmenter.py     # RouteSegmenter
+│   │   ├── repository.py    # GPXRepository
+│   │   └── models.py        # GPXFile model
+│   │
+│   ├── hiking/              # Hiking predictions
+│   │   ├── calculators/     # Tobler, Naismith calculators
+│   │   │   ├── tobler.py
+│   │   │   ├── naismith.py
+│   │   │   └── personalization.py
+│   │   └── models.py        # UserPerformanceProfile
+│   │
+│   ├── trail_run/           # Trail running predictions
+│   │   ├── calculators/     # GAP, fatigue calculators
+│   │   │   ├── gap_calculator.py
+│   │   │   ├── hike_run_threshold.py
+│   │   │   └── runner_fatigue.py
+│   │   └── models.py        # UserRunProfile
+│   │
+│   ├── strava/              # Strava integration
+│   │   ├── client.py        # StravaClient
+│   │   ├── sync/            # Background sync
+│   │   └── models.py        # StravaToken, StravaActivity
+│   │
+│   └── users/               # User management
+│       └── models.py        # User, Notification
+│
+├── shared/                  # Shared utilities (NEW!)
+│   ├── geo.py               # haversine(), calculate_total_distance()
+│   ├── elevation.py         # smooth_elevations()
+│   ├── calculator_types.py  # MacroSegment, SegmentType, RouteComparison
+│   └── formulas.py          # tobler_hiking_speed(), etc.
+│
+├── services/                # Cross-feature services (legacy location)
+│   ├── prediction.py        # Main prediction orchestrator
+│   ├── naismith.py          # old_naismith (3rd calculation method!)
+│   ├── sun.py               # Sunrise/sunset calculations
+│   ├── user_profile.py      # Profile calculation service
+│   └── calculators/
+│       ├── base.py          # Base calculator classes
+│       └── comparison.py    # ComparisonService
+│
+├── models/                  # SQLAlchemy models (re-exports)
+├── schemas/                 # Pydantic schemas
+└── repositories/            # Data access (re-exports)
+```
+
+---
+
 ## Калькуляторы времени
 
-В проекте **3 метода расчёта** (все нужны, НЕ удалять и НЕ объединять):
+В проекте **3 метода расчёта hiking** (все нужны, НЕ удалять и НЕ объединять):
 
 | Метод | Файл | Описание |
 |-------|------|----------|
-| `tobler` | `calculators/tobler.py` | Tobler's Hiking Function (1993) |
-| `naismith` | `calculators/naismith.py` | Naismith + Langmuir corrections |
+| `tobler` | `features/hiking/calculators/tobler.py` | Tobler's Hiking Function (1993) |
+| `naismith` | `features/hiking/calculators/naismith.py` | Naismith + Langmuir corrections |
 | `old_naismith` | `services/naismith.py` | Naismith + Tranter's corrections |
 
 Они дают **разные результаты** — это нормально:
@@ -23,17 +81,43 @@ naismith:     5ч 15мин
 old_naismith: 6ч 26мин
 ```
 
+**Trail Running** использует:
+- `features/trail_run/calculators/gap_calculator.py` — Grade Adjusted Pace
+
+---
+
 ## Запреты
 
-- **НЕ** дублировать утилиты — использовать существующие:
-  - `haversine` — в `gpx_parser.py` или `segmenter.py`
-  - `elevation smoothing` — в `gpx_parser.py` или `segmenter.py`
+- **НЕ** дублировать утилиты — использовать существующие из `shared/`:
+  - `haversine` → `shared/geo.py`
+  - `elevation smoothing` → `shared/elevation.py`
+  - `tobler_hiking_speed` → `shared/formulas.py`
 
 - **НЕ** создавать новые методы для token refresh/exchange — использовать `StravaClient`
 
 - **НЕ** смешивать sync/async Session без явной необходимости
 
 - **НЕ** удалять или объединять калькуляторы без явного указания
+
+---
+
+## Импорты: новые пути
+
+```python
+# Правильно (новые пути)
+from app.features.hiking.calculators import ToblerCalculator, NaismithCalculator
+from app.features.trail_run.calculators import GAPCalculator
+from app.features.gpx import GPXParserService, RouteSegmenter
+from app.features.strava import StravaClient
+from app.shared import haversine
+from app.shared.formulas import tobler_hiking_speed
+
+# Устаревшие (работают через re-export, но лучше не использовать)
+from app.services.calculators import ToblerCalculator  # → re-export
+from app.models.user_profile import UserPerformanceProfile  # → re-export
+```
+
+---
 
 ## Документирование
 
@@ -44,17 +128,7 @@ old_naismith: 6ч 26мин
 3. **Исправление проблем из ревью** → обновить статус в `docs/CODE_REVIEW.md`
 4. **Новые сервисы/модели** → добавить в `docs/ARCHITECTURE.md`
 
-## Структура проекта
-
-```
-backend/app/
-├── api/v1/routes/     # API endpoints
-├── models/            # SQLAlchemy models
-├── schemas/           # Pydantic schemas
-├── services/          # Business logic
-│   └── calculators/   # Калькуляторы времени
-└── repositories/      # Data access
-```
+---
 
 ## Правила реализации больших фич
 
@@ -140,7 +214,15 @@ backend/app/
 
 См. `docs/CODE_REVIEW.md` для полного списка. Ключевые:
 
-1. Персонализация требует рефакторинга (отдельная задача)
-2. Дублирование token management в routes/strava.py
-3. Дублирование haversine и elevation smoothing
-4. Смешение sync/async Session
+1. **Персонализация требует рефакторинга** (отдельная задача)
+2. **Legacy re-exports** — старые пути работают через re-export, но новый код должен использовать `features/` и `shared/`
+
+---
+
+## История рефакторинга
+
+- **v2.0** (2026-01-27): Feature-based structure, shared utilities
+- **v2.1** (2026-01-28): Async migration, cleanup
+- **v2.2** (2026-01-28): Post-refactor analysis
+
+См. `docs/codereview/v2_codereview_phases/` для детальной истории.

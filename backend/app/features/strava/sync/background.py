@@ -149,13 +149,10 @@ class BackgroundSyncRunner:
 
         for user_id in user_ids:
             try:
-                db = self._db_factory()
-                try:
+                async with self._db_factory() as db:
                     service = StravaSyncService(db)
                     result = await service.sync_user_activities(user_id)
                     logger.debug(f"Sync result for {user_id}: {result}")
-                finally:
-                    db.close()
 
                 await asyncio.sleep(SyncConfig.API_CALL_DELAY)
 
@@ -167,20 +164,25 @@ class BackgroundSyncRunner:
 
     async def _refresh_queue(self):
         """Refresh queue from database with users needing sync."""
-        db = self._db_factory()
-        try:
-            users = db.query(User).filter(
-                User.strava_connected == True
-            ).all()
+        from sqlalchemy import select
+
+        async with self._db_factory() as db:
+            result = await db.execute(
+                select(User).where(User.strava_connected == True)
+            )
+            users = result.scalars().all()
 
             cutoff = datetime.utcnow() - timedelta(
                 hours=SyncConfig.MIN_SYNC_INTERVAL_HOURS
             )
 
             for user in users:
-                sync_status = db.query(StravaSyncStatus).filter(
-                    StravaSyncStatus.user_id == user.id
-                ).first()
+                result = await db.execute(
+                    select(StravaSyncStatus).where(
+                        StravaSyncStatus.user_id == user.id
+                    )
+                )
+                sync_status = result.scalar_one_or_none()
 
                 if not sync_status:
                     await sync_queue.add_user(user.id, priority=True)
@@ -188,9 +190,6 @@ class BackgroundSyncRunner:
                     await sync_queue.add_user(user.id)
 
             logger.info(f"Refreshed sync queue: {sync_queue.queue_size} users")
-
-        finally:
-            db.close()
 
 
 # Global runner instance
