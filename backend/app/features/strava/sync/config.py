@@ -39,15 +39,20 @@ class SyncConfig:
     API_CALL_DELAY = 1.5
 
     # ==========================================================================
-    # Profile Recalculation Strategy (during initial sync)
+    # First Batch Quality Threshold
     # ==========================================================================
-    # Recalculate profile at these checkpoints to avoid spam:
-    # 1. After first 5 activities (quick feedback)
-    # 2. At 30% completion
-    # 3. At 60% completion
-    # 4. At 100% completion (initial sync done)
-    INITIAL_RECALC_AFTER_N_ACTIVITIES = 5
-    INITIAL_RECALC_PROGRESS_CHECKPOINTS = [30, 60]  # percent
+    # After first batch, determines the message text:
+    # - 0 activities: "No suitable activities"
+    # - 1-4 activities: "Profile preliminary"
+    # - 5+ activities: "Profile basic"
+    FIRST_BATCH_QUALITY_THRESHOLD = 5
+
+    # ==========================================================================
+    # Sync Progress Checkpoints
+    # ==========================================================================
+    # After first batch, recalculate profile and send notification at these
+    # percentages of total_activities_estimated
+    SYNC_PROGRESS_CHECKPOINTS = [30, 60, 100]  # percent
 
     # ==========================================================================
     # Post-Initial Sync Strategy
@@ -57,5 +62,16 @@ class SyncConfig:
     # This avoids recalculating for every single new activity
     POST_SYNC_RECALC_MIN_NEW_ACTIVITIES = 3
 
-    # Progress notification interval
-    PROGRESS_NOTIFICATION_INTERVAL = 10
+    # ==========================================================================
+    # Priority Sync Settings (for new users after OAuth)
+    # ==========================================================================
+    # Optimized for 20 users/day with Strava rate limits:
+    # - 100 requests / 15 min
+    # - 1000 requests / day
+    # 1 batch = ~11 requests, so 4 batches = 44 requests per user
+    # 1000 / 50 (requests per user) = 20 users/day capacity
+    PRIORITY_SYNC_BATCH_DELAY_SECONDS = 90  # seconds between batches
+    PRIORITY_SYNC_MAX_CONSECUTIVE_BATCHES = 4  # max batches per priority sync
+
+    # Background sync interval (seconds)
+    BACKGROUND_SYNC_INTERVAL_SECONDS = 300  # 5 minutes

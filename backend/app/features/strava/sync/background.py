@@ -104,6 +104,8 @@ class BackgroundSyncRunner:
         self._running = False
         self._task: Optional[asyncio.Task] = None
         self._db_factory = None
+        # Keep strong references to priority sync tasks to prevent GC
+        self._priority_tasks: set[asyncio.Task] = set()
 
     async def start(self, db_factory):
         """Start background sync loop."""
@@ -134,8 +136,8 @@ class BackgroundSyncRunner:
             except Exception as e:
                 logger.error(f"Sync batch error: {e}")
 
-            # Wait before next batch (5 minutes)
-            await asyncio.sleep(300)
+            # Wait before next batch
+            await asyncio.sleep(SyncConfig.BACKGROUND_SYNC_INTERVAL_SECONDS)
 
     async def _process_batch(self):
         """Process one batch of users."""
@@ -154,6 +156,13 @@ class BackgroundSyncRunner:
                     result = await service.sync_user_activities(user_id)
                     logger.debug(f"Sync result for {user_id}: {result}")
 
+                    # Requeue if initial sync not complete
+                    if result.get("status") == "success":
+                        sync_status = await self._get_sync_status(db, user_id)
+                        if sync_status and not sync_status.initial_sync_complete:
+                            await sync_queue.requeue_user(user_id)
+                            logger.debug(f"Requeued user {user_id} (initial sync incomplete)")
+
                 await asyncio.sleep(SyncConfig.API_CALL_DELAY)
 
             except Exception as e:
@@ -161,6 +170,14 @@ class BackgroundSyncRunner:
 
             finally:
                 await sync_queue.mark_complete(user_id)
+
+    async def _get_sync_status(self, db, user_id: str) -> Optional[StravaSyncStatus]:
+        """Get sync status for user."""
+        from sqlalchemy import select
+        result = await db.execute(
+            select(StravaSyncStatus).where(StravaSyncStatus.user_id == user_id)
+        )
+        return result.scalar_one_or_none()
 
     async def _refresh_queue(self):
         """Refresh queue from database with users needing sync."""
@@ -191,6 +208,76 @@ class BackgroundSyncRunner:
 
             logger.info(f"Refreshed sync queue: {sync_queue.queue_size} users")
 
+    # =========================================================================
+    # Priority Sync (for new users after OAuth)
+    # =========================================================================
+
+    async def run_priority_sync(self, user_id: str):
+        """
+        Run priority sync for a user (multiple batches with short delays).
+
+        Used after OAuth to quickly sync activities.
+        Configurable via PRIORITY_SYNC_* settings.
+        """
+        logger.info(f"Starting priority sync for user {user_id}")
+
+        batches_done = 0
+        max_batches = SyncConfig.PRIORITY_SYNC_MAX_CONSECUTIVE_BATCHES
+
+        while batches_done < max_batches:
+            try:
+                async with self._db_factory() as db:
+                    service = StravaSyncService(db)
+                    result = await service.sync_user_activities(user_id)
+
+                    if result.get("status") != "success":
+                        logger.warning(f"Priority sync batch failed: {result}")
+                        break
+
+                    # Check if sync is complete
+                    sync_status = await self._get_sync_status(db, user_id)
+                    if sync_status and sync_status.initial_sync_complete:
+                        logger.info(f"Priority sync complete for user {user_id}")
+                        break
+
+                batches_done += 1
+                logger.debug(
+                    f"Priority sync batch {batches_done}/{max_batches} for {user_id}"
+                )
+
+                # Short delay between batches
+                await asyncio.sleep(SyncConfig.PRIORITY_SYNC_BATCH_DELAY_SECONDS)
+
+            except Exception as e:
+                logger.error(f"Priority sync error for {user_id}: {e}")
+                break
+
+        # After priority sync: recalculate profile and send notification if needed
+        if batches_done > 1:  # Only if we did more than first batch
+            try:
+                async with self._db_factory() as db:
+                    service = StravaSyncService(db)
+                    await service.handle_priority_sync_complete(user_id)
+            except Exception as e:
+                logger.error(f"Failed to handle priority sync completion: {e}")
+
+        # If initial sync not complete, add to background queue for continuation
+        try:
+            async with self._db_factory() as db:
+                sync_status = await self._get_sync_status(db, user_id)
+                if sync_status and not sync_status.initial_sync_complete:
+                    await sync_queue.add_user(user_id)
+                    logger.info(
+                        f"Priority sync finished, added {user_id} to background queue "
+                        f"(initial sync incomplete)"
+                    )
+                else:
+                    logger.info(
+                        f"Priority sync finished for {user_id}: {batches_done} batches"
+                    )
+        except Exception as e:
+            logger.error(f"Failed to check/requeue after priority sync: {e}")
+
 
 # Global runner instance
 background_sync = BackgroundSyncRunner()
@@ -200,14 +287,26 @@ background_sync = BackgroundSyncRunner()
 # Helper Functions
 # =============================================================================
 
-async def trigger_user_sync(user_id: str):
+async def trigger_user_sync(user_id: str, priority: bool = True):
     """
-    Trigger immediate sync for a user (e.g., after OAuth).
+    Trigger sync for a user.
 
-    Adds user to front of queue with priority.
+    Args:
+        user_id: User ID
+        priority: If True and background sync is running, runs priority sync
+                  (multiple batches with short delays). Otherwise adds to queue.
     """
-    await sync_queue.add_user(user_id, priority=True)
-    logger.info(f"Triggered priority sync for user {user_id}")
+    if priority and background_sync._running and background_sync._db_factory:
+        # Run priority sync in background task
+        # IMPORTANT: Save reference to prevent garbage collection
+        task = asyncio.create_task(background_sync.run_priority_sync(user_id))
+        background_sync._priority_tasks.add(task)
+        task.add_done_callback(background_sync._priority_tasks.discard)
+        logger.info(f"Triggered priority sync for user {user_id}")
+    else:
+        # Add to regular queue
+        await sync_queue.add_user(user_id, priority=True)
+        logger.info(f"Added user {user_id} to sync queue")
 
 
 def get_sync_stats() -> dict:

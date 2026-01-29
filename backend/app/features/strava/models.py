@@ -216,10 +216,15 @@ class StravaSyncStatus(Base):
     last_error = Column(String(500), nullable=True)
 
     # Profile recalculation tracking
-    # During initial sync: tracks which checkpoint was last reached (0, 5, 30, 60, 100)
-    last_recalc_checkpoint = Column(Integer, default=0)
     # After initial sync: count of new activities since last profile recalc
     new_activities_since_recalc = Column(Integer, default=0)
+
+    # Sync progress tracking (for notifications)
+    # Flag: first batch processed and notification sent
+    first_batch_notified = Column(Integer, default=0)  # Boolean as int
+    # Last progress checkpoint reached (0, 30, 60, 100 percent)
+    # Note: reuses last_recalc_checkpoint column with new semantics
+    last_recalc_checkpoint = Column(Integer, default=0)
 
     # Relationship
     user = relationship("User", backref="strava_sync_status")
