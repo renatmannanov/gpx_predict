@@ -104,10 +104,6 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
 
     result = f"<b>Прогноз для маршрута:</b>\n{filename}\n"
 
-    # Show personalization info if used
-    if old_prediction.personalized:
-        result += f"🎯 <i>Персонализировано ({old_prediction.activities_used} активностей)</i>\n"
-
     result += "\n"
 
     # Route summary - distance on new line
@@ -127,13 +123,16 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
     result += f"  tobler: {format_time(tobler_hours)}\n"
     result += f"  naismith: {format_time(naismith_hours)}\n"
 
-    # Personalized methods (if user has profile)
+    # Personalized methods (if user has profile) or invite to connect Strava
     if "tobler_personalized" in totals:
-        result += f"  🎯 tobler (ваш темп): {format_time(totals['tobler_personalized'])}\n"
+        result += f"  📊 tobler (ваш темп): {format_time(totals['tobler_personalized'])}\n"
     if "naismith_personalized" in totals:
-        result += f"  🎯 naismith (ваш темп): {format_time(totals['naismith_personalized'])}\n"
+        result += f"  📊 naismith (ваш темп): {format_time(totals['naismith_personalized'])}\n"
 
-    result += "\n"
+    if not old_prediction.personalized:
+        result += f"📊 <i>Хотите точнее? Подключите Strava для персонального расчёта на основе ваших активностей.</i>\n"
+
+    result += "\n——————————————\n\n"
 
     # Additional time (was "Рекомендуем добавить")
     rest_hours = comparison.get("rest_time_hours", 0)
@@ -149,7 +148,7 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
 
     # Total estimate
     total_estimate = tobler_hours + rest_hours + lunch_hours + buffer_hours
-    result += f"\n<b>Общее время:</b> ~{format_time(total_estimate)}\n\n"
+    result += f"<b>Общее время:</b> ~{format_time(total_estimate)}\n\n"
 
     # Recommended start with full schedule
     sunrise = comparison.get("sunrise", "06:00")
@@ -192,13 +191,15 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
     result += f"  {finish_time} ориентировочный финиш\n"
     result += f"  закат в {sunset}\n"
 
-    if is_late_return:
-        result += f"  🚨 Риск вернуться после заката. Стартуйте раньше или выберите маршрут короче.\n"
     result += "\n"
 
-    # Other warnings (without late return warning which is now in schedule)
+    # Warnings section
     max_elevation = comparison.get("max_elevation_m", 0)
     warnings = []
+
+    # Late return warning (first, most critical)
+    if is_late_return:
+        warnings.append(("🚨", "Риск вернуться после заката. Стартуйте раньше или выберите маршрут короче."))
 
     if total_estimate > 8:
         warnings.append(("ℹ️", "Длинный поход (8+ часов). Возьмите достаточно воды и еды."))
@@ -266,7 +267,7 @@ async def handle_document(message: Message, state: FSMContext):
         return
 
     # Download file
-    await message.answer("Загружаю файл...")
+    loading_msg = await message.answer("Загружаю файл...")
 
     try:
         file = await message.bot.get_file(document.file_id)
@@ -295,8 +296,8 @@ async def handle_document(message: Message, state: FSMContext):
         gpx_info=gpx_info,
     )
 
-    # Show GPX info and ask for activity type
-    await message.answer(format_gpx_info(gpx_info))
+    # Show GPX info (edit loading message) and ask for activity type
+    await loading_msg.edit_text(format_gpx_info(gpx_info))
     await message.answer(
         "Какой прогноз нужен?",
         reply_markup=get_activity_type_keyboard()
