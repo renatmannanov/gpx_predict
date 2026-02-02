@@ -251,10 +251,17 @@ class TrailRunService:
         results = []
         cumulative_time = 0.0
 
+        # Create calculators for all 3 GAP modes
+        strava_calc = GAPCalculator(self.flat_pace, GAPMode.STRAVA)
+        minetti_calc = GAPCalculator(self.flat_pace, GAPMode.MINETTI)
+        strava_minetti_calc = GAPCalculator(self.flat_pace, GAPMode.STRAVA_MINETTI)
+
         # Track totals by method
+        # Phase 1: "all_run_*" = all segments calculated as running (full route)
         totals = {
-            "strava_gap": 0.0,
-            "minetti_gap": 0.0,
+            "all_run_strava": 0.0,
+            "all_run_minetti": 0.0,
+            "all_run_strava_minetti": 0.0,
             "tobler": 0.0,
         }
 
@@ -263,7 +270,7 @@ class TrailRunService:
         if self._hike_pers:
             totals["hike_personalized"] = 0.0
 
-        # Combined best estimate
+        # Combined best estimate (legacy, uses threshold logic)
         totals["combined"] = 0.0
 
         running_time = 0.0
@@ -274,19 +281,28 @@ class TrailRunService:
         for segment, decision in zip(segments, decisions):
             times = {}
 
+            # Always calculate ALL 3 GAP modes for EVERY segment (for "all_run_*" totals)
+            strava_result = strava_calc.calculate_segment(segment)
+            minetti_result = minetti_calc.calculate_segment(segment)
+            strava_minetti_result = strava_minetti_calc.calculate_segment(segment)
+
+            times["strava_gap"] = strava_result.time_hours
+            times["minetti_gap"] = minetti_result.time_hours
+            times["strava_minetti_gap"] = strava_minetti_result.time_hours
+
+            # Accumulate "all_run_*" totals (full route as running)
+            totals["all_run_strava"] += strava_result.time_hours
+            totals["all_run_minetti"] += minetti_result.time_hours
+            totals["all_run_strava_minetti"] += strava_minetti_result.time_hours
+
+            # Also calculate Tobler for every segment (needed for future phases)
+            tobler_result = self._tobler_calc.calculate_segment(segment)
+            times["tobler"] = tobler_result.time_hours
+            totals["tobler"] += tobler_result.time_hours
+
             if decision.mode == MovementMode.RUN:
                 # Running segment
                 running_distance += segment.distance_km
-
-                # Always calculate both GAP modes for comparison
-                strava_calc = GAPCalculator(self.flat_pace, GAPMode.STRAVA)
-                minetti_calc = GAPCalculator(self.flat_pace, GAPMode.MINETTI)
-
-                strava_result = strava_calc.calculate_segment(segment)
-                minetti_result = minetti_calc.calculate_segment(segment)
-
-                times["strava_gap"] = strava_result.time_hours
-                times["minetti_gap"] = minetti_result.time_hours
 
                 # Run personalization
                 if self._run_pers:
@@ -298,16 +314,14 @@ class TrailRunService:
                     primary_time = times["run_personalized"]
                 elif self.gap_mode == GAPMode.STRAVA:
                     primary_time = times["strava_gap"]
-                else:
+                elif self.gap_mode == GAPMode.MINETTI:
                     primary_time = times["minetti_gap"]
+                else:  # STRAVA_MINETTI
+                    primary_time = times["strava_minetti_gap"]
 
             else:
                 # Hiking segment
                 hiking_distance += segment.distance_km
-
-                # Tobler
-                tobler_result = self._tobler_calc.calculate_segment(segment)
-                times["tobler"] = tobler_result.time_hours
 
                 # Hike personalization
                 if self._hike_pers:
@@ -339,15 +353,11 @@ class TrailRunService:
             # Add to combined total
             totals["combined"] += adjusted_time
 
-            # Accumulate totals for each method (with fatigue applied consistently)
-            for method, time in times.items():
-                if method in totals:
-                    fatigue_adj, _ = self._fatigue_service.apply_to_segment(
-                        time,
-                        cumulative_time - adjusted_time,
-                        segment.gradient_percent
-                    )
-                    totals[method] += fatigue_adj
+            # Accumulate personalized totals
+            if "run_personalized" in times and "run_personalized" in totals:
+                totals["run_personalized"] += times["run_personalized"]
+            if "hike_personalized" in times and "hike_personalized" in totals:
+                totals["hike_personalized"] += times["hike_personalized"]
 
             results.append(SegmentResult(
                 segment=segment,

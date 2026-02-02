@@ -290,7 +290,12 @@ async def compare_trail_run_methods(
             flat_pace = 6.0  # Default 10 km/h
 
     # Map GAP mode enum
-    gap_mode = GAPMode.STRAVA if request.gap_mode == GAPModeEnum.STRAVA else GAPMode.MINETTI
+    gap_mode_map = {
+        GAPModeEnum.STRAVA: GAPMode.STRAVA,
+        GAPModeEnum.MINETTI: GAPMode.MINETTI,
+        GAPModeEnum.STRAVA_MINETTI: GAPMode.STRAVA_MINETTI,
+    }
+    gap_mode = gap_mode_map.get(request.gap_mode, GAPMode.STRAVA)
 
     # Create trail run service
     service = TrailRunService(

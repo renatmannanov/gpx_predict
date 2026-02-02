@@ -19,6 +19,7 @@ class GAPModeEnum(str, Enum):
     """GAP calculation mode for trail running."""
     STRAVA = "strava_gap"
     MINETTI = "minetti_gap"
+    STRAVA_MINETTI = "strava_minetti_gap"
 
 
 class ExperienceLevel(str, Enum):

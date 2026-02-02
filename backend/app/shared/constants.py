@@ -72,3 +72,12 @@ class PredictionType(str, Enum):
     """
     HIKING = "hiking"
     TRAIL_RUN = "trail_run"
+
+
+# =============================================================================
+# Trail Run Calculation Constants
+# =============================================================================
+
+# Default gradient threshold above which runners typically switch to hiking
+# Can be overridden per-user based on their profile
+DEFAULT_HIKE_THRESHOLD_PERCENT = 25.0

@@ -5,9 +5,10 @@ Calculates adjusted pace based on terrain gradient, accounting for
 the metabolic cost of running uphill and the efficiency gains/losses
 on downhill sections.
 
-Two calculation modes are supported:
+Three calculation modes are supported:
 1. strava_gap - Pure Strava model (empirical, based on 240k athletes)
-2. minetti_gap - Hybrid: Minetti uphill + Strava downhill
+2. minetti_gap - Pure Minetti model (scientific, energy-based)
+3. strava_minetti_gap - Hybrid: Minetti uphill + Strava downhill
 
 References:
 - Minetti et al. (2002) - Energy cost of walking/running at extreme slopes
@@ -27,8 +28,9 @@ from app.services.calculators.base import MacroSegment, MethodResult
 
 class GAPMode(Enum):
     """GAP calculation mode."""
-    STRAVA = "strava_gap"      # Pure Strava model (recommended)
-    MINETTI = "minetti_gap"    # Minetti uphill + Strava downhill hybrid
+    STRAVA = "strava_gap"                  # Pure Strava model (recommended)
+    MINETTI = "minetti_gap"                # Pure Minetti model (scientific)
+    STRAVA_MINETTI = "strava_minetti_gap"  # Hybrid: Minetti uphill + Strava downhill
 
 
 @dataclass
@@ -83,8 +85,10 @@ class GAPCalculator:
 
     - STRAVA: Empirical model based on real athlete data. Recommended
               for most users as it reflects actual running behavior.
-    - MINETTI: More aggressive on steep uphills (scientific basis),
-               uses Strava for downhills (more realistic).
+    - MINETTI: Pure scientific model based on energy cost. More
+               conservative on downhills than Strava.
+    - STRAVA_MINETTI: Hybrid model - Minetti for uphills (more aggressive),
+                      Strava for downhills (more realistic).
 
     Example usage:
         # Default Strava mode (recommended)
@@ -141,8 +145,10 @@ class GAPCalculator:
         """
         if self.mode == GAPMode.STRAVA:
             return self._calculate_strava(gradient_percent)
-        else:
-            return self._calculate_minetti(gradient_percent)
+        elif self.mode == GAPMode.MINETTI:
+            return self._calculate_minetti_pure(gradient_percent)
+        else:  # STRAVA_MINETTI
+            return self._calculate_strava_minetti(gradient_percent)
 
     def calculate_segment(self, segment: MacroSegment) -> MethodResult:
         """
@@ -254,17 +260,56 @@ class GAPCalculator:
         return 1.0  # Fallback (should not reach here)
 
     # =========================================================================
-    # MINETTI MODEL
+    # MINETTI MODEL (Pure)
     # =========================================================================
 
-    def _calculate_minetti(self, gradient_percent: float) -> GAPResult:
+    def _calculate_minetti_pure(self, gradient_percent: float) -> GAPResult:
+        """
+        Pure Minetti model for any gradient (uphill and downhill).
+
+        Minetti's model is based on metabolic energy cost measurements.
+        It's more conservative on downhills compared to Strava (predicts
+        less speedup), which may be more appropriate for technical terrain.
+
+        Args:
+            gradient_percent: Gradient as percentage
+
+        Returns:
+            GAPResult with Minetti-based adjustment
+        """
+        gradient_decimal = gradient_percent / 100
+
+        # Use Minetti energy cost model for both up and down
+        energy_ratio = self._minetti_energy_cost(gradient_decimal)
+
+        # Convert energy to pace using power law relationship
+        # Empirically, pace scales roughly with energy^0.75
+        pace_adj = energy_ratio ** 0.75
+
+        # Clamp for safety (not faster than 2x flat on descents, not slower than 4x on climbs)
+        pace_adj = max(0.5, min(pace_adj, 4.0))
+
+        adjusted_pace = self.base_flat_pace * pace_adj
+
+        return GAPResult(
+            gradient_percent=gradient_percent,
+            pace_adjustment=round(pace_adj, 3),
+            adjusted_pace_min_km=round(adjusted_pace, 2),
+            energy_cost_ratio=round(energy_ratio, 3),
+            mode=GAPMode.MINETTI.value
+        )
+
+    # =========================================================================
+    # STRAVA-MINETTI HYBRID MODEL
+    # =========================================================================
+
+    def _calculate_strava_minetti(self, gradient_percent: float) -> GAPResult:
         """
         Hybrid model: Minetti for uphills, Strava for downhills.
 
-        Minetti's model is based on metabolic energy cost measurements
-        and is more aggressive on steep uphills. However, it predicts
-        unrealistic speedups on downhills, so we use Strava data for
-        descents which reflects actual running behavior.
+        Combines the best of both models:
+        - Uphills: Minetti (more aggressive, scientific basis)
+        - Downhills: Strava (realistic, based on athlete data)
 
         Args:
             gradient_percent: Gradient as percentage
@@ -277,8 +322,6 @@ class GAPCalculator:
         if gradient_decimal >= 0:
             # Uphill: use Minetti energy cost model
             energy_ratio = self._minetti_energy_cost(gradient_decimal)
-            # Convert energy to pace using power law relationship
-            # Empirically, pace scales roughly with energy^0.75
             pace_adj = energy_ratio ** 0.75
         else:
             # Downhill: use Strava (more realistic than Minetti)
@@ -292,7 +335,7 @@ class GAPCalculator:
             pace_adjustment=round(pace_adj, 3),
             adjusted_pace_min_km=round(adjusted_pace, 2),
             energy_cost_ratio=round(energy_ratio, 3),
-            mode=GAPMode.MINETTI.value
+            mode=GAPMode.STRAVA_MINETTI.value
         )
 
     def _minetti_energy_cost(self, gradient_decimal: float) -> float:
@@ -353,7 +396,7 @@ def compare_gap_modes(
     gradients: List[int] = None
 ) -> dict:
     """
-    Compare Strava vs Minetti modes for debugging and testing.
+    Compare all three GAP modes for debugging and testing.
 
     Useful for understanding the differences between models
     and validating calculations.
@@ -368,9 +411,9 @@ def compare_gap_modes(
     Example:
         >>> compare_gap_modes(6.0)
         {
-            "-15%": {"strava_adj": 0.90, "minetti_adj": 0.90, ...},
-            "0%": {"strava_adj": 1.0, "minetti_adj": 1.0, ...},
-            "20%": {"strava_adj": 2.15, "minetti_adj": 2.43, ...},
+            "-15%": {"strava": 0.90, "minetti": 0.85, "strava_minetti": 0.90, ...},
+            "0%": {"strava": 1.0, "minetti": 1.0, "strava_minetti": 1.0, ...},
+            "20%": {"strava": 2.15, "minetti": 2.43, "strava_minetti": 2.43, ...},
         }
     """
     if gradients is None:
@@ -378,17 +421,20 @@ def compare_gap_modes(
 
     strava = GAPCalculator(base_pace, GAPMode.STRAVA)
     minetti = GAPCalculator(base_pace, GAPMode.MINETTI)
+    strava_minetti = GAPCalculator(base_pace, GAPMode.STRAVA_MINETTI)
 
     comparison = {}
     for g in gradients:
         s = strava.calculate(g)
         m = minetti.calculate(g)
+        sm = strava_minetti.calculate(g)
         comparison[f"{g}%"] = {
             "strava_adj": s.pace_adjustment,
             "minetti_adj": m.pace_adjustment,
-            "difference": round(m.pace_adjustment - s.pace_adjustment, 3),
+            "strava_minetti_adj": sm.pace_adjustment,
             "strava_pace": s.adjusted_pace_min_km,
             "minetti_pace": m.adjusted_pace_min_km,
+            "strava_minetti_pace": sm.adjusted_pace_min_km,
         }
 
     return comparison

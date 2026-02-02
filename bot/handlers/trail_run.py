@@ -42,44 +42,50 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
     elevation_impact = summary.get("elevation_impact_percent", 0)
 
     lines = [
-        f"🏃 <b>Прогноз Trail Run: {gpx_name}</b>",
+        f"🏃 <b>Trail Run: {gpx_name}</b>",
         "",
-        f"📍 <b>Маршрут:</b> {distance:.1f} км, D+ {gain:.0f}м, D- {loss:.0f}м",
+        f"📍 {distance:.1f} км | D+ {gain:.0f}м | D- {loss:.0f}м",
         "",
-        "⏱ <b>Время:</b>",
+        "⏱ <b>ВРЕМЯ (всё бегом):</b>",
     ]
 
-    # Main time estimates
-    for method, hours in totals.items():
+    # Show all 3 GAP methods for full route
+    all_run_methods = [
+        ("Strava GAP", totals.get("all_run_strava", 0)),
+        ("Minetti GAP", totals.get("all_run_minetti", 0)),
+        ("Strava+Minetti", totals.get("all_run_strava_minetti", 0)),
+    ]
+
+    for method_name, hours in all_run_methods:
         if hours and hours > 0:
-            icon = "🎯" if "personalized" in method else ""
-            method_name = {
-                "strava_gap": "Strava GAP",
-                "minetti_gap": "Minetti GAP",
-                "combined": "Комбинированный",
-                "run_personalized": "Персональный (бег)",
-                "hike_personalized": "Персональный (ходьба)",
-            }.get(method, method)
-            lines.append(f"  • {method_name}: {format_time(hours)} {icon}")
+            lines.append(f"  {method_name:16} {format_time(hours)}")
+
+    # Show personalized if available
+    if totals.get("run_personalized"):
+        lines.append(f"  🎯 Персональный   {format_time(totals['run_personalized'])}")
 
     lines.append("")
-    lines.append("📊 <b>Разбивка:</b>")
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+    lines.append("")
 
+    # Run/Hike breakdown (based on threshold)
+    threshold = result.get("walk_threshold_used", 25)
     run_pct = (run_dist / distance * 100) if distance > 0 else 0
     hike_pct = (hike_dist / distance * 100) if distance > 0 else 0
 
-    lines.append(f"  • Бег: {run_dist:.1f} км ({run_pct:.0f}%) — {format_time(run_time)}")
-    lines.append(f"  • Ходьба: {hike_dist:.1f} км ({hike_pct:.0f}%) — {format_time(hike_time)}")
+    lines.append(f"📊 <b>БЕГ + ШАГ</b> (порог {threshold:.0f}%):")
+    lines.append(f"  🏃 {run_dist:.1f}км ({run_pct:.0f}%) | 🚶 {hike_dist:.1f}км ({hike_pct:.0f}%)")
+    lines.append("")
 
-    threshold = result.get("walk_threshold_used", 25)
-    lines.append(f"  • Порог ходьбы: {threshold:.0f}%")
+    # Combined time (uses threshold logic)
+    if totals.get("combined"):
+        lines.append(f"  Комбинированный: {format_time(totals['combined'])}")
 
     lines.append("")
-    lines.append(f"💪 <b>Влияние рельефа:</b> +{elevation_impact:.0f}% к плоскому времени")
+    lines.append(f"💪 <b>Влияние рельефа:</b> +{elevation_impact:.0f}%")
 
     # Fatigue info
     if result.get("fatigue_applied"):
-        fatigue_info = result.get("fatigue_info", {})
         lines.append("")
         lines.append("😓 <b>Усталость:</b> учтена")
 
@@ -87,38 +93,39 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
     if result.get("personalized"):
         activities = result.get("total_activities_used", 0)
         lines.append("")
-        lines.append(f"👤 Персонализировано на основе {activities} активностей")
+        lines.append(f"👤 На основе {activities} активностей")
 
     return "\n".join(lines)
 
 
 def format_segments(result: dict) -> str:
-    """Format segment breakdown for display."""
+    """Format ALL segments in quote block for display."""
     segments = result.get("segments", [])
     if not segments:
         return ""
 
-    lines = ["📈 <b>По сегментам:</b>", ""]
+    lines = [f"<blockquote>📊 СЕГМЕНТЫ ({len(segments)}):"]
+    lines.append("")
 
-    for i, seg in enumerate(segments[:10], 1):  # Limit to 10 segments
-        dist = seg.get("distance_km", 0)
+    for i, seg in enumerate(segments, 1):
+        distance = seg.get("distance_km", 0)
         gradient = seg.get("gradient_percent", 0)
         movement = seg.get("movement", {})
         mode = movement.get("mode", "run")
         times = seg.get("times", {})
 
-        # Get best time estimate
-        best_time = times.get("combined") or times.get("strava_gap") or 0
+        # Get time from strava_gap as primary
+        time_hours = times.get("strava_gap", 0)
 
         mode_icon = "🏃" if mode == "run" else "🚶"
         gradient_sign = "+" if gradient > 0 else ""
 
+        from utils.formatters import format_time
         lines.append(
-            f"{i}. {mode_icon} {dist:.1f}км ({gradient_sign}{gradient:.0f}%) — {format_time(best_time)}"
+            f"{i}. {mode_icon} {distance:.1f}км ({gradient_sign}{gradient:.0f}%) — {format_time(time_hours)}"
         )
 
-    if len(segments) > 10:
-        lines.append(f"... и ещё {len(segments) - 10} сегментов")
+    lines.append("</blockquote>")
 
     return "\n".join(lines)
 
