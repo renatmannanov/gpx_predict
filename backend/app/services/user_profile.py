@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.hiking import UserHikingProfile as UserPerformanceProfile
 from app.features.trail_run import UserRunProfile
 from app.features.strava import StravaActivity
+from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
 
 logger = logging.getLogger(__name__)
 
@@ -626,7 +627,7 @@ class UserProfileService:
         return profile
 
     @staticmethod
-    def _detect_walk_threshold(uphill_splits: list[dict]) -> float:
+    def _detect_walk_threshold(uphill_splits: list[dict]) -> Optional[float]:
         """
         Detect walk threshold from uphill splits.
 
@@ -636,21 +637,22 @@ class UserProfileService:
             uphill_splits: List of dicts with gradient_percent and pace_min_km
 
         Returns:
-            Detected threshold (%) or default 25%
+            Detected threshold (%) or None if not enough data to detect.
+            When None, the service will use DEFAULT_HIKE_THRESHOLD_PERCENT.
         """
-        DEFAULT_THRESHOLD = 25.0
-        MIN_THRESHOLD = 15.0
+        MIN_THRESHOLD = DEFAULT_HIKE_THRESHOLD_PERCENT
         MAX_THRESHOLD = 35.0
 
+        # Not enough data to detect - return None (will use constant default)
         if len(uphill_splits) < 10:
-            return DEFAULT_THRESHOLD
+            return None
 
         # Sort by gradient
         sorted_splits = sorted(uphill_splits, key=lambda x: x['gradient_percent'])
 
         # Find steepest pace derivative (where pace jumps most)
         max_derivative = 0
-        threshold = DEFAULT_THRESHOLD
+        detected_threshold = None
 
         for i in range(1, len(sorted_splits)):
             prev = sorted_splits[i - 1]
@@ -663,11 +665,15 @@ class UserProfileService:
                 derivative = pace_change / gradient_change
                 if derivative > max_derivative:
                     max_derivative = derivative
-                    threshold = (prev['gradient_percent'] + curr['gradient_percent']) / 2
+                    detected_threshold = (prev['gradient_percent'] + curr['gradient_percent']) / 2
+
+        # If no clear threshold found, return None
+        if detected_threshold is None:
+            return None
 
         # Clamp to reasonable range
-        threshold = max(MIN_THRESHOLD, min(MAX_THRESHOLD, threshold))
-        return round(threshold, 1)
+        detected_threshold = max(MIN_THRESHOLD, min(MAX_THRESHOLD, detected_threshold))
+        return round(detected_threshold, 1)
 
     @staticmethod
     async def delete_run_profile(user_id: str, db: AsyncSession) -> bool:

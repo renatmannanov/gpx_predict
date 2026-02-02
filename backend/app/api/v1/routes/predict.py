@@ -404,6 +404,9 @@ def _format_trail_run_result(result, flat_pace: float) -> str:
     # Time totals
     lines.append("⏱ TIME ESTIMATES:")
     for method, hours in sorted(result.totals.items()):
+        # Skip non-numeric values (like run_profile dict)
+        if not isinstance(hours, (int, float)):
+            continue
         h = int(hours)
         m = int((hours - h) * 60)
         lines.append(f"  {method}: {h}h {m:02d}min")

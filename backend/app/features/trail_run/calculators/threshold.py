@@ -14,6 +14,7 @@ from typing import List, Optional
 from enum import Enum
 
 from app.shared.calculator_types import MacroSegment
+from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
 
 
 class MovementMode(Enum):
@@ -42,18 +43,18 @@ class HikeRunThresholdService:
     - Personalization: learn threshold from Strava data
     """
 
-    # Default thresholds
-    DEFAULT_UPHILL_THRESHOLD = 15.0      # % gradient
+    # Default thresholds - use centralized constant
+    DEFAULT_UPHILL_THRESHOLD = DEFAULT_HIKE_THRESHOLD_PERCENT  # % gradient
     DEFAULT_DOWNHILL_THRESHOLD = -30.0   # % gradient (very steep technical)
 
     # Bounds for threshold adjustment
-    MIN_THRESHOLD = 15.0
+    MIN_THRESHOLD = DEFAULT_HIKE_THRESHOLD_PERCENT
     MAX_THRESHOLD = 35.0
 
     def __init__(
         self,
-        uphill_threshold: float = DEFAULT_UPHILL_THRESHOLD,
-        downhill_threshold: float = DEFAULT_DOWNHILL_THRESHOLD,
+        uphill_threshold: Optional[float] = None,
+        downhill_threshold: Optional[float] = None,
         dynamic: bool = False
     ):
         """
@@ -62,8 +63,9 @@ class HikeRunThresholdService:
             downhill_threshold: Gradient (%) below which to walk (steep descent)
             dynamic: If True, threshold decreases with fatigue
         """
-        self.base_uphill_threshold = uphill_threshold
-        self.downhill_threshold = downhill_threshold
+        # Use None defaults to avoid Python's early binding issue with class attributes
+        self.base_uphill_threshold = uphill_threshold if uphill_threshold is not None else DEFAULT_HIKE_THRESHOLD_PERCENT
+        self.downhill_threshold = downhill_threshold if downhill_threshold is not None else -30.0
         self.dynamic = dynamic
 
     @classmethod

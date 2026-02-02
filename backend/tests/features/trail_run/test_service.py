@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 from app.features.trail_run import TrailRunService, TrailRunResult
 from app.features.trail_run.calculators import GAPMode, MovementMode
+from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
 
 
 # =============================================================================
@@ -56,7 +57,7 @@ def mock_run_profile():
     profile = MagicMock()
     profile.avg_flat_pace_min_km = 5.5
     profile.total_activities = 15
-    profile.walk_threshold_percent = 25.0
+    profile.walk_threshold_percent = DEFAULT_HIKE_THRESHOLD_PERCENT
 
     # 7-category paces
     profile.avg_steep_downhill_pace_min_km = 5.0

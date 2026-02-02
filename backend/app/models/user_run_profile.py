@@ -11,6 +11,7 @@ from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
+from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
 
 
 class UserRunProfile(Base):
@@ -48,7 +49,8 @@ class UserRunProfile(Base):
 
     # === Walk threshold ===
     # Auto-detected from splits or set manually
-    walk_threshold_percent = Column(Float, nullable=True, default=25.0)
+    # NOTE: default uses constant to stay in sync with codebase
+    walk_threshold_percent = Column(Float, nullable=True, default=DEFAULT_HIKE_THRESHOLD_PERCENT)
 
     # === Statistics ===
     total_activities = Column(Integer, default=0)

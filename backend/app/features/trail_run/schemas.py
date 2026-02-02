@@ -9,6 +9,8 @@ from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
+from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
+
 
 class GAPMethod(str, Enum):
     """GAP calculation method."""
@@ -23,7 +25,7 @@ class TrailRunRequest(BaseModel):
     flat_pace_min_km: float = 6.0
     gap_method: GAPMethod = GAPMethod.STRAVA
     enable_fatigue: bool = True
-    uphill_threshold_percent: float = 25.0
+    uphill_threshold_percent: float = DEFAULT_HIKE_THRESHOLD_PERCENT
 
 
 class TrailRunSegment(BaseModel):

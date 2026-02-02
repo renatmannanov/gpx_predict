@@ -12,6 +12,7 @@ from app.features.trail_run.calculators import (
     RunPersonalizationService,
     DEFAULT_FLAT_PACE_MIN_KM,
 )
+from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
 
 
 # =============================================================================
@@ -33,7 +34,7 @@ def mock_run_profile():
     profile.avg_moderate_uphill_pace_min_km = 8.5
     profile.avg_steep_uphill_pace_min_km = 12.0
 
-    profile.walk_threshold_percent = 25.0
+    profile.walk_threshold_percent = DEFAULT_HIKE_THRESHOLD_PERCENT
 
     # Return enough samples for personalization (MIN_SAMPLES_FOR_CATEGORY = 5)
     profile.get_sample_count.return_value = 10
@@ -56,7 +57,7 @@ def mock_minimal_profile():
     profile.avg_moderate_uphill_pace_min_km = None
     profile.avg_steep_uphill_pace_min_km = None
 
-    profile.walk_threshold_percent = 25.0
+    profile.walk_threshold_percent = DEFAULT_HIKE_THRESHOLD_PERCENT
 
     # Low sample count triggers GAP fallback
     profile.get_sample_count.return_value = 2

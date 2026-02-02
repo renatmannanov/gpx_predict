@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-def _format_gap_results(totals: dict) -> list:
-    """Format 3 GAP methods from totals dict."""
+def _format_gap_results(totals: dict, include_personalized: bool = False) -> list:
+    """Format 3 GAP methods from totals dict, optionally with personalized."""
     lines = []
     all_run_methods = [
         ("Strava GAP", totals.get("all_run_strava", 0)),
@@ -38,11 +38,15 @@ def _format_gap_results(totals: dict) -> list:
         if hours and hours > 0:
             lines.append(f"  {method_name:16} {format_time(hours)}")
 
+    # Phase 3: Add personalized if available
+    if include_personalized and totals.get("all_run_personalized"):
+        lines.append(f"  🎯 Персональный   {format_time(totals['all_run_personalized'])}")
+
     return lines
 
 
 def _format_run_hike_results(totals: dict) -> list:
-    """Format 6 run+hike combinations from totals dict."""
+    """Format 6 run+hike combinations from totals dict, plus personalized."""
     lines = []
     run_hike_methods = [
         ("Strava + Tobler", totals.get("run_hike_strava_tobler", 0)),
@@ -56,6 +60,12 @@ def _format_run_hike_results(totals: dict) -> list:
     for method_name, hours in run_hike_methods:
         if hours and hours > 0:
             lines.append(f"  {method_name:18} {format_time(hours)}")
+
+    # Phase 3: Add personalized combinations if available
+    if totals.get("run_hike_personalized_tobler"):
+        lines.append(f"  🎯 Перс + Tobler   {format_time(totals['run_hike_personalized_tobler'])}")
+    if totals.get("run_hike_personalized_naismith"):
+        lines.append(f"  🎯 Перс + Naismith {format_time(totals['run_hike_personalized_naismith'])}")
 
     return lines
 
@@ -90,7 +100,7 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
         lines.append(f"👤 <b>НА ОСНОВЕ STRAVA</b> ({format_pace(strava_pace)}/км):")
         lines.append("")
         lines.append("⏱ ВСЁ БЕГОМ:")
-        lines.extend(_format_gap_results(totals_strava))
+        lines.extend(_format_gap_results(totals_strava, include_personalized=True))
 
     # Show manual/selected pace results
     lines.append("")
@@ -107,31 +117,41 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
     lines.append("")
     if not totals_strava:
         lines.append("⏱ ВСЁ БЕГОМ:")
-    lines.extend(_format_gap_results(totals_manual))
-
-    # Show personalized if available
-    if totals_manual.get("run_personalized"):
-        lines.append(f"  🎯 Персональный   {format_time(totals_manual['run_personalized'])}")
+    lines.extend(_format_gap_results(totals_manual, include_personalized=True))
 
     lines.append("")
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
     lines.append("")
 
     # Run/Hike breakdown (based on threshold) - use totals data if available
-    threshold = totals_manual.get("threshold_used") or result.get("walk_threshold_used", 25)
+    threshold = totals_manual.get("threshold_used") or result.get("walk_threshold_used", 15)
     run_dist_totals = totals_manual.get("run_distance_km", run_dist)
     hike_dist_totals = totals_manual.get("hike_distance_km", hike_dist)
     run_pct = totals_manual.get("run_percent") or ((run_dist_totals / distance * 100) if distance > 0 else 100)
     hike_pct = totals_manual.get("hike_percent") or ((hike_dist_totals / distance * 100) if distance > 0 else 0)
 
     lines.append(f"📊 <b>БЕГ + ШАГ</b> (порог {threshold:.0f}%):")
-    lines.append(f"  🏃 {run_dist_totals:.1f}км ({run_pct:.0f}%) | 🚶 {hike_dist_totals:.1f}км ({hike_pct:.0f}%)")
+    lines.append(f"  🏃 {run_dist_totals:.1f}км ({run_pct:.0f}%) | 🥾 {hike_dist_totals:.1f}км ({hike_pct:.0f}%)")
     lines.append("")
 
     # Show 6 run+hike combinations (Phase 2)
     run_hike_lines = _format_run_hike_results(totals_manual)
     if run_hike_lines:
         lines.extend(run_hike_lines)
+
+    # Phase 3: Profile meta-info (if personalized)
+    run_profile = totals_manual.get("run_profile")
+    if run_profile:
+        km = run_profile.get("total_distance_km", 0)
+        acts = run_profile.get("total_activities", 0)
+        splits = run_profile.get("total_splits", 0)
+        filled = run_profile.get("categories_filled", 0)
+        total = run_profile.get("categories_total", 7)
+
+        lines.append("")
+        lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append("")
+        lines.append(f"📈 Персонализация: {km:.0f} км, {acts} активностей, {splits} сплитов, профиль {filled} из {total}")
 
     # Fatigue info
     if result.get("fatigue_applied"):
@@ -163,7 +183,7 @@ def format_segments(result: dict) -> str:
         else:
             time_hours = times.get("strava_gap", 0)
 
-        mode_icon = "🏃" if mode == "run" else "🚶"
+        mode_icon = "🏃" if mode == "run" else "🥾"
         gradient_sign = "+" if gradient > 0 else ""
 
         lines.append(

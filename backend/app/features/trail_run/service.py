@@ -109,9 +109,17 @@ class TrailRunResult:
 
     def to_dict(self) -> dict:
         """Convert to dict for API response."""
+        # Round numeric values, pass through dicts (like run_profile)
+        totals_formatted = {}
+        for k, v in self.totals.items():
+            if isinstance(v, (int, float)):
+                totals_formatted[k] = round(v, 4)
+            else:
+                totals_formatted[k] = v
+
         return {
             "segments": [s.to_dict() for s in self.segments],
-            "totals": {k: round(v, 4) for k, v in self.totals.items()},
+            "totals": totals_formatted,
             "summary": self.summary.to_dict(),
             "personalized": self.personalized,
             "total_activities_used": self.total_activities_used,
@@ -279,6 +287,11 @@ class TrailRunService:
         if self._hike_pers:
             totals["hike_personalized"] = 0.0
 
+        # Phase 3: Personalized combinations
+        all_run_personalized = 0.0
+        run_hike_personalized_tobler = 0.0
+        run_hike_personalized_naismith = 0.0
+
         # Combined best estimate (legacy, uses threshold logic)
         totals["combined"] = 0.0
 
@@ -329,6 +342,24 @@ class TrailRunService:
                 totals["run_hike_minetti_naismith"] += naismith_result.time_hours
                 totals["run_hike_strava_minetti_tobler"] += tobler_result.time_hours
                 totals["run_hike_strava_minetti_naismith"] += naismith_result.time_hours
+
+            # Phase 3: Personalized time for this segment
+            if self._run_pers:
+                run_pers_result = self._run_pers.calculate_segment(segment)
+                run_pers_time = run_pers_result.time_hours
+            else:
+                # Fallback to strava_minetti if no personalization
+                run_pers_time = strava_minetti_result.time_hours
+
+            # Accumulate personalized totals
+            all_run_personalized += run_pers_time
+
+            if decision.mode == MovementMode.RUN:
+                run_hike_personalized_tobler += run_pers_time
+                run_hike_personalized_naismith += run_pers_time
+            else:
+                run_hike_personalized_tobler += tobler_result.time_hours
+                run_hike_personalized_naismith += naismith_result.time_hours
 
             if decision.mode == MovementMode.RUN:
                 # Running segment
@@ -403,6 +434,13 @@ class TrailRunService:
         totals["hike_percent"] = (hiking_distance / total_distance * 100) if total_distance > 0 else 0
         totals["threshold_used"] = self._threshold_service.base_uphill_threshold
 
+        # Phase 3: Add personalized totals (if profile exists)
+        if self._run_pers:
+            totals["all_run_personalized"] = all_run_personalized
+            totals["run_hike_personalized_tobler"] = run_hike_personalized_tobler
+            totals["run_hike_personalized_naismith"] = run_hike_personalized_naismith
+            totals["run_profile"] = self._build_run_profile_info()
+
         # Calculate elevation stats
         total_elevation_gain = sum(s.elevation_gain_m for s in segments)
         total_elevation_loss = sum(s.elevation_loss_m for s in segments)
@@ -461,3 +499,43 @@ class TrailRunService:
             "run_personalized": self._run_pers is not None,
             "hike_personalized": self._hike_pers is not None,
         }
+
+    def _build_run_profile_info(self) -> Optional[dict]:
+        """Build run profile info for totals output."""
+        if not self.run_profile:
+            return None
+
+        # Count filled categories (7-category system)
+        categories = [
+            self.run_profile.avg_steep_uphill_pace_min_km,
+            self.run_profile.avg_moderate_uphill_pace_min_km,
+            self.run_profile.avg_gentle_uphill_pace_min_km,
+            self.run_profile.avg_flat_pace_min_km,
+            self.run_profile.avg_gentle_downhill_pace_min_km,
+            self.run_profile.avg_moderate_downhill_pace_min_km,
+            self.run_profile.avg_steep_downhill_pace_min_km,
+        ]
+        categories_filled = sum(1 for c in categories if c is not None)
+
+        return {
+            "total_distance_km": self.run_profile.total_distance_km or 0,
+            "total_activities": self.run_profile.total_activities or 0,
+            "total_splits": self._get_total_splits(),
+            "categories_filled": categories_filled,
+            "categories_total": 7,
+        }
+
+    def _get_total_splits(self) -> int:
+        """Count total splits in run profile."""
+        if not self.run_profile:
+            return 0
+
+        return sum([
+            self.run_profile.flat_sample_count or 0,
+            self.run_profile.gentle_uphill_sample_count or 0,
+            self.run_profile.moderate_uphill_sample_count or 0,
+            self.run_profile.steep_uphill_sample_count or 0,
+            self.run_profile.gentle_downhill_sample_count or 0,
+            self.run_profile.moderate_downhill_sample_count or 0,
+            self.run_profile.steep_downhill_sample_count or 0,
+        ])

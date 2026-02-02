@@ -5,8 +5,10 @@ Pydantic models for prediction requests and responses.
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from enum import Enum
+
+from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
 
 
 class ActivityType(str, Enum):
@@ -321,13 +323,14 @@ class TrailRunCompareResponse(BaseModel):
     segments: List[TrailRunSegmentSchema]
 
     # Totals by method (hours) - based on manual/selected pace
-    totals: Dict[str, float]
+    # Note: Contains floats for times, but also run_profile dict for Phase 3
+    totals: Dict[str, Any]
 
     # Dual results: Strava pace vs Manual pace
     # If user has Strava profile, both are populated
     # If no Strava, only totals_manual is populated (same as totals)
-    totals_strava: Optional[Dict[str, float]] = None  # Results with Strava pace
-    totals_manual: Optional[Dict[str, float]] = None  # Results with selected pace
+    totals_strava: Optional[Dict[str, Any]] = None  # Results with Strava pace
+    totals_manual: Optional[Dict[str, Any]] = None  # Results with selected pace
 
     # Paces used for calculation
     strava_pace_used: Optional[float] = None  # From Strava profile (if available)
@@ -343,7 +346,7 @@ class TrailRunCompareResponse(BaseModel):
     run_activities_used: int = 0
 
     # Threshold info
-    walk_threshold_used: float = 25.0
+    walk_threshold_used: float = DEFAULT_HIKE_THRESHOLD_PERCENT
     dynamic_threshold_applied: bool = False
 
     # GAP mode used
