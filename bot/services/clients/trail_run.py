@@ -25,8 +25,8 @@ class TrailRunClient(BaseAPIClient):
         Args:
             gpx_id: ID of uploaded GPX file
             telegram_id: User's Telegram ID for personalization
-            gap_mode: GAP calculation mode ("strava_gap" or "minetti_gap")
-            flat_pace_min_km: Base flat pace (uses profile if not set)
+            gap_mode: GAP calculation mode
+            flat_pace_min_km: User-selected flat pace
             apply_fatigue: Whether to apply fatigue model
             walk_threshold_override: Override walk threshold %
 

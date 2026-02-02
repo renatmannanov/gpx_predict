@@ -233,10 +233,22 @@ async def get_trail_run_profile(
     profile_repo = TrailRunProfileRepository(db)
 
     user = await user_repo.get_by_telegram_id(telegram_id)
+    logger.info(f"get_trail_run_profile - telegram_id: '{telegram_id}' (type={type(telegram_id).__name__}), user found: {user is not None}")
+
+    # DEBUG: Check all users
+    from sqlalchemy import select
+    from app.features.users.models import User
+    result = await db.execute(select(User.telegram_id).limit(5))
+    sample_ids = [r[0] for r in result.fetchall()]
+    logger.info(f"Sample telegram_ids in DB: {sample_ids}")
+
     if not user:
         return TrailRunProfileResponse(has_profile=False)
 
     profile = await profile_repo.get_by_user_id(user.id)
+    logger.info(f"get_trail_run_profile - user_id: {user.id}, profile found: {profile is not None}")
+    if profile:
+        logger.info(f"get_trail_run_profile - avg_flat_pace: {profile.avg_flat_pace_min_km}")
     if not profile:
         return TrailRunProfileResponse(has_profile=False)
 

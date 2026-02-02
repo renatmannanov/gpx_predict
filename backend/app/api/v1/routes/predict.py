@@ -281,13 +281,21 @@ async def compare_trail_run_methods(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse GPX: {e}")
 
-    # Determine flat pace
-    flat_pace = request.flat_pace_min_km
-    if flat_pace is None:
-        if run_profile and run_profile.avg_flat_pace_min_km:
-            flat_pace = run_profile.avg_flat_pace_min_km
-        else:
-            flat_pace = 6.0  # Default 10 km/h
+    # Determine paces
+    manual_pace = request.flat_pace_min_km or 6.0  # User selected/entered pace
+
+    # Get strava_pace from profile (loaded by backend)
+    strava_pace = None
+    if run_profile and run_profile.avg_flat_pace_min_km:
+        strava_pace = run_profile.avg_flat_pace_min_km
+
+    # DEBUG: Log profile loading
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Trail run predict - run_profile exists: {run_profile is not None}")
+    if run_profile:
+        logger.info(f"Trail run predict - run_profile.avg_flat_pace_min_km: {run_profile.avg_flat_pace_min_km}")
+    logger.info(f"Trail run predict - strava_pace: {strava_pace}, manual_pace: {manual_pace}")
 
     # Map GAP mode enum
     gap_mode_map = {
@@ -297,10 +305,9 @@ async def compare_trail_run_methods(
     }
     gap_mode = gap_mode_map.get(request.gap_mode, GAPMode.STRAVA)
 
-    # Create trail run service
-    service = TrailRunService(
+    # Common service params
+    service_params = dict(
         gap_mode=gap_mode,
-        flat_pace_min_km=flat_pace,
         hike_profile=hike_profile,
         run_profile=run_profile,
         apply_fatigue=request.apply_fatigue,
@@ -309,8 +316,17 @@ async def compare_trail_run_methods(
         use_extended_gradients=request.use_extended_gradients,
     )
 
-    # Calculate
-    result = service.calculate_route(points)
+    # Calculate with manual/selected pace (always)
+    service_manual = TrailRunService(flat_pace_min_km=manual_pace, **service_params)
+    result = service_manual.calculate_route(points)
+    totals_manual = result.totals
+
+    # Calculate with Strava pace (if available)
+    totals_strava = None
+    if strava_pace and strava_pace != manual_pace:
+        service_strava = TrailRunService(flat_pace_min_km=strava_pace, **service_params)
+        result_strava = service_strava.calculate_route(points)
+        totals_strava = result_strava.totals
 
     # Convert segments to response schema
     segments = []
@@ -346,12 +362,16 @@ async def compare_trail_run_methods(
     )
 
     # Format as text for bot
-    formatted = _format_trail_run_result(result, flat_pace)
+    formatted = _format_trail_run_result(result, manual_pace)
 
     return TrailRunCompareResponse(
         activity_type="trail_run",
         segments=segments,
-        totals=result.totals,
+        totals=totals_manual,  # Primary results (manual pace)
+        totals_manual=totals_manual,
+        totals_strava=totals_strava,
+        manual_pace_used=manual_pace,
+        strava_pace_used=strava_pace,
         summary=summary,
         personalized=result.personalized,
         total_activities_used=result.total_activities_used,

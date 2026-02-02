@@ -332,8 +332,10 @@ async def handle_activity_type(callback: CallbackQuery, state: FSMContext):
             "is_loop": gpx_info.is_loop,
         }
 
-        await callback.message.edit_text("🏃 Переходим к настройке Trail Run...")
-        await start_trail_run_flow(callback.message, state, gpx_id, gpx_info_dict)
+        # Delete the activity type selection message and start trail run flow
+        await callback.message.delete()
+        user_id = str(callback.from_user.id)
+        await start_trail_run_flow(callback.message, state, gpx_id, gpx_info_dict, user_id=user_id)
     else:
         # Hiking flow - continue with existing logic
         data = await state.get_data()

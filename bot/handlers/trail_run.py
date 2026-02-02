@@ -25,31 +25,9 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-def format_trail_run_result(result: dict, gpx_name: str) -> str:
-    """Format trail run prediction result for display."""
-    summary = result.get("summary", {})
-    totals = result.get("totals", {})
-
-    distance = summary.get("total_distance_km", 0)
-    gain = summary.get("total_elevation_gain_m", 0)
-    loss = summary.get("total_elevation_loss_m", 0)
-
-    run_time = summary.get("running_time_hours", 0)
-    hike_time = summary.get("hiking_time_hours", 0)
-    run_dist = summary.get("running_distance_km", 0)
-    hike_dist = summary.get("hiking_distance_km", 0)
-
-    elevation_impact = summary.get("elevation_impact_percent", 0)
-
-    lines = [
-        f"🏃 <b>Trail Run: {gpx_name}</b>",
-        "",
-        f"📍 {distance:.1f} км | D+ {gain:.0f}м | D- {loss:.0f}м",
-        "",
-        "⏱ <b>ВРЕМЯ (всё бегом):</b>",
-    ]
-
-    # Show all 3 GAP methods for full route
+def _format_gap_results(totals: dict) -> list:
+    """Format 3 GAP methods from totals dict."""
+    lines = []
     all_run_methods = [
         ("Strava GAP", totals.get("all_run_strava", 0)),
         ("Minetti GAP", totals.get("all_run_minetti", 0)),
@@ -60,9 +38,62 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
         if hours and hours > 0:
             lines.append(f"  {method_name:16} {format_time(hours)}")
 
+    return lines
+
+
+def format_trail_run_result(result: dict, gpx_name: str) -> str:
+    """Format trail run prediction result for display with dual results."""
+    summary = result.get("summary", {})
+
+    distance = summary.get("total_distance_km", 0)
+    gain = summary.get("total_elevation_gain_m", 0)
+    loss = summary.get("total_elevation_loss_m", 0)
+    run_dist = summary.get("running_distance_km", 0)
+    hike_dist = summary.get("hiking_distance_km", 0)
+    elevation_impact = summary.get("elevation_impact_percent", 0)
+
+    # Get dual results
+    totals_strava = result.get("totals_strava")
+    totals_manual = result.get("totals_manual") or result.get("totals", {})
+    strava_pace = result.get("strava_pace_used")
+    manual_pace = result.get("manual_pace_used")
+
+    lines = [
+        f"🏃 <b>Trail Run: {gpx_name}</b>",
+        "",
+        f"📍 {distance:.1f} км | D+ {gain:.0f}м | D- {loss:.0f}м",
+    ]
+
+    # Show Strava-based results first (if available)
+    if totals_strava and strava_pace:
+        lines.append("")
+        lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append("")
+        lines.append(f"👤 <b>НА ОСНОВЕ STRAVA</b> ({format_pace(strava_pace)}/км):")
+        lines.append("")
+        lines.append("⏱ ВСЁ БЕГОМ:")
+        lines.extend(_format_gap_results(totals_strava))
+
+    # Show manual/selected pace results
+    lines.append("")
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+    lines.append("")
+
+    if totals_strava:
+        # Has both - label as "selected pace"
+        lines.append(f"📊 <b>НА ОСНОВЕ ТВОЕГО ТЕМПА</b> ({format_pace(manual_pace)}/км):")
+    else:
+        # Only manual - simpler header
+        lines.append(f"⏱ <b>ВРЕМЯ</b> (темп {format_pace(manual_pace)}/км, всё бегом):")
+
+    lines.append("")
+    if not totals_strava:
+        lines.append("⏱ ВСЁ БЕГОМ:")
+    lines.extend(_format_gap_results(totals_manual))
+
     # Show personalized if available
-    if totals.get("run_personalized"):
-        lines.append(f"  🎯 Персональный   {format_time(totals['run_personalized'])}")
+    if totals_manual.get("run_personalized"):
+        lines.append(f"  🎯 Персональный   {format_time(totals_manual['run_personalized'])}")
 
     lines.append("")
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -78,8 +109,8 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
     lines.append("")
 
     # Combined time (uses threshold logic)
-    if totals.get("combined"):
-        lines.append(f"  Комбинированный: {format_time(totals['combined'])}")
+    if totals_manual.get("combined"):
+        lines.append(f"  Комбинированный: {format_time(totals_manual['combined'])}")
 
     lines.append("")
     lines.append(f"💪 <b>Влияние рельефа:</b> +{elevation_impact:.0f}%")
@@ -88,12 +119,6 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
     if result.get("fatigue_applied"):
         lines.append("")
         lines.append("😓 <b>Усталость:</b> учтена")
-
-    # Personalization info
-    if result.get("personalized"):
-        activities = result.get("total_activities_used", 0)
-        lines.append("")
-        lines.append(f"👤 На основе {activities} активностей")
 
     return "\n".join(lines)
 
@@ -138,16 +163,37 @@ async def start_trail_run_flow(
     message: Message,
     state: FSMContext,
     gpx_id: str,
-    gpx_info: dict
+    gpx_info: dict,
+    user_id: str = None
 ):
     """
     Start trail run prediction flow.
 
     Called from prediction.py when user selects trail run activity type.
-    """
-    telegram_id = str(message.from_user.id)
+    Always asks for pace, but shows different messages based on Strava status.
 
-    # Save GPX info to state
+    Args:
+        message: Message to reply to (may be bot's message from callback)
+        state: FSM context
+        gpx_id: GPX file ID
+        gpx_info: GPX info dict
+        user_id: User's Telegram ID (required when called from callback)
+    """
+    # Use provided user_id or try to get from message
+    telegram_id = user_id or str(message.from_user.id)
+
+    # Check if user has run profile with flat pace
+    run_profile = await api_client.get_run_profile(telegram_id)
+
+    strava_pace = None
+    activities_count = 0
+
+    if run_profile and run_profile.get("avg_flat_pace_min_km"):
+        strava_pace = run_profile.get("avg_flat_pace_min_km")
+        activities_count = run_profile.get("total_activities", 0)
+        logger.debug(f"Trail run profile: pace={strava_pace}, activities={activities_count}")
+
+    # Save GPX info and Strava data to state
     await state.update_data(
         gpx_id=gpx_id,
         gpx_info=gpx_info,
@@ -155,27 +201,35 @@ async def start_trail_run_flow(
         gap_mode="strava_gap",
         apply_fatigue=False,
         flat_pace_min_km=None,
+        strava_pace=strava_pace,
+        strava_activities_count=activities_count,
     )
 
-    # Check if user has run profile
-    run_profile = await api_client.get_run_profile(telegram_id)
-    has_profile = run_profile and run_profile.get("avg_flat_pace_min_km")
+    await state.set_state(TrailRunStates.selecting_flat_pace)
 
-    if has_profile:
-        # User has profile - go directly to calculation or settings
-        await state.update_data(has_profile=True)
-        await show_trail_run_summary(message, state)
-    else:
-        # No profile - ask for flat pace
-        await state.update_data(has_profile=False)
-        await state.set_state(TrailRunStates.selecting_flat_pace)
-        await message.answer(
+    if strava_pace:
+        # User HAS Strava profile - show their pace
+        pace_formatted = format_pace(strava_pace)
+        text = (
             "🏃 <b>Какой у тебя темп на ровном?</b>\n\n"
-            "Выбери свой примерный темп бега на плоской поверхности.\n"
-            "Это будет базой для расчёта с учётом рельефа.",
-            reply_markup=get_flat_pace_keyboard(),
-            parse_mode="HTML"
+            f"<blockquote>👤 Твой темп на ровном: {pace_formatted}/км\n"
+            f"На основе {activities_count} активностей из Strava</blockquote>\n\n"
+            "Используй темп из Strava или введи свой, если не согласен "
+            "или хочешь получить другой результат."
         )
+        keyboard = get_flat_pace_keyboard(strava_pace=strava_pace)
+    else:
+        # User has NO Strava - warning message
+        text = (
+            "🏃 <b>Какой у тебя темп на ровном?</b>\n\n"
+            "<blockquote>⚠️ У тебя не подключена Strava, поэтому расчёт "
+            "будет приблизительный</blockquote>\n\n"
+            "Выбери свой примерный темп бега на плоской поверхности или введи вручную.\n"
+            "Это будет базой для расчёта с учётом рельефа."
+        )
+        keyboard = get_flat_pace_keyboard()
+
+    await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
 
 
 async def show_trail_run_summary(message: Message, state: FSMContext):
@@ -188,14 +242,18 @@ async def show_trail_run_summary(message: Message, state: FSMContext):
     loss = gpx_info.get("elevation_loss_m", 0)
     name = gpx_info.get("name") or gpx_info.get("filename", "Маршрут")
 
-    gap_mode = data.get("gap_mode", "strava_gap")
     fatigue = data.get("apply_fatigue", False)
-    has_profile = data.get("has_profile", False)
     flat_pace = data.get("flat_pace_min_km")
+    strava_pace = data.get("strava_pace")
+    strava_activities = data.get("strava_activities_count", 0)
 
-    gap_text = "Strava GAP" if gap_mode == "strava_gap" else "Minetti GAP"
     fatigue_text = "Да" if fatigue else "Нет"
-    profile_text = "Да (из Strava)" if has_profile else f"Нет ({format_pace(flat_pace)}/км)" if flat_pace else "Нет"
+
+    # Build pace info
+    pace_lines = []
+    if strava_pace:
+        pace_lines.append(f"• Strava темп: {format_pace(strava_pace)}/км ({strava_activities} активностей)")
+    pace_lines.append(f"• Твой темп: {format_pace(flat_pace)}/км")
 
     text = f"""
 🏃 <b>Trail Run: {name}</b>
@@ -203,10 +261,11 @@ async def show_trail_run_summary(message: Message, state: FSMContext):
 📍 Маршрут: {distance:.1f} км
 📈 Набор: +{gain:.0f}м / -{loss:.0f}м
 
+<b>Буду считать для:</b>
+{chr(10).join(pace_lines)}
+
 <b>Настройки:</b>
-• GAP режим: {gap_text}
 • Усталость: {fatigue_text}
-• Персонализация: {profile_text}
 
 Нажми "Рассчитать!" или измени настройки.
 """

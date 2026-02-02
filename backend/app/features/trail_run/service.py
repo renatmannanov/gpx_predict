@@ -171,11 +171,9 @@ class TrailRunService:
         self.gap_mode = gap_mode
         self.use_extended_gradients = use_extended_gradients
 
-        # Determine flat pace from profile or manual input
-        if run_profile and run_profile.avg_flat_pace_min_km:
-            self.flat_pace = run_profile.avg_flat_pace_min_km
-        else:
-            self.flat_pace = flat_pace_min_km
+        # Use provided flat_pace directly (caller decides the source)
+        # Profile is for personalization coefficients, not base pace
+        self.flat_pace = flat_pace_min_km
 
         # Store profiles
         self.hike_profile = hike_profile
