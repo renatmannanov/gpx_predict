@@ -182,16 +182,20 @@ async def start_trail_run_flow(
     # Use provided user_id or try to get from message
     telegram_id = user_id or str(message.from_user.id)
 
-    # Check if user has run profile with flat pace
-    run_profile = await api_client.get_run_profile(telegram_id)
+    # 1. Check Strava connection status
+    strava_status = await api_client.get_strava_status(telegram_id)
+    strava_connected = strava_status and strava_status.connected
 
+    # 2. Check run profile (only meaningful if Strava connected)
     strava_pace = None
     activities_count = 0
 
-    if run_profile and run_profile.get("avg_flat_pace_min_km"):
-        strava_pace = run_profile.get("avg_flat_pace_min_km")
-        activities_count = run_profile.get("total_activities", 0)
-        logger.debug(f"Trail run profile: pace={strava_pace}, activities={activities_count}")
+    if strava_connected:
+        run_profile = await api_client.get_run_profile(telegram_id)
+        if run_profile and run_profile.get("avg_flat_pace_min_km"):
+            strava_pace = run_profile.get("avg_flat_pace_min_km")
+            activities_count = run_profile.get("total_activities", 0)
+            logger.debug(f"Trail run profile: pace={strava_pace}, activities={activities_count}")
 
     # Save GPX info and Strava data to state
     await state.update_data(
@@ -203,27 +207,40 @@ async def start_trail_run_flow(
         flat_pace_min_km=None,
         strava_pace=strava_pace,
         strava_activities_count=activities_count,
+        strava_connected=strava_connected,
     )
 
     await state.set_state(TrailRunStates.selecting_flat_pace)
 
+    # 3. Build message based on scenario
     if strava_pace:
-        # User HAS Strava profile - show their pace
+        # Scenario 1: Has run profile with pace
         pace_formatted = format_pace(strava_pace)
         text = (
             "🏃 <b>Какой у тебя темп на ровном?</b>\n\n"
             f"<blockquote>👤 Твой темп на ровном: {pace_formatted}/км\n"
             f"На основе {activities_count} активностей из Strava</blockquote>\n\n"
-            "Используй темп из Strava или введи свой, если не согласен "
-            "или хочешь получить другой результат."
+            "Используй темп из Strava или введи свой."
         )
         keyboard = get_flat_pace_keyboard(strava_pace=strava_pace)
-    else:
-        # User has NO Strava - warning message
+
+    elif strava_connected:
+        # Scenario 2: Strava connected but no run profile
         text = (
             "🏃 <b>Какой у тебя темп на ровном?</b>\n\n"
-            "<blockquote>⚠️ У тебя не подключена Strava, поэтому расчёт "
-            "будет приблизительный</blockquote>\n\n"
+            "<blockquote>⚠️ Strava подключена, но недостаточно беговых данных "
+            "для расчёта твоего темпа.\n\n"
+            "Нужно минимум 5 км бега с GPS для анализа.</blockquote>\n\n"
+            "Выбери свой примерный темп или введи вручную."
+        )
+        keyboard = get_flat_pace_keyboard()
+
+    else:
+        # Scenario 3: Strava not connected
+        text = (
+            "🏃 <b>Какой у тебя темп на ровном?</b>\n\n"
+            "<blockquote>⚠️ Strava не подключена — расчёт будет "
+            "на основе выбранного темпа.</blockquote>\n\n"
             "Выбери свой примерный темп бега на плоской поверхности или введи вручную.\n"
             "Это будет базой для расчёта с учётом рельефа."
         )
