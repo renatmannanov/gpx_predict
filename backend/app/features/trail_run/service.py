@@ -505,24 +505,73 @@ class TrailRunService:
         if not self.run_profile:
             return None
 
-        # Count filled categories (7-category system)
-        categories = [
-            self.run_profile.avg_steep_uphill_pace_min_km,
-            self.run_profile.avg_moderate_uphill_pace_min_km,
-            self.run_profile.avg_gentle_uphill_pace_min_km,
-            self.run_profile.avg_flat_pace_min_km,
-            self.run_profile.avg_gentle_downhill_pace_min_km,
-            self.run_profile.avg_moderate_downhill_pace_min_km,
-            self.run_profile.avg_steep_downhill_pace_min_km,
+        # Minimum samples for personalization
+        MIN_SAMPLES = 5
+
+        # Build detailed gradient profile
+        gradient_profile = [
+            {
+                "category": "steep_uphill",
+                "label": "steep_up (+15%↑)",
+                "pace": self.run_profile.avg_steep_uphill_pace_min_km,
+                "samples": self.run_profile.steep_uphill_sample_count or 0,
+                "is_personal": (self.run_profile.steep_uphill_sample_count or 0) >= MIN_SAMPLES,
+            },
+            {
+                "category": "moderate_uphill",
+                "label": "moderate_up (+8-15%)",
+                "pace": self.run_profile.avg_moderate_uphill_pace_min_km,
+                "samples": self.run_profile.moderate_uphill_sample_count or 0,
+                "is_personal": (self.run_profile.moderate_uphill_sample_count or 0) >= MIN_SAMPLES,
+            },
+            {
+                "category": "gentle_uphill",
+                "label": "gentle_up (+3-8%)",
+                "pace": self.run_profile.avg_gentle_uphill_pace_min_km,
+                "samples": self.run_profile.gentle_uphill_sample_count or 0,
+                "is_personal": (self.run_profile.gentle_uphill_sample_count or 0) >= MIN_SAMPLES,
+            },
+            {
+                "category": "flat",
+                "label": "flat (-3 to +3%)",
+                "pace": self.run_profile.avg_flat_pace_min_km,
+                "samples": self.run_profile.flat_sample_count or 0,
+                "is_personal": (self.run_profile.flat_sample_count or 0) >= MIN_SAMPLES,
+            },
+            {
+                "category": "gentle_downhill",
+                "label": "gentle_down (-3-8%)",
+                "pace": self.run_profile.avg_gentle_downhill_pace_min_km,
+                "samples": self.run_profile.gentle_downhill_sample_count or 0,
+                "is_personal": (self.run_profile.gentle_downhill_sample_count or 0) >= MIN_SAMPLES,
+            },
+            {
+                "category": "moderate_downhill",
+                "label": "moderate_dn (-8-15%)",
+                "pace": self.run_profile.avg_moderate_downhill_pace_min_km,
+                "samples": self.run_profile.moderate_downhill_sample_count or 0,
+                "is_personal": (self.run_profile.moderate_downhill_sample_count or 0) >= MIN_SAMPLES,
+            },
+            {
+                "category": "steep_downhill",
+                "label": "steep_down (-15%↓)",
+                "pace": self.run_profile.avg_steep_downhill_pace_min_km,
+                "samples": self.run_profile.steep_downhill_sample_count or 0,
+                "is_personal": (self.run_profile.steep_downhill_sample_count or 0) >= MIN_SAMPLES,
+            },
         ]
-        categories_filled = sum(1 for c in categories if c is not None)
+
+        # Count categories with enough samples for personalization
+        categories_personal = sum(1 for g in gradient_profile if g["is_personal"])
 
         return {
             "total_distance_km": self.run_profile.total_distance_km or 0,
             "total_activities": self.run_profile.total_activities or 0,
             "total_splits": self._get_total_splits(),
-            "categories_filled": categories_filled,
+            "categories_filled": categories_personal,
             "categories_total": 7,
+            "gradient_profile": gradient_profile,
+            "min_samples_threshold": MIN_SAMPLES,
         }
 
     def _get_total_splits(self) -> int:

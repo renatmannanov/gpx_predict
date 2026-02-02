@@ -589,6 +589,14 @@ class UserProfileService:
             profile.avg_gentle_downhill_pace_min_km = extended_paces['gentle_downhill']
             profile.avg_moderate_downhill_pace_min_km = extended_paces['moderate_downhill']
             profile.avg_steep_downhill_pace_min_km = extended_paces['steep_downhill']
+            # Sample counts for confidence assessment
+            profile.flat_sample_count = len(splits_by_category['flat'])
+            profile.gentle_uphill_sample_count = len(splits_by_category['gentle_uphill'])
+            profile.moderate_uphill_sample_count = len(splits_by_category['moderate_uphill'])
+            profile.steep_uphill_sample_count = len(splits_by_category['steep_uphill'])
+            profile.gentle_downhill_sample_count = len(splits_by_category['gentle_downhill'])
+            profile.moderate_downhill_sample_count = len(splits_by_category['moderate_downhill'])
+            profile.steep_downhill_sample_count = len(splits_by_category['steep_downhill'])
             profile.walk_threshold_percent = walk_threshold
             profile.total_activities = len(activity_ids)
             profile.total_distance_km = total_distance
@@ -606,6 +614,14 @@ class UserProfileService:
                 avg_gentle_downhill_pace_min_km=extended_paces['gentle_downhill'],
                 avg_moderate_downhill_pace_min_km=extended_paces['moderate_downhill'],
                 avg_steep_downhill_pace_min_km=extended_paces['steep_downhill'],
+                # Sample counts for confidence assessment
+                flat_sample_count=len(splits_by_category['flat']),
+                gentle_uphill_sample_count=len(splits_by_category['gentle_uphill']),
+                moderate_uphill_sample_count=len(splits_by_category['moderate_uphill']),
+                steep_uphill_sample_count=len(splits_by_category['steep_uphill']),
+                gentle_downhill_sample_count=len(splits_by_category['gentle_downhill']),
+                moderate_downhill_sample_count=len(splits_by_category['moderate_downhill']),
+                steep_downhill_sample_count=len(splits_by_category['steep_downhill']),
                 walk_threshold_percent=walk_threshold,
                 total_activities=len(activity_ids),
                 total_distance_km=total_distance,

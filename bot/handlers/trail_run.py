@@ -153,6 +153,12 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
         lines.append("")
         lines.append(f"📈 Персонализация: {km:.0f} км, {acts} активностей, {splits} сплитов, профиль {filled} из {total}")
 
+        # Gradient profile breakdown
+        gradient_profile = run_profile.get("gradient_profile", [])
+        if gradient_profile:
+            lines.append("")
+            lines.append(_format_gradient_profile(gradient_profile))
+
     # Fatigue info
     if result.get("fatigue_applied"):
         lines.append("")
@@ -189,6 +195,33 @@ def format_segments(result: dict) -> str:
         lines.append(
             f"{i}. {mode_icon} {distance:.1f}км ({gradient_sign}{gradient:.0f}%) — {format_time(time_hours)}"
         )
+
+    lines.append("</blockquote>")
+
+    return "\n".join(lines)
+
+
+def _format_gradient_profile(gradient_profile: list) -> str:
+    """Format gradient profile as blockquote showing pace sources."""
+    lines = ["<blockquote>📊 Профиль по градиентам (✓ свой / GAP формула):"]
+    lines.append("")
+
+    for item in gradient_profile:
+        label = item.get("label", "")
+        pace = item.get("pace")
+        samples = item.get("samples", 0)
+        is_personal = item.get("is_personal", False)
+
+        # Format pace
+        if pace:
+            pace_str = f"{pace:5.2f}"
+        else:
+            pace_str = "  —  "
+
+        # Source indicator
+        source = "✓" if is_personal else "GAP"
+
+        lines.append(f"  {label:20} {pace_str} ({samples:2}) {source}")
 
     lines.append("</blockquote>")
 
