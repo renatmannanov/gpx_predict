@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List
 
-from app.services.calculators.base import MacroSegment, MethodResult
+from app.shared.calculator_types import MacroSegment, MethodResult
 
 
 class GAPMode(Enum):

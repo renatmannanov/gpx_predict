@@ -41,6 +41,25 @@ def _format_gap_results(totals: dict) -> list:
     return lines
 
 
+def _format_run_hike_results(totals: dict) -> list:
+    """Format 6 run+hike combinations from totals dict."""
+    lines = []
+    run_hike_methods = [
+        ("Strava + Tobler", totals.get("run_hike_strava_tobler", 0)),
+        ("Strava + Naismith", totals.get("run_hike_strava_naismith", 0)),
+        ("Minetti + Tobler", totals.get("run_hike_minetti_tobler", 0)),
+        ("Minetti + Naismith", totals.get("run_hike_minetti_naismith", 0)),
+        ("S+M + Tobler", totals.get("run_hike_strava_minetti_tobler", 0)),
+        ("S+M + Naismith", totals.get("run_hike_strava_minetti_naismith", 0)),
+    ]
+
+    for method_name, hours in run_hike_methods:
+        if hours and hours > 0:
+            lines.append(f"  {method_name:18} {format_time(hours)}")
+
+    return lines
+
+
 def format_trail_run_result(result: dict, gpx_name: str) -> str:
     """Format trail run prediction result for display with dual results."""
     summary = result.get("summary", {})
@@ -50,7 +69,6 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
     loss = summary.get("total_elevation_loss_m", 0)
     run_dist = summary.get("running_distance_km", 0)
     hike_dist = summary.get("hiking_distance_km", 0)
-    elevation_impact = summary.get("elevation_impact_percent", 0)
 
     # Get dual results
     totals_strava = result.get("totals_strava")
@@ -99,21 +117,21 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
     lines.append("")
 
-    # Run/Hike breakdown (based on threshold)
-    threshold = result.get("walk_threshold_used", 25)
-    run_pct = (run_dist / distance * 100) if distance > 0 else 0
-    hike_pct = (hike_dist / distance * 100) if distance > 0 else 0
+    # Run/Hike breakdown (based on threshold) - use totals data if available
+    threshold = totals_manual.get("threshold_used") or result.get("walk_threshold_used", 25)
+    run_dist_totals = totals_manual.get("run_distance_km", run_dist)
+    hike_dist_totals = totals_manual.get("hike_distance_km", hike_dist)
+    run_pct = totals_manual.get("run_percent") or ((run_dist_totals / distance * 100) if distance > 0 else 100)
+    hike_pct = totals_manual.get("hike_percent") or ((hike_dist_totals / distance * 100) if distance > 0 else 0)
 
     lines.append(f"📊 <b>БЕГ + ШАГ</b> (порог {threshold:.0f}%):")
-    lines.append(f"  🏃 {run_dist:.1f}км ({run_pct:.0f}%) | 🚶 {hike_dist:.1f}км ({hike_pct:.0f}%)")
+    lines.append(f"  🏃 {run_dist_totals:.1f}км ({run_pct:.0f}%) | 🚶 {hike_dist_totals:.1f}км ({hike_pct:.0f}%)")
     lines.append("")
 
-    # Combined time (uses threshold logic)
-    if totals_manual.get("combined"):
-        lines.append(f"  Комбинированный: {format_time(totals_manual['combined'])}")
-
-    lines.append("")
-    lines.append(f"💪 <b>Влияние рельефа:</b> +{elevation_impact:.0f}%")
+    # Show 6 run+hike combinations (Phase 2)
+    run_hike_lines = _format_run_hike_results(totals_manual)
+    if run_hike_lines:
+        lines.extend(run_hike_lines)
 
     # Fatigue info
     if result.get("fatigue_applied"):
@@ -139,13 +157,15 @@ def format_segments(result: dict) -> str:
         mode = movement.get("mode", "run")
         times = seg.get("times", {})
 
-        # Get time from strava_gap as primary
-        time_hours = times.get("strava_gap", 0)
+        # Get time based on movement mode (Phase 2)
+        if mode == "hike":
+            time_hours = times.get("tobler", 0)
+        else:
+            time_hours = times.get("strava_gap", 0)
 
         mode_icon = "🏃" if mode == "run" else "🚶"
         gradient_sign = "+" if gradient > 0 else ""
 
-        from utils.formatters import format_time
         lines.append(
             f"{i}. {mode_icon} {distance:.1f}км ({gradient_sign}{gradient:.0f}%) — {format_time(time_hours)}"
         )

@@ -16,7 +16,9 @@ from typing import List, Optional, Dict, Any
 
 from app.shared.calculator_types import MacroSegment
 from app.features.gpx import RouteSegmenter
-from app.features.hiking.calculators import ToblerCalculator, HikePersonalizationService
+from app.features.hiking.calculators.tobler import ToblerCalculator
+from app.features.hiking.calculators.naismith import NaismithCalculator
+from app.features.hiking.calculators.personalization import HikePersonalizationService
 from app.features.trail_run.calculators.personalization import RunPersonalizationService
 from app.features.trail_run.calculators.gap import GAPCalculator, GAPMode
 from app.features.trail_run.calculators.threshold import (
@@ -182,6 +184,7 @@ class TrailRunService:
         # Calculators
         self._gap_calc = GAPCalculator(self.flat_pace, gap_mode)
         self._tobler_calc = ToblerCalculator()
+        self._naismith_calc = NaismithCalculator()
 
         # Personalization services (if profiles valid)
         self._run_pers = None
@@ -199,7 +202,7 @@ class TrailRunService:
             threshold = run_profile.walk_threshold_percent
 
         self._threshold_service = HikeRunThresholdService(
-            uphill_threshold=threshold or 25.0,
+            uphill_threshold=threshold or HikeRunThresholdService.DEFAULT_UPHILL_THRESHOLD,
             dynamic=apply_dynamic_threshold
         )
 
@@ -261,6 +264,14 @@ class TrailRunService:
             "all_run_minetti": 0.0,
             "all_run_strava_minetti": 0.0,
             "tobler": 0.0,
+            "naismith": 0.0,
+            # Phase 2: "run_hike_*" = run on flat/moderate, hike on steep (6 combinations)
+            "run_hike_strava_tobler": 0.0,
+            "run_hike_strava_naismith": 0.0,
+            "run_hike_minetti_tobler": 0.0,
+            "run_hike_minetti_naismith": 0.0,
+            "run_hike_strava_minetti_tobler": 0.0,
+            "run_hike_strava_minetti_naismith": 0.0,
         }
 
         if self._run_pers:
@@ -293,10 +304,31 @@ class TrailRunService:
             totals["all_run_minetti"] += minetti_result.time_hours
             totals["all_run_strava_minetti"] += strava_minetti_result.time_hours
 
-            # Also calculate Tobler for every segment (needed for future phases)
+            # Calculate hiking methods for every segment
             tobler_result = self._tobler_calc.calculate_segment(segment)
+            naismith_result = self._naismith_calc.calculate_segment(segment)
             times["tobler"] = tobler_result.time_hours
+            times["naismith"] = naismith_result.time_hours
             totals["tobler"] += tobler_result.time_hours
+            totals["naismith"] += naismith_result.time_hours
+
+            # Phase 2: Accumulate run_hike_* totals based on threshold decision
+            if decision.mode == MovementMode.RUN:
+                # RUN segment: use GAP times for run_hike_* totals
+                totals["run_hike_strava_tobler"] += strava_result.time_hours
+                totals["run_hike_strava_naismith"] += strava_result.time_hours
+                totals["run_hike_minetti_tobler"] += minetti_result.time_hours
+                totals["run_hike_minetti_naismith"] += minetti_result.time_hours
+                totals["run_hike_strava_minetti_tobler"] += strava_minetti_result.time_hours
+                totals["run_hike_strava_minetti_naismith"] += strava_minetti_result.time_hours
+            else:
+                # HIKE segment: use hiking times for run_hike_* totals
+                totals["run_hike_strava_tobler"] += tobler_result.time_hours
+                totals["run_hike_strava_naismith"] += naismith_result.time_hours
+                totals["run_hike_minetti_tobler"] += tobler_result.time_hours
+                totals["run_hike_minetti_naismith"] += naismith_result.time_hours
+                totals["run_hike_strava_minetti_tobler"] += tobler_result.time_hours
+                totals["run_hike_strava_minetti_naismith"] += naismith_result.time_hours
 
             if decision.mode == MovementMode.RUN:
                 # Running segment
@@ -363,6 +395,13 @@ class TrailRunService:
                 times=times,
                 fatigue_multiplier=multiplier
             ))
+
+        # Add run/hike statistics to totals (Phase 2)
+        totals["run_distance_km"] = running_distance
+        totals["hike_distance_km"] = hiking_distance
+        totals["run_percent"] = (running_distance / total_distance * 100) if total_distance > 0 else 100
+        totals["hike_percent"] = (hiking_distance / total_distance * 100) if total_distance > 0 else 0
+        totals["threshold_used"] = self._threshold_service.base_uphill_threshold
 
         # Calculate elevation stats
         total_elevation_gain = sum(s.elevation_gain_m for s in segments)

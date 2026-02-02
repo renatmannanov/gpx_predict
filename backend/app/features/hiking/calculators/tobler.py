@@ -5,7 +5,7 @@ Tobler's Hiking Function (1993) - exponential speed model.
 """
 
 from app.shared.formulas import tobler_hiking_speed
-from app.services.calculators.base import (
+from app.shared.calculator_types import (
     PaceCalculator,
     MacroSegment,
     MethodResult,

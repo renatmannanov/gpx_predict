@@ -13,7 +13,7 @@ import math
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from app.services.calculators.base import MacroSegment, MethodResult
+from app.shared.calculator_types import MacroSegment, MethodResult
 
 
 # Gradient thresholds for terrain classification (7 categories)

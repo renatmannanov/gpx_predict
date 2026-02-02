@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 from enum import Enum
 
-from app.services.calculators.base import MacroSegment
+from app.shared.calculator_types import MacroSegment
 
 
 class MovementMode(Enum):
@@ -43,7 +43,7 @@ class HikeRunThresholdService:
     """
 
     # Default thresholds
-    DEFAULT_UPHILL_THRESHOLD = 25.0      # % gradient
+    DEFAULT_UPHILL_THRESHOLD = 15.0      # % gradient
     DEFAULT_DOWNHILL_THRESHOLD = -30.0   # % gradient (very steep technical)
 
     # Bounds for threshold adjustment

@@ -4,7 +4,7 @@ Naismith Calculator
 Classic Naismith's Rule (1892) with Langmuir corrections for descent.
 """
 
-from app.services.calculators.base import (
+from app.shared.calculator_types import (
     PaceCalculator,
     MacroSegment,
     MethodResult,

@@ -32,15 +32,9 @@ from app.services.calculators.base import (
     SegmentCalculation,
 )
 
-# Comparison service - stays here (orchestrates both hiking and trail_run)
-from app.services.calculators.comparison import (
-    ComparisonService,
-    SegmentComparison,
-    RouteComparison,
-)
-
 # =============================================================================
 # Hiking calculators - re-export from features/hiking/calculators
+# MUST come before comparison to avoid circular import
 # =============================================================================
 from app.features.hiking.calculators import (
     ToblerCalculator,
@@ -81,10 +75,19 @@ from app.features.trail_run.calculators import (
 )
 
 # =============================================================================
-# Segmenter - import LAST to avoid circular imports
-# (segmenter.py re-exports from features/gpx/segmenter which imports from base)
+# Segmenter
 # =============================================================================
 from app.features.gpx.segmenter import RouteSegmenter
+
+# =============================================================================
+# Comparison service - MUST come AFTER hiking/trail_run to avoid circular import
+# (comparison.py imports from hiking/calculators)
+# =============================================================================
+from app.services.calculators.comparison import (
+    ComparisonService,
+    SegmentComparison,
+    RouteComparison,
+)
 
 __all__ = [
     # Base classes (stay here)
