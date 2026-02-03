@@ -16,6 +16,7 @@ from .service import (
     CalibrationMode,
     MODE_PRESETS,
 )
+from .report import ReportGenerator
 
 __all__ = [
     # Virtual route
@@ -36,4 +37,6 @@ __all__ = [
     "BacktestReport",
     "CalibrationMode",
     "MODE_PRESETS",
+    # Report
+    "ReportGenerator",
 ]
