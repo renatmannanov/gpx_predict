@@ -7,11 +7,12 @@ Used for personalizing trail running time predictions.
 
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey
+from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
 from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
+from app.shared.gradients import LEGACY_CATEGORY_MAPPING
 
 
 class UserRunProfile(Base):
@@ -46,6 +47,12 @@ class UserRunProfile(Base):
     gentle_downhill_sample_count = Column(Integer, default=0)
     moderate_downhill_sample_count = Column(Integer, default=0)
     steep_downhill_sample_count = Column(Integer, default=0)
+
+    # === 11-category gradient data (JSON) ===
+    # {category: {"avg": float, "samples": int}} — 11 categories from shared/gradients.py
+    gradient_paces = Column(JSON, nullable=True)
+    # {category: {"p25": float, "p50": float, "p75": float}} — percentiles after IQR
+    gradient_percentiles = Column(JSON, nullable=True)
 
     # === Walk threshold ===
     # Auto-detected from splits or set manually
@@ -96,7 +103,7 @@ class UserRunProfile(Base):
         return None
 
     def get_sample_count(self, category: str) -> int:
-        """Get sample count for a gradient category."""
+        """Get sample count for a legacy 7-category gradient."""
         mapping = {
             'flat': self.flat_sample_count,
             'gentle_uphill': self.gentle_uphill_sample_count,
@@ -108,6 +115,36 @@ class UserRunProfile(Base):
         }
         return mapping.get(category, 0) or 0
 
+    def get_pace_for_category(self, category: str) -> Optional[float]:
+        """Get avg pace from JSON (11-cat), fallback to legacy column (7-cat)."""
+        if self.gradient_paces and category in self.gradient_paces:
+            return self.gradient_paces[category].get('avg')
+        # Fallback to legacy column
+        legacy_name = LEGACY_CATEGORY_MAPPING.get(category)
+        if legacy_name:
+            field = f"avg_{legacy_name}_pace_min_km"
+            return getattr(self, field, None)
+        return None
+
+    def get_percentile(self, category: str, percentile: str) -> Optional[float]:
+        """Get percentile (p25/p50/p75) for a gradient category."""
+        if not self.gradient_percentiles:
+            return None
+        cat_data = self.gradient_percentiles.get(category)
+        if not cat_data:
+            return None
+        return cat_data.get(percentile)
+
+    def get_sample_count_extended(self, category: str) -> int:
+        """Get sample count from JSON (11-cat), fallback to legacy column."""
+        if self.gradient_paces and category in self.gradient_paces:
+            return self.gradient_paces[category].get('samples', 0)
+        # Fallback to legacy column
+        legacy_name = LEGACY_CATEGORY_MAPPING.get(category)
+        if legacy_name:
+            return self.get_sample_count(legacy_name)
+        return 0
+
     def to_dict(self) -> dict:
         """Convert to dict for API responses."""
         return {
@@ -118,6 +155,8 @@ class UserRunProfile(Base):
             "avg_gentle_downhill_pace_min_km": self.avg_gentle_downhill_pace_min_km,
             "avg_moderate_downhill_pace_min_km": self.avg_moderate_downhill_pace_min_km,
             "avg_steep_downhill_pace_min_km": self.avg_steep_downhill_pace_min_km,
+            "gradient_paces": self.gradient_paces,
+            "gradient_percentiles": self.gradient_percentiles,
             "walk_threshold_percent": self.walk_threshold_percent,
             "flat_speed_kmh": self.flat_speed_kmh,
             "total_activities": self.total_activities,

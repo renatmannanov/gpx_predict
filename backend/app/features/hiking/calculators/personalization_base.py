@@ -18,6 +18,7 @@ from app.shared.gradients import (
     LEGACY_GRADIENT_THRESHOLDS as GRADIENT_THRESHOLDS,
     FLAT_GRADIENT_MIN,
     FLAT_GRADIENT_MAX,
+    classify_gradient,
     classify_gradient_legacy,
 )
 
@@ -158,10 +159,13 @@ class BasePersonalizationService(ABC):
 
     def _classify_gradient_extended(self, gradient_percent: float) -> str:
         """
-        Classify gradient into one of 7 legacy categories.
+        Classify gradient into extended categories.
 
-        Delegates to shared.gradients.classify_gradient_legacy().
+        Returns 11-category name if use_11_categories is True,
+        otherwise legacy 7-category name.
         """
+        if getattr(self, 'use_11_categories', False):
+            return classify_gradient(gradient_percent)
         return classify_gradient_legacy(gradient_percent)
 
     def _classify_terrain(self, gradient_percent: float) -> str:

@@ -41,6 +41,10 @@ class RunPersonalizationService(BasePersonalizationService):
     ):
         super().__init__(use_extended_gradients)
         self.profile = profile
+        # Use 11-category system when JSON data is available
+        self.use_11_categories = bool(
+            profile and profile.gradient_paces
+        )
 
         # GAP calculator for fallback
         flat_pace = profile.avg_flat_pace_min_km if profile else DEFAULT_FLAT_PACE_MIN_KM
@@ -57,31 +61,20 @@ class RunPersonalizationService(BasePersonalizationService):
 
     def _get_pace_for_category(self, category: str) -> Optional[float]:
         """
-        Map 7-category to profile fields.
+        Get pace for a gradient category.
 
-        Returns None (triggers GAP fallback) if:
-        - Profile doesn't exist
-        - Pace value is None
-        - Sample count for category is below MIN_SAMPLES_FOR_CATEGORY
+        Supports both 11-category (JSON) and 7-category (legacy columns).
+        Returns None (triggers GAP fallback) if insufficient data.
         """
         if not self.profile:
             return None
 
-        # Check sample count - if too few samples, don't trust the pace
-        sample_count = self.profile.get_sample_count(category)
+        # Check sample count (works for both 11-cat and 7-cat)
+        sample_count = self.profile.get_sample_count_extended(category)
         if sample_count < MIN_SAMPLES_FOR_CATEGORY:
             return None  # Fall back to GAP
 
-        mapping = {
-            'steep_downhill': self.profile.avg_steep_downhill_pace_min_km,
-            'moderate_downhill': self.profile.avg_moderate_downhill_pace_min_km,
-            'gentle_downhill': self.profile.avg_gentle_downhill_pace_min_km,
-            'flat': self.profile.avg_flat_pace_min_km,
-            'gentle_uphill': self.profile.avg_gentle_uphill_pace_min_km,
-            'moderate_uphill': self.profile.avg_moderate_uphill_pace_min_km,
-            'steep_uphill': self.profile.avg_steep_uphill_pace_min_km,
-        }
-        return mapping.get(category)
+        return self.profile.get_pace_for_category(category)
 
     def _get_default_speed(self) -> float:
         """Default 10 km/h for runners."""

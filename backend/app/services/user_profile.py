@@ -18,17 +18,20 @@ from app.features.trail_run import UserRunProfile
 from app.features.strava import StravaActivity
 from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
 from app.shared.gradients import (
+    GRADIENT_THRESHOLDS,
     LEGACY_GRADIENT_THRESHOLDS,
+    LEGACY_CATEGORY_MAPPING,
     FLAT_GRADIENT_MIN,
     FLAT_GRADIENT_MAX,
+    classify_gradient,
     classify_gradient_legacy,
 )
 
 logger = logging.getLogger(__name__)
 
 
-# Re-export for backward compatibility (used as GRADIENT_THRESHOLDS in this file)
-GRADIENT_THRESHOLDS = LEGACY_GRADIENT_THRESHOLDS
+# Note: GRADIENT_THRESHOLDS (11-cat) is imported from shared.gradients
+# LEGACY_GRADIENT_THRESHOLDS (7-cat) also imported for backward compatibility
 
 # Outlier filtering thresholds for pace data
 # Paces outside this range are considered stops/errors, not actual hiking
@@ -58,6 +61,27 @@ def filter_outliers_iqr(paces: list[float]) -> list[float]:
     upper = q3 + 1.5 * iqr
 
     return [p for p in paces if lower <= p <= upper]
+
+
+def calculate_percentiles(filtered_paces: list[float]) -> dict | None:
+    """
+    Calculate P25, P50 (median), P75 from already IQR-filtered data.
+
+    Takes pre-filtered paces. IQR is already applied once in the main flow.
+    """
+    if not filtered_paces:
+        return None
+
+    if len(filtered_paces) < 3:
+        median = statistics.median(filtered_paces)
+        return {'p25': median, 'p50': median, 'p75': median}
+
+    q1, q2, q3 = statistics.quantiles(filtered_paces, n=4)
+    return {
+        'p25': round(q1, 2),
+        'p50': round(q2, 2),
+        'p75': round(q3, 2),
+    }
 
 
 class UserProfileService:
@@ -487,8 +511,8 @@ class UserProfileService:
         """
         Calculate run profile from Run/TrailRun activity splits.
 
-        Uses 7-category gradient system (extended gradients only).
-        Also detects walk threshold from pace jumps.
+        Uses 11-category gradient system with IQR filtering and percentiles.
+        Legacy 7-category fields filled via weighted average for backward compatibility.
 
         Args:
             user_id: User ID
@@ -515,16 +539,8 @@ class UserProfileService:
             )
             return None
 
-        # Extended 7-category only for running
-        splits_by_category = {
-            'steep_downhill': [],
-            'moderate_downhill': [],
-            'gentle_downhill': [],
-            'flat': [],
-            'gentle_uphill': [],
-            'moderate_uphill': [],
-            'steep_uphill': [],
-        }
+        # 11-category classification (new)
+        splits_by_category_11 = {cat: [] for cat in GRADIENT_THRESHOLDS}
 
         # For walk threshold detection
         uphill_splits_for_threshold = []
@@ -542,9 +558,9 @@ class UserProfileService:
                 filtered_count += 1
                 continue
 
-            # Classify into 7 categories
-            category = UserProfileService._classify_gradient(gradient)
-            splits_by_category[category].append(pace)
+            # Classify into 11 categories
+            category = classify_gradient(gradient)
+            splits_by_category_11[category].append(pace)
 
             # Collect uphill splits for threshold detection
             if gradient > 5:
@@ -556,22 +572,59 @@ class UserProfileService:
         if filtered_count > 0:
             logger.info(f"Filtered {filtered_count} outlier run splits (pace outside {PACE_MIN_THRESHOLD_RUN}-{PACE_MAX_THRESHOLD_RUN} min/km)")
 
-        # Calculate 7-category average paces with IQR filtering
+        # Calculate 11-category paces + percentiles with IQR filtering
+        gradient_paces_json = {}
+        gradient_percentiles_json = {}
+
+        for category, paces in splits_by_category_11.items():
+            if not paces:
+                continue
+            filtered = filter_outliers_iqr(paces)
+            if not filtered:
+                continue
+
+            avg_pace = mean(filtered)
+            percentiles = calculate_percentiles(filtered)
+
+            gradient_paces_json[category] = {
+                'avg': round(avg_pace, 2),
+                'samples': len(filtered),
+            }
+            if percentiles:
+                gradient_percentiles_json[category] = percentiles
+
+            removed = len(paces) - len(filtered)
+            if removed > 0:
+                logger.info(
+                    f"IQR {category}: {len(paces)} → {len(filtered)} samples "
+                    f"({removed} outliers removed)"
+                )
+
+        # Build legacy 7-category paces (weighted average from 11-cat)
+        legacy_paces = {}  # {legacy_name: [(avg, samples), ...]}
+        for new_cat, data in gradient_paces_json.items():
+            legacy_name = LEGACY_CATEGORY_MAPPING.get(new_cat)
+            if legacy_name:
+                legacy_paces.setdefault(legacy_name, []).append(
+                    (data['avg'], data['samples'])
+                )
+
         extended_paces = {}
-        iqr_stats = {}
-        for category, paces in splits_by_category.items():
-            if paces:
-                filtered = filter_outliers_iqr(paces)
-                extended_paces[category] = mean(filtered)
-                removed = len(paces) - len(filtered)
-                iqr_stats[category] = (len(paces), len(filtered), removed)
-                if removed > 0:
-                    logger.info(
-                        f"IQR {category}: {len(paces)} → {len(filtered)} samples "
-                        f"({removed} outliers removed)"
-                    )
+        legacy_sample_counts = {}
+        for legacy_name, entries in legacy_paces.items():
+            total_samples = sum(s for _, s in entries)
+            if total_samples > 0:
+                weighted_avg = sum(avg * s for avg, s in entries) / total_samples
+                extended_paces[legacy_name] = round(weighted_avg, 2)
+                legacy_sample_counts[legacy_name] = total_samples
             else:
-                extended_paces[category] = None
+                extended_paces[legacy_name] = None
+                legacy_sample_counts[legacy_name] = 0
+
+        # Fill missing legacy categories with None
+        for legacy_name in LEGACY_CATEGORY_MAPPING.values():
+            extended_paces.setdefault(legacy_name, None)
+            legacy_sample_counts.setdefault(legacy_name, 0)
 
         # Detect walk threshold
         walk_threshold = UserProfileService._detect_walk_threshold(uphill_splits_for_threshold)
@@ -593,54 +646,41 @@ class UserProfileService:
         # Get or create run profile
         profile = await UserProfileService.get_run_profile(user_id, db)
 
+        # Common profile data dict
+        profile_data = dict(
+            # Legacy 7-category avg paces (weighted from 11-cat)
+            avg_flat_pace_min_km=extended_paces.get('flat'),
+            avg_gentle_uphill_pace_min_km=extended_paces.get('gentle_uphill'),
+            avg_moderate_uphill_pace_min_km=extended_paces.get('moderate_uphill'),
+            avg_steep_uphill_pace_min_km=extended_paces.get('steep_uphill'),
+            avg_gentle_downhill_pace_min_km=extended_paces.get('gentle_downhill'),
+            avg_moderate_downhill_pace_min_km=extended_paces.get('moderate_downhill'),
+            avg_steep_downhill_pace_min_km=extended_paces.get('steep_downhill'),
+            # Legacy sample counts
+            flat_sample_count=legacy_sample_counts.get('flat', 0),
+            gentle_uphill_sample_count=legacy_sample_counts.get('gentle_uphill', 0),
+            moderate_uphill_sample_count=legacy_sample_counts.get('moderate_uphill', 0),
+            steep_uphill_sample_count=legacy_sample_counts.get('steep_uphill', 0),
+            gentle_downhill_sample_count=legacy_sample_counts.get('gentle_downhill', 0),
+            moderate_downhill_sample_count=legacy_sample_counts.get('moderate_downhill', 0),
+            steep_downhill_sample_count=legacy_sample_counts.get('steep_downhill', 0),
+            # 11-category JSON fields
+            gradient_paces=gradient_paces_json,
+            gradient_percentiles=gradient_percentiles_json,
+            # Other fields
+            walk_threshold_percent=walk_threshold,
+            total_activities=len(activity_ids),
+            total_distance_km=total_distance,
+            total_elevation_m=total_elevation,
+            last_calculated_at=datetime.utcnow(),
+        )
+
         if profile:
-            # Update existing profile
-            profile.avg_flat_pace_min_km = extended_paces['flat']
-            profile.avg_gentle_uphill_pace_min_km = extended_paces['gentle_uphill']
-            profile.avg_moderate_uphill_pace_min_km = extended_paces['moderate_uphill']
-            profile.avg_steep_uphill_pace_min_km = extended_paces['steep_uphill']
-            profile.avg_gentle_downhill_pace_min_km = extended_paces['gentle_downhill']
-            profile.avg_moderate_downhill_pace_min_km = extended_paces['moderate_downhill']
-            profile.avg_steep_downhill_pace_min_km = extended_paces['steep_downhill']
-            # Sample counts for confidence assessment
-            profile.flat_sample_count = len(splits_by_category['flat'])
-            profile.gentle_uphill_sample_count = len(splits_by_category['gentle_uphill'])
-            profile.moderate_uphill_sample_count = len(splits_by_category['moderate_uphill'])
-            profile.steep_uphill_sample_count = len(splits_by_category['steep_uphill'])
-            profile.gentle_downhill_sample_count = len(splits_by_category['gentle_downhill'])
-            profile.moderate_downhill_sample_count = len(splits_by_category['moderate_downhill'])
-            profile.steep_downhill_sample_count = len(splits_by_category['steep_downhill'])
-            profile.walk_threshold_percent = walk_threshold
-            profile.total_activities = len(activity_ids)
-            profile.total_distance_km = total_distance
-            profile.total_elevation_m = total_elevation
-            profile.last_calculated_at = datetime.utcnow()
+            for key, value in profile_data.items():
+                setattr(profile, key, value)
             profile.updated_at = datetime.utcnow()
         else:
-            # Create new run profile
-            profile = UserRunProfile(
-                user_id=user_id,
-                avg_flat_pace_min_km=extended_paces['flat'],
-                avg_gentle_uphill_pace_min_km=extended_paces['gentle_uphill'],
-                avg_moderate_uphill_pace_min_km=extended_paces['moderate_uphill'],
-                avg_steep_uphill_pace_min_km=extended_paces['steep_uphill'],
-                avg_gentle_downhill_pace_min_km=extended_paces['gentle_downhill'],
-                avg_moderate_downhill_pace_min_km=extended_paces['moderate_downhill'],
-                avg_steep_downhill_pace_min_km=extended_paces['steep_downhill'],
-                # Sample counts for confidence assessment
-                flat_sample_count=len(splits_by_category['flat']),
-                gentle_uphill_sample_count=len(splits_by_category['gentle_uphill']),
-                moderate_uphill_sample_count=len(splits_by_category['moderate_uphill']),
-                steep_uphill_sample_count=len(splits_by_category['steep_uphill']),
-                gentle_downhill_sample_count=len(splits_by_category['gentle_downhill']),
-                moderate_downhill_sample_count=len(splits_by_category['moderate_downhill']),
-                steep_downhill_sample_count=len(splits_by_category['steep_downhill']),
-                walk_threshold_percent=walk_threshold,
-                total_activities=len(activity_ids),
-                total_distance_km=total_distance,
-                total_elevation_m=total_elevation,
-                last_calculated_at=datetime.utcnow()
-            )
+            profile = UserRunProfile(user_id=user_id, **profile_data)
             db.add(profile)
 
         await db.commit()
@@ -648,9 +688,10 @@ class UserProfileService:
 
         logger.info(
             f"Calculated run profile for user {user_id}: "
-            f"flat_pace={extended_paces['flat']}, "
+            f"flat_pace={extended_paces.get('flat')}, "
             f"walk_threshold={walk_threshold}%, "
-            f"activities={len(activity_ids)}"
+            f"activities={len(activity_ids)}, "
+            f"11-cat categories={len(gradient_paces_json)}"
         )
 
         return profile
