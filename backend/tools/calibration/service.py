@@ -34,14 +34,20 @@ MODE_PRESETS = {
         "activity_types": ["TrailRun", "Run"],
         "min_elevation_m": 200.0,
         "min_distance_km": 5.0,
-        "primary_methods": ["strava_gap", "minetti_gap", "strava_minetti_gap", "personalized"],
+        "primary_methods": [
+            "strava_gap", "minetti_gap", "strava_minetti_gap",
+            "personalized_race", "personalized_moderate", "personalized_easy",
+        ],
         "secondary_methods": ["tobler", "naismith"],
     },
     CalibrationMode.HIKING: {
         "activity_types": ["Hike"],
         "min_elevation_m": 100.0,
         "min_distance_km": 3.0,
-        "primary_methods": ["tobler", "naismith", "personalized"],
+        "primary_methods": [
+            "tobler", "naismith",
+            "personalized_race", "personalized_moderate", "personalized_easy",
+        ],
         "secondary_methods": ["strava_gap"],
     },
 }

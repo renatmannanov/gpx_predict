@@ -8,7 +8,7 @@ and collects predicted times.
 from dataclasses import dataclass
 from typing import Dict, Optional, List
 
-from app.shared.calculator_types import MacroSegment, SegmentType
+from app.shared.calculator_types import MacroSegment, SegmentType, EffortLevel
 from app.features.trail_run.calculators.gap import GAPCalculator, GAPMode
 from app.features.hiking.calculators.tobler import ToblerCalculator
 from app.features.hiking.calculators.naismith import NaismithCalculator
@@ -19,6 +19,9 @@ from app.features.trail_run.calculators.personalization import (
 from app.features.trail_run.models import UserRunProfile
 
 from .virtual_route import VirtualRoute, VirtualSegment
+
+# All effort-based personalization method names
+PERSONALIZED_METHODS = [f"personalized_{e.value}" for e in EffortLevel]
 
 
 @dataclass
@@ -34,9 +37,13 @@ class SegmentPredictions:
     strava_gap: float
     minetti_gap: float
     strava_minetti_gap: float
-    personalized: Optional[float]  # None if no profile
     tobler: float
     naismith: float
+
+    # Personalized by effort level (None if no profile)
+    personalized_race: Optional[float] = None
+    personalized_moderate: Optional[float] = None
+    personalized_easy: Optional[float] = None
 
 
 @dataclass
@@ -53,12 +60,16 @@ class RoutePredictions:
     strava_gap: float
     minetti_gap: float
     strava_minetti_gap: float
-    personalized: Optional[float]
     tobler: float
     naismith: float
 
+    # Personalized by effort level
+    personalized_race: Optional[float] = None
+    personalized_moderate: Optional[float] = None
+    personalized_easy: Optional[float] = None
+
     # Per-segment (for detailed analysis)
-    segments: List[SegmentPredictions]
+    segments: List[SegmentPredictions] = None
 
     def get_predictions_dict(self) -> Dict[str, float]:
         """Get all predictions as dict."""
@@ -69,8 +80,10 @@ class RoutePredictions:
             "tobler": self.tobler,
             "naismith": self.naismith,
         }
-        if self.personalized is not None:
-            result["personalized"] = self.personalized
+        for method in PERSONALIZED_METHODS:
+            val = getattr(self, method, None)
+            if val is not None:
+                result[method] = val
         return result
 
 
@@ -155,11 +168,18 @@ class CalculatorAdapter:
         self._tobler = ToblerCalculator()
         self._naismith = NaismithCalculator()
 
-        # Personalization (if profile available)
-        self._personalization = None
+        # Personalization per effort level (if profile available)
+        self._personalizations: Dict[EffortLevel, RunPersonalizationService] = {}
         self._run_profile = run_profile
         if run_profile and run_profile.has_profile_data:
-            self._personalization = RunPersonalizationService(run_profile)
+            for effort in EffortLevel:
+                self._personalizations[effort] = RunPersonalizationService(
+                    run_profile, effort=effort
+                )
+
+    @property
+    def has_personalization(self) -> bool:
+        return bool(self._personalizations)
 
     def calculate_route(self, route: VirtualRoute) -> RoutePredictions:
         """
@@ -177,9 +197,14 @@ class CalculatorAdapter:
         total_strava = 0.0
         total_minetti = 0.0
         total_strava_minetti = 0.0
-        total_personalized = 0.0 if self._personalization else None
         total_tobler = 0.0
         total_naismith = 0.0
+
+        # Effort-level accumulators
+        totals_pers = {}
+        if self.has_personalization:
+            for effort in EffortLevel:
+                totals_pers[effort] = 0.0
 
         for i, segment in enumerate(route.segments):
             seg_pred = self._calculate_segment(i, segment)
@@ -192,8 +217,11 @@ class CalculatorAdapter:
             total_tobler += seg_pred.tobler
             total_naismith += seg_pred.naismith
 
-            if seg_pred.personalized is not None and total_personalized is not None:
-                total_personalized += seg_pred.personalized
+            for effort in EffortLevel:
+                key = f"personalized_{effort.value}"
+                val = getattr(seg_pred, key, None)
+                if val is not None and effort in totals_pers:
+                    totals_pers[effort] += val
 
         return RoutePredictions(
             activity_id=route.activity_id,
@@ -202,9 +230,11 @@ class CalculatorAdapter:
             strava_gap=total_strava,
             minetti_gap=total_minetti,
             strava_minetti_gap=total_strava_minetti,
-            personalized=total_personalized,
             tobler=total_tobler,
             naismith=total_naismith,
+            personalized_race=totals_pers.get(EffortLevel.RACE),
+            personalized_moderate=totals_pers.get(EffortLevel.MODERATE),
+            personalized_easy=totals_pers.get(EffortLevel.EASY),
             segments=segment_predictions,
         )
 
@@ -240,11 +270,11 @@ class CalculatorAdapter:
         naismith_result = self._naismith.calculate_segment(macro_seg)
         naismith_time = naismith_result.time_hours * 3600
 
-        # Personalized (if available)
-        personalized_time = None
-        if self._personalization:
-            pers_result = self._personalization.calculate_segment(macro_seg)
-            personalized_time = pers_result.time_hours * 3600
+        # Personalized by effort level
+        pers_times = {}
+        for effort, service in self._personalizations.items():
+            pers_result = service.calculate_segment(macro_seg)
+            pers_times[effort] = pers_result.time_hours * 3600
 
         return SegmentPredictions(
             segment_index=index,
@@ -254,7 +284,9 @@ class CalculatorAdapter:
             strava_gap=strava_time,
             minetti_gap=minetti_time,
             strava_minetti_gap=sm_time,
-            personalized=personalized_time,
             tobler=tobler_time,
             naismith=naismith_time,
+            personalized_race=pers_times.get(EffortLevel.RACE),
+            personalized_moderate=pers_times.get(EffortLevel.MODERATE),
+            personalized_easy=pers_times.get(EffortLevel.EASY),
         )

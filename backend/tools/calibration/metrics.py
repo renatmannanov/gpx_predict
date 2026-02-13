@@ -13,7 +13,7 @@ from app.shared.gradients import (
     LEGACY_GRADIENT_THRESHOLDS,
     classify_gradient_legacy,
 )
-from .calculators import RoutePredictions, SegmentPredictions
+from .calculators import RoutePredictions, SegmentPredictions, PERSONALIZED_METHODS
 
 
 @dataclass
@@ -143,10 +143,9 @@ class MetricsCalculator:
             "strava_gap",
             "minetti_gap",
             "strava_minetti_gap",
-            "personalized",
             "tobler",
             "naismith",
-        ]
+        ] + PERSONALIZED_METHODS
 
         return {
             method: self.calculate_method_metrics(predictions, method)
@@ -183,8 +182,11 @@ class MetricsCalculator:
 
             # Calculate MAPE for each method
             method_mape = {}
-            for method in ["strava_gap", "minetti_gap", "strava_minetti_gap",
-                           "personalized", "tobler", "naismith"]:
+            all_methods = [
+                "strava_gap", "minetti_gap", "strava_minetti_gap",
+                "tobler", "naismith",
+            ] + PERSONALIZED_METHODS
+            for method in all_methods:
                 errors = []
                 for seg in segments:
                     actual = seg.actual_time_s

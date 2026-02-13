@@ -14,7 +14,7 @@ This is the main entry point for trail running predictions.
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
-from app.shared.calculator_types import MacroSegment
+from app.shared.calculator_types import MacroSegment, EffortLevel
 from app.features.gpx import RouteSegmenter
 from app.features.hiking.calculators.tobler import ToblerCalculator
 from app.features.hiking.calculators.naismith import NaismithCalculator
@@ -195,11 +195,19 @@ class TrailRunService:
         self._naismith_calc = NaismithCalculator()
 
         # Personalization services (if profiles valid)
+        # _run_pers = default (MODERATE) for backward compat (fatigue, combined)
+        # _run_pers_by_effort = all 3 effort levels for API response
         self._run_pers = None
+        self._run_pers_by_effort: Dict[EffortLevel, RunPersonalizationService] = {}
         self._hike_pers = None
 
         if RunPersonalizationService.is_profile_valid(run_profile):
-            self._run_pers = RunPersonalizationService(run_profile, use_extended_gradients)
+            for effort in EffortLevel:
+                self._run_pers_by_effort[effort] = RunPersonalizationService(
+                    run_profile, use_extended_gradients, effort=effort
+                )
+            # Default (MODERATE) used for fatigue/combined/primary_time
+            self._run_pers = self._run_pers_by_effort[EffortLevel.MODERATE]
 
         if HikePersonalizationService.is_profile_valid(hike_profile):
             self._hike_pers = HikePersonalizationService(hike_profile, use_extended_gradients)
@@ -287,10 +295,15 @@ class TrailRunService:
         if self._hike_pers:
             totals["hike_personalized"] = 0.0
 
-        # Phase 3: Personalized combinations
+        # Phase 3: Personalized combinations (default MODERATE for legacy)
         all_run_personalized = 0.0
         run_hike_personalized_tobler = 0.0
         run_hike_personalized_naismith = 0.0
+
+        # Effort-level accumulators: all_run_personalized_{effort}
+        effort_all_run = {e: 0.0 for e in EffortLevel} if self._run_pers_by_effort else {}
+        effort_run_hike_tobler = {e: 0.0 for e in EffortLevel} if self._run_pers_by_effort else {}
+        effort_run_hike_naismith = {e: 0.0 for e in EffortLevel} if self._run_pers_by_effort else {}
 
         # Combined best estimate (legacy, uses threshold logic)
         totals["combined"] = 0.0
@@ -343,7 +356,7 @@ class TrailRunService:
                 totals["run_hike_strava_minetti_tobler"] += tobler_result.time_hours
                 totals["run_hike_strava_minetti_naismith"] += naismith_result.time_hours
 
-            # Phase 3: Personalized time for this segment
+            # Phase 3: Personalized time for this segment (default MODERATE)
             if self._run_pers:
                 run_pers_result = self._run_pers.calculate_segment(segment)
                 run_pers_time = run_pers_result.time_hours
@@ -351,7 +364,7 @@ class TrailRunService:
                 # Fallback to strava_minetti if no personalization
                 run_pers_time = strava_minetti_result.time_hours
 
-            # Accumulate personalized totals
+            # Accumulate personalized totals (MODERATE for legacy)
             all_run_personalized += run_pers_time
 
             if decision.mode == MovementMode.RUN:
@@ -360,6 +373,18 @@ class TrailRunService:
             else:
                 run_hike_personalized_tobler += tobler_result.time_hours
                 run_hike_personalized_naismith += naismith_result.time_hours
+
+            # Effort-level personalized times (all 3 levels)
+            for effort, pers_service in self._run_pers_by_effort.items():
+                pers_result_e = pers_service.calculate_segment(segment)
+                pers_time_e = pers_result_e.time_hours
+                effort_all_run[effort] += pers_time_e
+                if decision.mode == MovementMode.RUN:
+                    effort_run_hike_tobler[effort] += pers_time_e
+                    effort_run_hike_naismith[effort] += pers_time_e
+                else:
+                    effort_run_hike_tobler[effort] += tobler_result.time_hours
+                    effort_run_hike_naismith[effort] += naismith_result.time_hours
 
             if decision.mode == MovementMode.RUN:
                 # Running segment
@@ -440,6 +465,14 @@ class TrailRunService:
             totals["run_hike_personalized_tobler"] = run_hike_personalized_tobler
             totals["run_hike_personalized_naismith"] = run_hike_personalized_naismith
             totals["run_profile"] = self._build_run_profile_info()
+
+        # Effort-level totals (all 3 levels for API)
+        if self._run_pers_by_effort:
+            for effort in EffortLevel:
+                key = effort.value  # "race", "moderate", "easy"
+                totals[f"all_run_personalized_{key}"] = effort_all_run[effort]
+                totals[f"run_hike_personalized_tobler_{key}"] = effort_run_hike_tobler[effort]
+                totals[f"run_hike_personalized_naismith_{key}"] = effort_run_hike_naismith[effort]
 
         # Calculate elevation stats
         total_elevation_gain = sum(s.elevation_gain_m for s in segments)

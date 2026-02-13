@@ -19,6 +19,34 @@ class SegmentType(str, Enum):
     FLAT = "flat"
 
 
+# Configurable percentiles for effort levels.
+# Can be adjusted after calibration (e.g. race → 0.20 or 0.30)
+# without changing logic in calculators.
+EFFORT_PERCENTILES = {
+    "race": 0.25,       # P25 — top 25% of training paces
+    "moderate": 0.50,   # P50 — typical training pace
+    "easy": 0.75,       # P75 — relaxed/exploratory pace
+}
+
+
+class EffortLevel(str, Enum):
+    """Effort level for personalized predictions."""
+    RACE = "race"           # Fast — race effort
+    MODERATE = "moderate"   # Normal — typical training (default)
+    EASY = "easy"           # Conservative — easy/exploratory
+
+    @property
+    def percentile_key(self) -> str:
+        """Map effort level to percentile key in JSON (p25/p50/p75)."""
+        pct = EFFORT_PERCENTILES[self.value]
+        return f'p{int(pct * 100)}'
+
+    @property
+    def percentile_value(self) -> float:
+        """Get raw percentile value (0.0-1.0) for calculations."""
+        return EFFORT_PERCENTILES[self.value]
+
+
 @dataclass
 class MacroSegment:
     """

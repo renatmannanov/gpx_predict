@@ -58,7 +58,13 @@ def cli():
     help="Output format"
 )
 @click.option("--output-dir", default="./reports", help="Output directory for files")
-def backtest(user_id, mode, min_distance, min_elevation, limit, output, output_dir):
+@click.option(
+    "--effort",
+    default=None,
+    type=click.Choice(["race", "moderate", "easy"]),
+    help="Focus on specific effort level in per-activity details (default: show all 3)"
+)
+def backtest(user_id, mode, min_distance, min_elevation, limit, output, output_dir, effort):
     """
     Run backtesting for a user.
 
@@ -69,7 +75,7 @@ def backtest(user_id, mode, min_distance, min_elevation, limit, output, output_d
       - hiking: Hike activities with D+ > 100m
     """
     asyncio.run(_run_backtest(
-        user_id, mode, min_distance, min_elevation, limit, output, output_dir
+        user_id, mode, min_distance, min_elevation, limit, output, output_dir, effort
     ))
 
 
@@ -81,6 +87,7 @@ async def _run_backtest(
     limit: int,
     output: str,
     output_dir: str,
+    effort: str | None = None,
 ):
     """Async implementation of backtest command."""
 
@@ -88,6 +95,8 @@ async def _run_backtest(
 
     click.echo(f"Running backtesting for user: {user_id[:8]}...")
     click.echo(f"Mode: {mode}")
+    if effort:
+        click.echo(f"Effort focus: {effort}")
 
     filters = BacktestFilters(
         mode=cal_mode,

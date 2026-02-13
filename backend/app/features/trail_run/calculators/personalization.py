@@ -16,6 +16,7 @@ from app.features.hiking.calculators.personalization_base import (
     FLAT_GRADIENT_MAX,
 )
 from app.features.trail_run.calculators.gap import GAPCalculator, GAPMode
+from app.shared.calculator_types import EffortLevel
 
 
 # Default flat pace for runners (min/km)
@@ -37,10 +38,12 @@ class RunPersonalizationService(BasePersonalizationService):
     def __init__(
         self,
         profile: UserRunProfile,
-        use_extended_gradients: bool = True  # Default True for running
+        use_extended_gradients: bool = True,  # Default True for running
+        effort: EffortLevel = EffortLevel.MODERATE,
     ):
         super().__init__(use_extended_gradients)
         self.profile = profile
+        self._effort = effort
         # Use 11-category system when JSON data is available
         self.use_11_categories = bool(
             profile and profile.gradient_paces
@@ -61,9 +64,10 @@ class RunPersonalizationService(BasePersonalizationService):
 
     def _get_pace_for_category(self, category: str) -> Optional[float]:
         """
-        Get pace for a gradient category.
+        Get pace for a gradient category based on effort level.
 
-        Supports both 11-category (JSON) and 7-category (legacy columns).
+        Uses percentile data (P25/P50/P75) when available,
+        falls back to avg pace otherwise.
         Returns None (triggers GAP fallback) if insufficient data.
         """
         if not self.profile:
@@ -74,6 +78,13 @@ class RunPersonalizationService(BasePersonalizationService):
         if sample_count < MIN_SAMPLES_FOR_CATEGORY:
             return None  # Fall back to GAP
 
+        # Try percentile first (based on effort level)
+        percentile_key = self._effort.percentile_key  # e.g. "p25", "p50", "p75"
+        pace = self.profile.get_percentile(category, percentile_key)
+        if pace is not None:
+            return pace
+
+        # Fallback to avg (no percentiles available)
         return self.profile.get_pace_for_category(category)
 
     def _get_default_speed(self) -> float:

@@ -125,11 +125,17 @@ class ReportGenerator:
 
             # Build header based on mode
             if report.mode == CalibrationMode.TRAIL_RUN:
-                header_methods = ["Strava", "Minetti", "S+M", "Pers"]
-                method_keys = ["strava_gap", "minetti_gap", "strava_minetti_gap", "personalized"]
+                header_methods = ["Strava", "Minetti", "S+M", "P.Race", "P.Mod", "P.Easy"]
+                method_keys = [
+                    "strava_gap", "minetti_gap", "strava_minetti_gap",
+                    "personalized_race", "personalized_moderate", "personalized_easy",
+                ]
             else:
-                header_methods = ["Tobler", "Naismith", "Pers"]
-                method_keys = ["tobler", "naismith", "personalized"]
+                header_methods = ["Tobler", "Naismith", "P.Race", "P.Mod", "P.Easy"]
+                method_keys = [
+                    "tobler", "naismith",
+                    "personalized_race", "personalized_moderate", "personalized_easy",
+                ]
 
             header = "Gradient         | " + " | ".join(f"{m:>7}" for m in header_methods) + " | Segments"
             lines.append(header)
@@ -171,28 +177,31 @@ class ReportGenerator:
         if report.activity_results:
             lines.extend([
                 "",
-                "-" * 70,
-                "                  PER-ACTIVITY DETAILS (first 10)",
-                "-" * 70,
+                "-" * 90,
+                "                        PER-ACTIVITY DETAILS (first 10)",
+                "-" * 90,
                 "",
-                "#  | Name                     | Actual  | Best Pred | Error",
-                "---|--------------------------|---------|-----------|------",
+                "#  | Name                     | Actual | Race   | Moderate | Easy   |",
+                "---|--------------------------|--------|--------|----------|--------|",
             ])
-
-            best = report.best_method or report.primary_methods[0]
 
             for i, act in enumerate(report.activity_results[:10], 1):
                 name = (act.activity_name or "Unnamed")[:24]
                 actual_min = act.actual_time_s / 60
-                pred_time = getattr(act, best, act.strava_gap) or act.strava_gap
-                pred_min = pred_time / 60
-                error_pct = ((pred_time - act.actual_time_s) / act.actual_time_s) * 100
 
-                error_sign = "+" if error_pct >= 0 else ""
+                def _fmt_effort(val):
+                    if val is None:
+                        return "   -   "
+                    pred_min = val / 60
+                    err = ((val - act.actual_time_s) / act.actual_time_s) * 100
+                    sign = "+" if err >= 0 else ""
+                    return f"{pred_min:>4.0f}m {sign}{err:>4.0f}%"
 
                 lines.append(
-                    f"{i:>2} | {name:<24} | {actual_min:>5.0f}m | {pred_min:>7.0f}m | "
-                    f"{error_sign}{error_pct:>4.1f}%"
+                    f"{i:>2} | {name:<24} | {actual_min:>4.0f}m | "
+                    f"{_fmt_effort(act.personalized_race)} | "
+                    f"{_fmt_effort(act.personalized_moderate)} | "
+                    f"{_fmt_effort(act.personalized_easy)} |"
                 )
 
         lines.extend([
@@ -208,7 +217,9 @@ class ReportGenerator:
             "strava_gap": "Strava GAP",
             "minetti_gap": "Minetti GAP",
             "strava_minetti_gap": "Strava+Minetti",
-            "personalized": "Personalized",
+            "personalized_race": "Pers. Race",
+            "personalized_moderate": "Pers. Moderate",
+            "personalized_easy": "Pers. Easy",
             "tobler": "Tobler",
             "naismith": "Naismith",
         }
@@ -293,7 +304,8 @@ class ReportGenerator:
             writer.writerow([
                 "activity_id", "name", "actual_time_s",
                 "strava_gap", "minetti_gap", "strava_minetti_gap",
-                "personalized", "tobler", "naismith",
+                "personalized_race", "personalized_moderate", "personalized_easy",
+                "tobler", "naismith",
             ])
 
             # Data
@@ -305,7 +317,9 @@ class ReportGenerator:
                     round(a.strava_gap, 1),
                     round(a.minetti_gap, 1),
                     round(a.strava_minetti_gap, 1),
-                    round(a.personalized, 1) if a.personalized else "",
+                    round(a.personalized_race, 1) if a.personalized_race else "",
+                    round(a.personalized_moderate, 1) if a.personalized_moderate else "",
+                    round(a.personalized_easy, 1) if a.personalized_easy else "",
                     round(a.tobler, 1),
                     round(a.naismith, 1),
                 ])
