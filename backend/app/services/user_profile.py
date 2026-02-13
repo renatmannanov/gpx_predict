@@ -16,25 +16,18 @@ from app.features.hiking import UserHikingProfile as UserPerformanceProfile
 from app.features.trail_run import UserRunProfile
 from app.features.strava import StravaActivity
 from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
+from app.shared.gradients import (
+    LEGACY_GRADIENT_THRESHOLDS,
+    FLAT_GRADIENT_MIN,
+    FLAT_GRADIENT_MAX,
+    classify_gradient_legacy,
+)
 
 logger = logging.getLogger(__name__)
 
 
-# Gradient thresholds for classifying terrain (3-category legacy system)
-FLAT_GRADIENT_MIN = -3.0  # %
-FLAT_GRADIENT_MAX = 3.0   # %
-
-# Extended 7-category gradient thresholds (based on Tobler's hiking function)
-# See docs/todo/ACCURACY_IMPROVEMENTS_PLAN.md for research
-GRADIENT_THRESHOLDS = {
-    'steep_downhill': (-100.0, -15.0),      # < -15%
-    'moderate_downhill': (-15.0, -8.0),     # -15% to -8%
-    'gentle_downhill': (-8.0, -3.0),        # -8% to -3%
-    'flat': (-3.0, 3.0),                    # -3% to +3%
-    'gentle_uphill': (3.0, 8.0),            # +3% to +8%
-    'moderate_uphill': (8.0, 15.0),         # +8% to +15%
-    'steep_uphill': (15.0, 100.0),          # > +15%
-}
+# Re-export for backward compatibility (used as GRADIENT_THRESHOLDS in this file)
+GRADIENT_THRESHOLDS = LEGACY_GRADIENT_THRESHOLDS
 
 # Outlier filtering thresholds for pace data
 # Paces outside this range are considered stops/errors, not actual hiking
@@ -357,24 +350,11 @@ class UserProfileService:
     @staticmethod
     def _classify_gradient(gradient_percent: float) -> str:
         """
-        Classify gradient into one of 7 categories.
+        Classify gradient into one of 7 legacy categories.
 
-        Args:
-            gradient_percent: Gradient as percentage (e.g., 10.0 for 10%)
-
-        Returns:
-            Category name: steep_downhill, moderate_downhill, gentle_downhill,
-                          flat, gentle_uphill, moderate_uphill, steep_uphill
+        Delegates to shared.gradients.classify_gradient_legacy().
         """
-        for category, (min_grad, max_grad) in GRADIENT_THRESHOLDS.items():
-            if min_grad <= gradient_percent < max_grad:
-                return category
-        # Edge case: exactly at max threshold
-        if gradient_percent >= 15.0:
-            return 'steep_uphill'
-        if gradient_percent <= -15.0:
-            return 'steep_downhill'
-        return 'flat'
+        return classify_gradient_legacy(gradient_percent)
 
     @staticmethod
     def _calculate_average_pace(activities: list[StravaActivity]) -> Optional[float]:

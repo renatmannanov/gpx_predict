@@ -14,23 +14,12 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from app.shared.calculator_types import MacroSegment, MethodResult
-
-
-# Gradient thresholds for terrain classification (7 categories)
-# Based on Tobler's hiking function research
-GRADIENT_THRESHOLDS = {
-    'steep_downhill': (-100.0, -15.0),      # < -15%
-    'moderate_downhill': (-15.0, -8.0),     # -15% to -8%
-    'gentle_downhill': (-8.0, -3.0),        # -8% to -3%
-    'flat': (-3.0, 3.0),                    # -3% to +3%
-    'gentle_uphill': (3.0, 8.0),            # +3% to +8%
-    'moderate_uphill': (8.0, 15.0),         # +8% to +15%
-    'steep_uphill': (15.0, 100.0),          # > +15%
-}
-
-# Legacy thresholds (3 categories) - for backward compatibility
-FLAT_GRADIENT_MIN = -3.0  # %
-FLAT_GRADIENT_MAX = 3.0   # %
+from app.shared.gradients import (
+    LEGACY_GRADIENT_THRESHOLDS as GRADIENT_THRESHOLDS,
+    FLAT_GRADIENT_MIN,
+    FLAT_GRADIENT_MAX,
+    classify_gradient_legacy,
+)
 
 # Minimum activities required for reliable profile
 MIN_ACTIVITIES_FOR_PROFILE = 1
@@ -169,24 +158,11 @@ class BasePersonalizationService(ABC):
 
     def _classify_gradient_extended(self, gradient_percent: float) -> str:
         """
-        Classify gradient into one of 7 categories.
+        Classify gradient into one of 7 legacy categories.
 
-        Args:
-            gradient_percent: Gradient as percentage
-
-        Returns:
-            Category name (e.g., 'steep_uphill', 'gentle_downhill')
+        Delegates to shared.gradients.classify_gradient_legacy().
         """
-        for category, (min_grad, max_grad) in GRADIENT_THRESHOLDS.items():
-            if min_grad <= gradient_percent < max_grad:
-                return category
-
-        # Edge cases
-        if gradient_percent >= 15.0:
-            return 'steep_uphill'
-        if gradient_percent <= -15.0:
-            return 'steep_downhill'
-        return 'flat'
+        return classify_gradient_legacy(gradient_percent)
 
     def _classify_terrain(self, gradient_percent: float) -> str:
         """

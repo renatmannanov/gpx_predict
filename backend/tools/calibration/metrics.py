@@ -9,6 +9,10 @@ from typing import Dict, List, Tuple
 from statistics import mean, median, stdev
 from math import sqrt
 
+from app.shared.gradients import (
+    LEGACY_GRADIENT_THRESHOLDS,
+    classify_gradient_legacy,
+)
 from .calculators import RoutePredictions, SegmentPredictions
 
 
@@ -47,16 +51,8 @@ class GradientCategoryMetrics:
     method_mape: Dict[str, float]
 
 
-# Gradient categories (same as in UserRunProfile)
-GRADIENT_CATEGORIES = {
-    "steep_downhill": (-100, -15),
-    "moderate_downhill": (-15, -8),
-    "gentle_downhill": (-8, -3),
-    "flat": (-3, 3),
-    "gentle_uphill": (3, 8),
-    "moderate_uphill": (8, 15),
-    "steep_uphill": (15, 100),
-}
+# Gradient categories — imported from shared (single source of truth)
+GRADIENT_CATEGORIES = LEGACY_GRADIENT_THRESHOLDS
 
 
 class MetricsCalculator:
@@ -213,12 +209,4 @@ class MetricsCalculator:
 
     def _get_gradient_category(self, gradient: float) -> str:
         """Determine gradient category for a value."""
-        for cat, (min_g, max_g) in GRADIENT_CATEGORIES.items():
-            if min_g <= gradient < max_g:
-                return cat
-        # Edge cases
-        if gradient >= 15:
-            return "steep_uphill"
-        if gradient <= -15:
-            return "steep_downhill"
-        return "flat"
+        return classify_gradient_legacy(gradient)

@@ -11,6 +11,7 @@ from app.models.base import Base
 from app.models.prediction import Prediction
 from app.models.user_profile import UserPerformanceProfile
 from app.models.user_run_profile import UserRunProfile
+from app.models.profile_snapshot import ProfileSnapshot
 
 
 # Lazy import functions to avoid circular imports
@@ -74,5 +75,6 @@ __all__ = [
     "StravaSyncStatus",
     "UserPerformanceProfile",
     "UserRunProfile",
+    "ProfileSnapshot",
     "Notification",
 ]

@@ -27,6 +27,15 @@ from .formulas import (
     tobler_hiking_speed,
     naismith_base_time,
 )
+from .gradients import (
+    GRADIENT_THRESHOLDS,
+    LEGACY_GRADIENT_THRESHOLDS,
+    LEGACY_CATEGORY_MAPPING,
+    FLAT_GRADIENT_MIN,
+    FLAT_GRADIENT_MAX,
+    classify_gradient,
+    classify_gradient_legacy,
+)
 from .constants import (
     ActivityType,
     StravaActivityType,
@@ -59,6 +68,14 @@ __all__ = [
     # formulas
     "tobler_hiking_speed",
     "naismith_base_time",
+    # gradients
+    "GRADIENT_THRESHOLDS",
+    "LEGACY_GRADIENT_THRESHOLDS",
+    "LEGACY_CATEGORY_MAPPING",
+    "FLAT_GRADIENT_MIN",
+    "FLAT_GRADIENT_MAX",
+    "classify_gradient",
+    "classify_gradient_legacy",
     # constants
     "ActivityType",
     "StravaActivityType",

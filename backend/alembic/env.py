@@ -31,6 +31,7 @@ from app.features.strava.models import (  # noqa
 from app.models.prediction import Prediction  # noqa
 from app.models.user_profile import UserPerformanceProfile  # noqa
 from app.models.user_run_profile import UserRunProfile  # noqa
+from app.models.profile_snapshot import ProfileSnapshot  # noqa
 
 # this is the Alembic Config object
 config = context.config
