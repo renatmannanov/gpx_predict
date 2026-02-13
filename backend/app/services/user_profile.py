@@ -5,6 +5,7 @@ Calculates and manages user performance profiles from Strava activity data.
 """
 
 import logging
+import statistics
 from datetime import datetime
 from statistics import mean
 from typing import Optional
@@ -36,7 +37,27 @@ PACE_MAX_THRESHOLD_HIKE = 25.0  # min/km - slower than this is likely a stop
 
 # Pace thresholds for running (more permissive on fast end)
 PACE_MIN_THRESHOLD_RUN = 2.5    # min/km - faster than this is likely GPS error
-PACE_MAX_THRESHOLD_RUN = 15.0   # min/km - slower than this is walking
+PACE_MAX_THRESHOLD_RUN = 30.0   # min/km - sanity threshold (GPS errors, stops)
+
+
+def filter_outliers_iqr(paces: list[float]) -> list[float]:
+    """
+    Remove outliers using IQR method.
+
+    Interquartile Range (IQR) = Q3 - Q1.
+    Outliers: values below Q1 - 1.5*IQR or above Q3 + 1.5*IQR.
+    Applied per gradient category — each category has its own distribution.
+    """
+    if len(paces) < 4:
+        return paces  # too few data points for IQR
+
+    q1, _, q3 = statistics.quantiles(paces, n=4)
+    iqr = q3 - q1
+
+    lower = q1 - 1.5 * iqr
+    upper = q3 + 1.5 * iqr
+
+    return [p for p in paces if lower <= p <= upper]
 
 
 class UserProfileService:
@@ -535,10 +556,22 @@ class UserProfileService:
         if filtered_count > 0:
             logger.info(f"Filtered {filtered_count} outlier run splits (pace outside {PACE_MIN_THRESHOLD_RUN}-{PACE_MAX_THRESHOLD_RUN} min/km)")
 
-        # Calculate 7-category average paces
+        # Calculate 7-category average paces with IQR filtering
         extended_paces = {}
+        iqr_stats = {}
         for category, paces in splits_by_category.items():
-            extended_paces[category] = mean(paces) if paces else None
+            if paces:
+                filtered = filter_outliers_iqr(paces)
+                extended_paces[category] = mean(filtered)
+                removed = len(paces) - len(filtered)
+                iqr_stats[category] = (len(paces), len(filtered), removed)
+                if removed > 0:
+                    logger.info(
+                        f"IQR {category}: {len(paces)} → {len(filtered)} samples "
+                        f"({removed} outliers removed)"
+                    )
+            else:
+                extended_paces[category] = None
 
         # Detect walk threshold
         walk_threshold = UserProfileService._detect_walk_threshold(uphill_splits_for_threshold)
