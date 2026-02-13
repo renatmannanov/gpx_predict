@@ -3,7 +3,7 @@
 ## Перед началом работы
 
 1. **ВСЕГДА** читай `docs/ARCHITECTURE.md` для понимания структуры проекта
-2. **ВСЕГДА** читай `docs/ARCHITECTURE_CALCULATIONS.md` перед изменением расчётов
+2. **ВСЕГДА** читай `docs/CALCULATIONS.md` перед изменением расчётов
 
 ---
 
@@ -118,11 +118,53 @@ from app.models.user_profile import UserPerformanceProfile  # → re-export
 
 ---
 
+## Git Commits
+
+**Commit messages must be in English only.**
+
+Format: [Conventional Commits](https://www.conventionalcommits.org/)
+```
+<type>(<scope>): <description>
+
+[optional body]
+```
+
+Examples:
+```
+feat(trail-run): add GAP calculation for entire route
+fix(strava): handle token refresh edge case
+refactor(hiking): extract shared utilities
+docs: update ARCHITECTURE.md
+```
+
+Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
+
+---
+
+## Навигация по docs/
+
+```
+docs/
+├── ARCHITECTURE.md          # Структура проекта (читать ВСЕГДА)
+├── CALCULATIONS.md          # Детали расчётов (читать при изменении расчётов)
+├── insights/                # Справочные данные (результаты гонок, аналитика) — МОЖНО читать
+├── shareable/               # Промпты/шаблоны для других проектов — НЕ читать без запроса
+└── task_tracker/
+    ├── todo/                # Текущие задачи и планы — МОЖНО читать
+    ├── backlog/             # Отложенные задачи — МОЖНО читать
+    ├── done/                # Выполненное — НЕ читать без запроса пользователя
+    └── archieve/            # Неактуальное — НЕ читать без запроса пользователя
+```
+
+**КРИТИЧНО:** НЕ заходить в `docs/task_tracker/done/` и `docs/task_tracker/archieve/` самостоятельно — только по прямому запросу пользователя. Это экономит контекст и токены.
+
+---
+
 ## Документирование
 
 При любых изменениях в коде:
 
-1. **Изменения в расчётах** → обновить `docs/ARCHITECTURE_CALCULATIONS.md`
+1. **Изменения в расчётах** → обновить `docs/CALCULATIONS.md`
 2. **Изменения в структуре** → обновить `docs/ARCHITECTURE.md`
 3. **Новые сервисы/модели** → добавить в `docs/ARCHITECTURE.md`
 
@@ -243,7 +285,7 @@ from app.models.user_profile import UserPerformanceProfile  # → re-export
 
 ### Документация
 - [ ] `docs/ARCHITECTURE.md` обновлён (структура, новые сервисы/модели)
-- [ ] `docs/ARCHITECTURE_CALCULATIONS.md` обновлён (если менялись расчёты)
+- [ ] `docs/CALCULATIONS.md` обновлён (если менялись расчёты)
 - [ ] Внешние интеграции добавлены в секцию "Внешние интеграции"
 
 ### Отчёт
@@ -261,15 +303,3 @@ from app.models.user_profile import UserPerformanceProfile  # → re-export
 
 1. **Персонализация требует рефакторинга** (отдельная задача)
 2. **Legacy re-exports** — старые пути работают через re-export, но новый код должен использовать `features/` и `shared/`
-
-См. `docs/codereview/` для истории code review и технического долга.
-
----
-
-## История рефакторинга
-
-- **v2.0** (2026-01-27): Feature-based structure, shared utilities
-- **v2.1** (2026-01-28): Async migration, cleanup
-- **v2.2** (2026-01-28): Post-refactor analysis
-
-См. `docs/codereview/v2_codereview_phases/` для детальной истории.
