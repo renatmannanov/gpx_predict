@@ -68,13 +68,36 @@ def format_hike_profile(profile: dict) -> str:
     return "\n".join(lines)
 
 
+# 11-category gradient labels for run profile (ordered downhill→uphill)
+_RUN_GRADIENT_CATEGORIES = [
+    ("down_23_over", "Экстр. спуск (&lt;-23%)"),
+    ("down_23_17",   "Крутой спуск (-23%..-17%)"),
+    ("down_17_12",   "Умеренный спуск (-17%..-12%)"),
+    ("down_12_8",    "Лёгкий спуск (-12%..-8%)"),
+    ("down_8_3",     "Пологий спуск (-8%..-3%)"),
+    ("flat_3_3",     "Ровный участок (-3%..+3%)"),
+    ("up_3_8",       "Пологий подъём (+3%..+8%)"),
+    ("up_8_12",      "Лёгкий подъём (+8%..+12%)"),
+    ("up_12_17",     "Умеренный подъём (+12%..+17%)"),
+    ("up_17_23",     "Крутой подъём (+17%..+23%)"),
+    ("up_23_over",   "Экстр. подъём (&gt;+23%)"),
+]
+
+# Legacy 7-category fallback
+_LEGACY_RUN_CATEGORIES = [
+    ("steep_downhill", "Крутой спуск (&lt;-15%)", "avg_steep_downhill_pace_min_km"),
+    ("moderate_downhill", "Умеренный спуск", "avg_moderate_downhill_pace_min_km"),
+    ("gentle_downhill", "Пологий спуск", "avg_gentle_downhill_pace_min_km"),
+    ("flat", "Ровный участок", "avg_flat_pace_min_km"),
+    ("gentle_uphill", "Пологий подъём", "avg_gentle_uphill_pace_min_km"),
+    ("moderate_uphill", "Умеренный подъём", "avg_moderate_uphill_pace_min_km"),
+    ("steep_uphill", "Крутой подъём (&gt;15%)", "avg_steep_uphill_pace_min_km"),
+]
+
+
 def format_run_profile(profile: dict) -> str:
     """Format running profile for display."""
     activities = profile.get("total_activities", 0)
-
-    def get_count(field: str) -> str:
-        count = profile.get(f"{field}_sample_count")
-        return f" ({count})" if count else ""
 
     lines = [
         "📊 <b>Твой профиль бегуна</b>",
@@ -83,22 +106,24 @@ def format_run_profile(profile: dict) -> str:
         "",
     ]
 
-    # Use &lt; and &gt; for HTML escaping
-    categories = [
-        ("steep_downhill", "Крутой спуск (&lt;-15%)", "avg_steep_downhill_pace_min_km"),
-        ("moderate_downhill", "Умеренный спуск", "avg_moderate_downhill_pace_min_km"),
-        ("gentle_downhill", "Пологий спуск", "avg_gentle_downhill_pace_min_km"),
-        ("flat", "Ровный участок", "avg_flat_pace_min_km"),
-        ("gentle_uphill", "Пологий подъём", "avg_gentle_uphill_pace_min_km"),
-        ("moderate_uphill", "Умеренный подъём", "avg_moderate_uphill_pace_min_km"),
-        ("steep_uphill", "Крутой подъём (&gt;15%)", "avg_steep_uphill_pace_min_km"),
-    ]
-
-    for key, label, pace_field in categories:
-        pace = profile.get(pace_field)
-        count_str = get_count(key)
-        pace_str = format_pace(pace)
-        lines.append(f"• {label}: {pace_str}/км{count_str}")
+    # Try 11-category from gradient_paces JSON
+    gradient_paces = profile.get("gradient_paces")
+    if gradient_paces:
+        for key, label in _RUN_GRADIENT_CATEGORIES:
+            cat_data = gradient_paces.get(key, {})
+            pace = cat_data.get("avg")
+            samples = cat_data.get("samples", 0)
+            pace_str = format_pace(pace)
+            count_str = f" ({samples})" if samples else ""
+            lines.append(f"• {label}: {pace_str}/км{count_str}")
+    else:
+        # Fallback to legacy 7 categories
+        for key, label, pace_field in _LEGACY_RUN_CATEGORIES:
+            pace = profile.get(pace_field)
+            count = profile.get(f"{key}_sample_count")
+            pace_str = format_pace(pace)
+            count_str = f" ({count})" if count else ""
+            lines.append(f"• {label}: {pace_str}/км{count_str}")
 
     # Walk threshold
     threshold = profile.get("walk_threshold_percent", 25.0)

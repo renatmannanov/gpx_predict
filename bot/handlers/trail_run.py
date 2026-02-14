@@ -38,9 +38,13 @@ def _format_gap_results(totals: dict, include_personalized: bool = False) -> lis
         if hours and hours > 0:
             lines.append(f"  {method_name:16} {format_time(hours)}")
 
-    # Phase 3: Add personalized if available
-    if include_personalized and totals.get("all_run_personalized"):
-        lines.append(f"  🎯 Персональный   {format_time(totals['all_run_personalized'])}")
+    # Effort-level personalized results
+    if include_personalized and totals.get("all_run_personalized_fast"):
+        lines.append("")
+        lines.append("🎯 ПЕРСОНАЛЬНЫЙ:")
+        lines.append(f"  🔥 Fast           {format_time(totals['all_run_personalized_fast'])}")
+        lines.append(f"  ⚡ Moderate        {format_time(totals.get('all_run_personalized_moderate', 0))}")
+        lines.append(f"  🚶 Easy           {format_time(totals.get('all_run_personalized_easy', 0))}")
 
     return lines
 
@@ -66,6 +70,22 @@ def _format_run_hike_results(totals: dict) -> list:
         lines.append(f"  🎯 Перс + Tobler   {format_time(totals['run_hike_personalized_tobler'])}")
     if totals.get("run_hike_personalized_naismith"):
         lines.append(f"  🎯 Перс + Naismith {format_time(totals['run_hike_personalized_naismith'])}")
+
+    # Effort-level breakdown for personalized + Tobler
+    if totals.get("run_hike_personalized_tobler_fast"):
+        lines.append("")
+        lines.append("  🎯 Перс + Tobler (effort):")
+        lines.append(f"     🔥 Fast         {format_time(totals['run_hike_personalized_tobler_fast'])}")
+        lines.append(f"     ⚡ Moderate      {format_time(totals.get('run_hike_personalized_tobler_moderate', 0))}")
+        lines.append(f"     🚶 Easy         {format_time(totals.get('run_hike_personalized_tobler_easy', 0))}")
+
+    # Effort-level breakdown for personalized + Naismith
+    if totals.get("run_hike_personalized_naismith_fast"):
+        lines.append("")
+        lines.append("  🎯 Перс + Naismith (effort):")
+        lines.append(f"     🔥 Fast         {format_time(totals['run_hike_personalized_naismith_fast'])}")
+        lines.append(f"     ⚡ Moderate      {format_time(totals.get('run_hike_personalized_naismith_moderate', 0))}")
+        lines.append(f"     🚶 Easy         {format_time(totals.get('run_hike_personalized_naismith_easy', 0))}")
 
     return lines
 
@@ -117,7 +137,8 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
     lines.append("")
     if not totals_strava:
         lines.append("⏱ ВСЁ БЕГОМ:")
-    lines.extend(_format_gap_results(totals_manual, include_personalized=True))
+    # Show personalized only if no Strava block (otherwise it's already shown above)
+    lines.extend(_format_gap_results(totals_manual, include_personalized=not totals_strava))
 
     lines.append("")
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -146,18 +167,19 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
         acts = run_profile.get("total_activities", 0)
         splits = run_profile.get("total_splits", 0)
         filled = run_profile.get("categories_filled", 0)
-        total = run_profile.get("categories_total", 7)
+        total = run_profile.get("categories_total", 11)
 
         lines.append("")
         lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
         lines.append("")
         lines.append(f"📈 Персонализация: {km:.0f} км, {acts} активностей, {splits} сплитов, профиль {filled} из {total}")
 
-        # Gradient profile breakdown
-        gradient_profile = run_profile.get("gradient_profile", [])
-        if gradient_profile:
-            lines.append("")
-            lines.append(_format_gradient_profile(gradient_profile))
+    # Effort levels legend (if personalized)
+    if totals_manual.get("all_run_personalized_fast"):
+        lines.append("")
+        lines.append("🔥 Fast — гоночный/асфальтовый темп")
+        lines.append("   ⚡ Moderate — обычная тренировка")
+        lines.append("   🚶 Easy — лёгкий бег / разведка")
 
     # Fatigue info
     if result.get("fatigue_applied"):
@@ -195,33 +217,6 @@ def format_segments(result: dict) -> str:
         lines.append(
             f"{i}. {mode_icon} {distance:.1f}км ({gradient_sign}{gradient:.0f}%) — {format_time(time_hours)}"
         )
-
-    lines.append("</blockquote>")
-
-    return "\n".join(lines)
-
-
-def _format_gradient_profile(gradient_profile: list) -> str:
-    """Format gradient profile as blockquote showing pace sources."""
-    lines = ["<blockquote>📊 Профиль по градиентам (✓ свой / GAP формула):"]
-    lines.append("")
-
-    for item in gradient_profile:
-        label = item.get("label", "")
-        pace = item.get("pace")
-        samples = item.get("samples", 0)
-        is_personal = item.get("is_personal", False)
-
-        # Format pace
-        if pace:
-            pace_str = f"{pace:5.2f}"
-        else:
-            pace_str = "  —  "
-
-        # Source indicator
-        source = "✓" if is_personal else "GAP"
-
-        lines.append(f"  {label:20} {pace_str} ({samples:2}) {source}")
 
     lines.append("</blockquote>")
 
@@ -465,11 +460,6 @@ async def handle_confirm(callback: CallbackQuery, state: FSMContext):
         result_text = format_trail_run_result(result, gpx_name)
 
         await callback.message.edit_text(result_text, parse_mode="HTML")
-
-        # Send segments in separate message if many
-        segments_text = format_segments(result)
-        if segments_text:
-            await callback.message.answer(segments_text, parse_mode="HTML")
 
         await state.clear()
 
