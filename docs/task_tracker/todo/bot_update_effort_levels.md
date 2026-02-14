@@ -104,12 +104,12 @@ gradient_percentiles: Optional[dict] = None  # {category: {p25, p50, p75}}
 
 ## Порядок реализации
 
-1. **Race → Fast** (backend enum + calibration tools) — нет зависимостей от бота
-2. **API: gradient_paces в response** — нужно для бота
-3. **service.py: _build_run_profile_info → 11 категорий** — нужно для бота
-4. **Бот: trail_run.py** — вывод предсказания с effort levels
-5. **Бот: profile.py** — профиль 11 категорий
-6. **Бот: onboarding.py** — тексты
+1. ✅ **Race → Fast** (backend enum + calibration tools) — commit 30fb526
+2. ✅ **API: gradient_paces в response** — commit 274e04e
+3. ✅ **service.py: _build_run_profile_info → 11 категорий** — commit 274e04e
+4. ✅ **Бот: trail_run.py** — effort levels, убран gradient profile и сегменты — commit 7792de0
+5. ✅ **Бот: profile.py** — 11 категорий из JSON — commit 7792de0
+6. ⬜ **Бот: onboarding.py** — тексты
 
 ## Русские названия 11 категорий
 
