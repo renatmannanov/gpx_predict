@@ -80,4 +80,4 @@ class PredictionType(str, Enum):
 
 # Default gradient threshold above which runners typically switch to hiking
 # Can be overridden per-user based on their profile
-DEFAULT_HIKE_THRESHOLD_PERCENT = 15.0
+DEFAULT_HIKE_THRESHOLD_PERCENT = 30.0
