@@ -533,6 +533,21 @@ class TrailRunService:
             "hike_personalized": self._hike_pers is not None,
         }
 
+    # 11-category labels for gradient profile display (ordered downhill→uphill)
+    _GRADIENT_LABELS = [
+        ("down_23_over", "extr_down (&lt;-23%)"),
+        ("down_23_17",   "steep_down (-23..-17%)"),
+        ("down_17_12",   "mod_down (-17..-12%)"),
+        ("down_12_8",    "easy_down (-12..-8%)"),
+        ("down_8_3",     "gentle_down (-8..-3%)"),
+        ("flat_3_3",     "flat (-3..+3%)"),
+        ("up_3_8",       "gentle_up (+3..+8%)"),
+        ("up_8_12",      "easy_up (+8..+12%)"),
+        ("up_12_17",     "mod_up (+12..+17%)"),
+        ("up_17_23",     "steep_up (+17..+23%)"),
+        ("up_23_over",   "extr_up (&gt;+23%)"),
+    ]
+
     def _build_run_profile_info(self) -> Optional[dict]:
         """Build run profile info for totals output."""
         if not self.run_profile:
@@ -541,58 +556,21 @@ class TrailRunService:
         # Minimum samples for personalization
         MIN_SAMPLES = 5
 
-        # Build detailed gradient profile
-        gradient_profile = [
-            {
-                "category": "steep_uphill",
-                "label": "steep_up (+15%↑)",
-                "pace": self.run_profile.avg_steep_uphill_pace_min_km,
-                "samples": self.run_profile.steep_uphill_sample_count or 0,
-                "is_personal": (self.run_profile.steep_uphill_sample_count or 0) >= MIN_SAMPLES,
-            },
-            {
-                "category": "moderate_uphill",
-                "label": "moderate_up (+8-15%)",
-                "pace": self.run_profile.avg_moderate_uphill_pace_min_km,
-                "samples": self.run_profile.moderate_uphill_sample_count or 0,
-                "is_personal": (self.run_profile.moderate_uphill_sample_count or 0) >= MIN_SAMPLES,
-            },
-            {
-                "category": "gentle_uphill",
-                "label": "gentle_up (+3-8%)",
-                "pace": self.run_profile.avg_gentle_uphill_pace_min_km,
-                "samples": self.run_profile.gentle_uphill_sample_count or 0,
-                "is_personal": (self.run_profile.gentle_uphill_sample_count or 0) >= MIN_SAMPLES,
-            },
-            {
-                "category": "flat",
-                "label": "flat (-3 to +3%)",
-                "pace": self.run_profile.avg_flat_pace_min_km,
-                "samples": self.run_profile.flat_sample_count or 0,
-                "is_personal": (self.run_profile.flat_sample_count or 0) >= MIN_SAMPLES,
-            },
-            {
-                "category": "gentle_downhill",
-                "label": "gentle_down (-3-8%)",
-                "pace": self.run_profile.avg_gentle_downhill_pace_min_km,
-                "samples": self.run_profile.gentle_downhill_sample_count or 0,
-                "is_personal": (self.run_profile.gentle_downhill_sample_count or 0) >= MIN_SAMPLES,
-            },
-            {
-                "category": "moderate_downhill",
-                "label": "moderate_dn (-8-15%)",
-                "pace": self.run_profile.avg_moderate_downhill_pace_min_km,
-                "samples": self.run_profile.moderate_downhill_sample_count or 0,
-                "is_personal": (self.run_profile.moderate_downhill_sample_count or 0) >= MIN_SAMPLES,
-            },
-            {
-                "category": "steep_downhill",
-                "label": "steep_down (-15%↓)",
-                "pace": self.run_profile.avg_steep_downhill_pace_min_km,
-                "samples": self.run_profile.steep_downhill_sample_count or 0,
-                "is_personal": (self.run_profile.steep_downhill_sample_count or 0) >= MIN_SAMPLES,
-            },
-        ]
+        # Build 11-category gradient profile from JSON data
+        gradient_paces = self.run_profile.gradient_paces or {}
+        gradient_profile = []
+
+        for category, label in self._GRADIENT_LABELS:
+            cat_data = gradient_paces.get(category, {})
+            pace = cat_data.get("avg")
+            samples = cat_data.get("samples", 0)
+            gradient_profile.append({
+                "category": category,
+                "label": label,
+                "pace": pace,
+                "samples": samples,
+                "is_personal": samples >= MIN_SAMPLES,
+            })
 
         # Count categories with enough samples for personalization
         categories_personal = sum(1 for g in gradient_profile if g["is_personal"])
@@ -602,16 +580,25 @@ class TrailRunService:
             "total_activities": self.run_profile.total_activities or 0,
             "total_splits": self._get_total_splits(),
             "categories_filled": categories_personal,
-            "categories_total": 7,
+            "categories_total": 11,
             "gradient_profile": gradient_profile,
             "min_samples_threshold": MIN_SAMPLES,
         }
 
     def _get_total_splits(self) -> int:
-        """Count total splits in run profile."""
+        """Count total splits in run profile (from 11-cat JSON or legacy 7-cat)."""
         if not self.run_profile:
             return 0
 
+        # Prefer 11-category JSON data
+        gradient_paces = self.run_profile.gradient_paces
+        if gradient_paces:
+            return sum(
+                cat_data.get("samples", 0)
+                for cat_data in gradient_paces.values()
+            )
+
+        # Fallback to legacy 7-category columns
         return sum([
             self.run_profile.flat_sample_count or 0,
             self.run_profile.gentle_uphill_sample_count or 0,

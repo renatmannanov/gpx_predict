@@ -87,6 +87,10 @@ class TrailRunProfileResponse(BaseModel):
     # Walk threshold
     walk_threshold_percent: Optional[float] = None
 
+    # 11-category gradient data (JSON)
+    gradient_paces: Optional[dict] = None         # {category: {avg, samples}}
+    gradient_percentiles: Optional[dict] = None   # {category: {p25, p50, p75}}
+
     # Derived
     flat_speed_kmh: Optional[float] = None
 
@@ -264,6 +268,9 @@ async def get_trail_run_profile(
         avg_steep_downhill_pace_min_km=profile.avg_steep_downhill_pace_min_km,
         # Walk threshold
         walk_threshold_percent=profile.walk_threshold_percent,
+        # 11-category gradient data
+        gradient_paces=profile.gradient_paces,
+        gradient_percentiles=profile.gradient_percentiles,
         # Derived
         flat_speed_kmh=profile.flat_speed_kmh,
         # Statistics
