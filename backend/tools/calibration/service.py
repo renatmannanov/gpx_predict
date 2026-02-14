@@ -36,7 +36,7 @@ MODE_PRESETS = {
         "min_distance_km": 5.0,
         "primary_methods": [
             "strava_gap", "minetti_gap", "strava_minetti_gap",
-            "personalized_race", "personalized_moderate", "personalized_easy",
+            "personalized_fast", "personalized_moderate", "personalized_easy",
         ],
         "secondary_methods": ["tobler", "naismith"],
     },
@@ -46,7 +46,7 @@ MODE_PRESETS = {
         "min_distance_km": 3.0,
         "primary_methods": [
             "tobler", "naismith",
-            "personalized_race", "personalized_moderate", "personalized_easy",
+            "personalized_fast", "personalized_moderate", "personalized_easy",
         ],
         "secondary_methods": ["strava_gap"],
     },

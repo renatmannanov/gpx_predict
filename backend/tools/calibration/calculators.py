@@ -41,7 +41,7 @@ class SegmentPredictions:
     naismith: float
 
     # Personalized by effort level (None if no profile)
-    personalized_race: Optional[float] = None
+    personalized_fast: Optional[float] = None
     personalized_moderate: Optional[float] = None
     personalized_easy: Optional[float] = None
 
@@ -64,7 +64,7 @@ class RoutePredictions:
     naismith: float
 
     # Personalized by effort level
-    personalized_race: Optional[float] = None
+    personalized_fast: Optional[float] = None
     personalized_moderate: Optional[float] = None
     personalized_easy: Optional[float] = None
 
@@ -232,7 +232,7 @@ class CalculatorAdapter:
             strava_minetti_gap=total_strava_minetti,
             tobler=total_tobler,
             naismith=total_naismith,
-            personalized_race=totals_pers.get(EffortLevel.RACE),
+            personalized_fast=totals_pers.get(EffortLevel.FAST),
             personalized_moderate=totals_pers.get(EffortLevel.MODERATE),
             personalized_easy=totals_pers.get(EffortLevel.EASY),
             segments=segment_predictions,
@@ -286,7 +286,7 @@ class CalculatorAdapter:
             strava_minetti_gap=sm_time,
             tobler=tobler_time,
             naismith=naismith_time,
-            personalized_race=pers_times.get(EffortLevel.RACE),
+            personalized_fast=pers_times.get(EffortLevel.FAST),
             personalized_moderate=pers_times.get(EffortLevel.MODERATE),
             personalized_easy=pers_times.get(EffortLevel.EASY),
         )

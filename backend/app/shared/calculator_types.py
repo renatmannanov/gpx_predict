@@ -23,7 +23,7 @@ class SegmentType(str, Enum):
 # Can be adjusted after calibration (e.g. race → 0.20 or 0.30)
 # without changing logic in calculators.
 EFFORT_PERCENTILES = {
-    "race": 0.25,       # P25 — top 25% of training paces
+    "fast": 0.25,       # P25 — top 25% of training paces (race/asphalt)
     "moderate": 0.50,   # P50 — typical training pace
     "easy": 0.75,       # P75 — relaxed/exploratory pace
 }
@@ -31,7 +31,7 @@ EFFORT_PERCENTILES = {
 
 class EffortLevel(str, Enum):
     """Effort level for personalized predictions."""
-    RACE = "race"           # Fast — race effort
+    FAST = "fast"           # Fast — race/asphalt effort
     MODERATE = "moderate"   # Normal — typical training (default)
     EASY = "easy"           # Conservative — easy/exploratory
 

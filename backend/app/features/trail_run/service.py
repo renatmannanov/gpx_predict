@@ -469,7 +469,7 @@ class TrailRunService:
         # Effort-level totals (all 3 levels for API)
         if self._run_pers_by_effort:
             for effort in EffortLevel:
-                key = effort.value  # "race", "moderate", "easy"
+                key = effort.value  # "fast", "moderate", "easy"
                 totals[f"all_run_personalized_{key}"] = effort_all_run[effort]
                 totals[f"run_hike_personalized_tobler_{key}"] = effort_run_hike_tobler[effort]
                 totals[f"run_hike_personalized_naismith_{key}"] = effort_run_hike_naismith[effort]

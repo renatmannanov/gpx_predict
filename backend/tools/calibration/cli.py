@@ -61,7 +61,7 @@ def cli():
 @click.option(
     "--effort",
     default=None,
-    type=click.Choice(["race", "moderate", "easy"]),
+    type=click.Choice(["fast", "moderate", "easy"]),
     help="Focus on specific effort level in per-activity details (default: show all 3)"
 )
 def backtest(user_id, mode, min_distance, min_elevation, limit, output, output_dir, effort):
