@@ -13,6 +13,7 @@ Activity types: Hike, Walk
 from typing import Optional
 
 from app.shared.formulas import tobler_hiking_speed
+from app.shared.calculator_types import EffortLevel
 
 from app.features.hiking.models import UserHikingProfile
 from app.features.hiking.calculators.personalization_base import (
@@ -27,6 +28,9 @@ from app.features.hiking.calculators.personalization_base import (
 DEFAULT_FLAT_SPEED_KMH = 5.0      # Tobler flat speed
 DEFAULT_UPHILL_SPEED_KMH = 3.3   # ~18 min/km
 DEFAULT_DOWNHILL_SPEED_KMH = 6.0  # ~10 min/km (optimal descent)
+
+# Minimum samples in a gradient category for personalization
+MIN_SAMPLES_FOR_CATEGORY = 5
 
 
 class HikePersonalizationService(BasePersonalizationService):
@@ -44,7 +48,8 @@ class HikePersonalizationService(BasePersonalizationService):
     def __init__(
         self,
         profile: UserHikingProfile,
-        use_extended_gradients: bool = False
+        use_extended_gradients: bool = False,
+        effort: EffortLevel = EffortLevel.MODERATE,
     ):
         """
         Initialize with user's hiking performance profile.
@@ -53,9 +58,14 @@ class HikePersonalizationService(BasePersonalizationService):
             profile: UserHikingProfile with pace data from Strava Hike/Walk
             use_extended_gradients: If True, use 7-category gradient system.
                                    If False, use legacy 3-category system.
+            effort: Effort level for percentile-based pace selection
         """
         super().__init__(use_extended_gradients)
         self.profile = profile
+        self._effort = effort
+        self.use_11_categories = bool(
+            profile and getattr(profile, 'gradient_paces', None)
+        )
 
     def _get_pace_legacy(self, gradient_percent: float) -> float:
         """
@@ -79,24 +89,30 @@ class HikePersonalizationService(BasePersonalizationService):
 
     def _get_pace_for_category(self, category: str) -> Optional[float]:
         """
-        Map 7-category gradient to profile fields.
+        Get pace for gradient category using percentiles (effort-based).
+
+        Checks sample count first, then tries percentile based on effort level,
+        falls back to avg pace. Supports both 11-cat (JSON) and 7-cat (legacy).
 
         Args:
-            category: One of the 7 gradient categories
+            category: Gradient category (11-cat or 7-cat name)
 
         Returns:
-            Pace in min/km from profile, or None if not available
+            Pace in min/km from profile, or None to fall back to Tobler
         """
-        mapping = {
-            'steep_downhill': self.profile.avg_steep_downhill_pace_min_km,
-            'moderate_downhill': self.profile.avg_moderate_downhill_pace_min_km,
-            'gentle_downhill': self.profile.avg_gentle_downhill_pace_min_km,
-            'flat': self.profile.avg_flat_pace_min_km,
-            'gentle_uphill': self.profile.avg_gentle_uphill_pace_min_km,
-            'moderate_uphill': self.profile.avg_moderate_uphill_pace_min_km,
-            'steep_uphill': self.profile.avg_steep_uphill_pace_min_km,
-        }
-        return mapping.get(category)
+        # Check sample count — not enough data means fall back to Tobler
+        sample_count = self.profile.get_sample_count_extended(category)
+        if sample_count < MIN_SAMPLES_FOR_CATEGORY:
+            return None
+
+        # Try percentile first (based on effort level)
+        percentile_key = self._effort.percentile_key  # "p25", "p50", "p75"
+        pace = self.profile.get_percentile(category, percentile_key)
+        if pace is not None:
+            return pace
+
+        # Fallback to avg (no percentiles available)
+        return self.profile.get_pace_for_category(category)
 
     def _get_default_speed(self) -> float:
         """Default flat speed for hiking: 5 km/h (Tobler)."""

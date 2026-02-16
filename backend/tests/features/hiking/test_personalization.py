@@ -31,20 +31,42 @@ from app.features.hiking.calculators import (
 
 @pytest.fixture
 def mock_profile():
-    """Create a mock UserPerformanceProfile with full data."""
+    """Create a mock UserPerformanceProfile with full data (legacy 7-cat, no JSON)."""
     profile = MagicMock()
     profile.avg_flat_pace_min_km = 12.0        # 5 km/h
     profile.avg_uphill_pace_min_km = 18.0      # ~3.3 km/h
     profile.avg_downhill_pace_min_km = 10.0    # 6 km/h
     profile.total_activities_analyzed = 5
 
-    # Extended gradients
+    # Extended gradients (legacy 7-cat)
     profile.avg_steep_downhill_pace_min_km = 12.0
     profile.avg_moderate_downhill_pace_min_km = 11.0
     profile.avg_gentle_downhill_pace_min_km = 10.5
     profile.avg_gentle_uphill_pace_min_km = 14.0
     profile.avg_moderate_uphill_pace_min_km = 17.0
     profile.avg_steep_uphill_pace_min_km = 22.0
+
+    # No JSON data (legacy profile without 11-cat)
+    profile.gradient_paces = None
+    profile.gradient_percentiles = None
+
+    # Helper methods — enough samples for legacy categories, no percentiles
+    profile.get_sample_count_extended = MagicMock(return_value=10)
+    profile.get_percentile = MagicMock(return_value=None)
+
+    # get_pace_for_category returns legacy column values
+    def _get_pace(category):
+        mapping = {
+            'flat': 12.0,
+            'gentle_uphill': 14.0,
+            'moderate_uphill': 17.0,
+            'steep_uphill': 22.0,
+            'gentle_downhill': 10.5,
+            'moderate_downhill': 11.0,
+            'steep_downhill': 12.0,
+        }
+        return mapping.get(category)
+    profile.get_pace_for_category = MagicMock(side_effect=_get_pace)
 
     return profile
 
@@ -65,6 +87,13 @@ def mock_minimal_profile():
     profile.avg_gentle_uphill_pace_min_km = None
     profile.avg_moderate_uphill_pace_min_km = None
     profile.avg_steep_uphill_pace_min_km = None
+
+    # No JSON data
+    profile.gradient_paces = None
+    profile.gradient_percentiles = None
+    profile.get_sample_count_extended = MagicMock(return_value=0)
+    profile.get_percentile = MagicMock(return_value=None)
+    profile.get_pace_for_category = MagicMock(return_value=None)
 
     return profile
 
