@@ -211,14 +211,11 @@ class UserProfileService:
         db: AsyncSession
     ) -> Optional[UserPerformanceProfile]:
         """
-        Calculate detailed profile using activity splits.
+        Calculate detailed hiking profile using activity splits.
 
-        This provides pace data by terrain type:
-        - Legacy 3-category: flat, uphill, downhill
-        - Extended 7-category: steep_downhill, moderate_downhill, gentle_downhill,
-                               flat, gentle_uphill, moderate_uphill, steep_uphill
-
-        Requires StravaActivitySplit data to be synced first.
+        Uses 11-category gradient system with IQR filtering and percentiles.
+        Legacy 3-category and 7-category fields filled via weighted average
+        for backward compatibility.
 
         Args:
             user_id: User ID
@@ -227,7 +224,6 @@ class UserProfileService:
         Returns:
             UserPerformanceProfile or None if insufficient data
         """
-        # Import here to avoid circular dependency
         from app.features.strava import StravaActivitySplit
 
         # Get all splits for user's hiking activities
@@ -247,22 +243,12 @@ class UserProfileService:
             )
             return await UserProfileService.calculate_profile(user_id, db)
 
-        # Classify splits by gradient (both 3-category and 7-category)
-        # Legacy 3-category
+        # 11-category classification
+        splits_by_category_11 = {cat: [] for cat in GRADIENT_THRESHOLDS}
+
+        # Legacy 3-category (for vertical_ability calculation)
         flat_splits = []
         uphill_splits = []
-        downhill_splits = []
-
-        # Extended 7-category
-        splits_by_category = {
-            'steep_downhill': [],
-            'moderate_downhill': [],
-            'gentle_downhill': [],
-            'flat': [],
-            'gentle_uphill': [],
-            'moderate_uphill': [],
-            'steep_uphill': [],
-        }
 
         filtered_count = 0
         for split in splits:
@@ -275,33 +261,83 @@ class UserProfileService:
             # Filter outliers - paces that indicate stops or errors
             if pace < PACE_MIN_THRESHOLD_HIKE or pace > PACE_MAX_THRESHOLD_HIKE:
                 filtered_count += 1
-                logger.debug(f"Filtered outlier split: pace={pace:.1f} min/km (threshold: {PACE_MIN_THRESHOLD_HIKE}-{PACE_MAX_THRESHOLD_HIKE})")
                 continue
 
-            # Legacy 3-category classification
+            # 11-category classification
+            category = classify_gradient(gradient)
+            splits_by_category_11[category].append(pace)
+
+            # Legacy 3-category for vertical_ability
             if FLAT_GRADIENT_MIN <= gradient <= FLAT_GRADIENT_MAX:
                 flat_splits.append(pace)
             elif gradient > FLAT_GRADIENT_MAX:
                 uphill_splits.append(pace)
-            else:
-                downhill_splits.append(pace)
-
-            # Extended 7-category classification
-            category = UserProfileService._classify_gradient(gradient)
-            splits_by_category[category].append(pace)
 
         if filtered_count > 0:
-            logger.info(f"Filtered {filtered_count} outlier splits (pace outside {PACE_MIN_THRESHOLD_HIKE}-{PACE_MAX_THRESHOLD_HIKE} min/km)")
+            logger.info(f"Filtered {filtered_count} outlier hike splits (pace outside {PACE_MIN_THRESHOLD_HIKE}-{PACE_MAX_THRESHOLD_HIKE} min/km)")
 
-        # Calculate legacy average paces
-        avg_flat_pace = mean(flat_splits) if flat_splits else None
-        avg_uphill_pace = mean(uphill_splits) if uphill_splits else None
-        avg_downhill_pace = mean(downhill_splits) if downhill_splits else None
+        # Calculate 11-category paces + percentiles with IQR filtering
+        gradient_paces_json = {}
+        gradient_percentiles_json = {}
 
-        # Calculate extended 7-category average paces
+        for category, paces in splits_by_category_11.items():
+            if not paces:
+                continue
+            filtered = filter_outliers_iqr(paces)
+            if not filtered:
+                continue
+
+            avg_pace = mean(filtered)
+            percentiles = calculate_percentiles(filtered)
+
+            gradient_paces_json[category] = {
+                'avg': round(avg_pace, 2),
+                'samples': len(filtered),
+            }
+            if percentiles:
+                gradient_percentiles_json[category] = percentiles
+
+            removed = len(paces) - len(filtered)
+            if removed > 0:
+                logger.info(
+                    f"IQR hike {category}: {len(paces)} → {len(filtered)} samples "
+                    f"({removed} outliers removed)"
+                )
+
+        # Build legacy 7-category paces (weighted average from 11-cat)
+        legacy_paces = {}
+        for new_cat, data in gradient_paces_json.items():
+            legacy_name = LEGACY_CATEGORY_MAPPING.get(new_cat)
+            if legacy_name:
+                legacy_paces.setdefault(legacy_name, []).append(
+                    (data['avg'], data['samples'])
+                )
+
         extended_paces = {}
-        for category, paces in splits_by_category.items():
-            extended_paces[category] = mean(paces) if paces else None
+        legacy_sample_counts = {}
+        for legacy_name, entries in legacy_paces.items():
+            total_samples = sum(s for _, s in entries)
+            if total_samples > 0:
+                weighted_avg = sum(avg * s for avg, s in entries) / total_samples
+                extended_paces[legacy_name] = round(weighted_avg, 2)
+                legacy_sample_counts[legacy_name] = total_samples
+            else:
+                extended_paces[legacy_name] = None
+                legacy_sample_counts[legacy_name] = 0
+
+        # Fill missing legacy categories with None
+        for legacy_name in set(LEGACY_CATEGORY_MAPPING.values()):
+            extended_paces.setdefault(legacy_name, None)
+            legacy_sample_counts.setdefault(legacy_name, 0)
+
+        # Legacy 3-category avg paces (for vertical_ability + backward compat)
+        avg_flat_pace = mean(flat_splits) if flat_splits else extended_paces.get('flat')
+        avg_uphill_pace = mean(uphill_splits) if uphill_splits else None
+        avg_downhill_pace = None  # calculated from extended if needed
+        downhill_cats = ['gentle_downhill', 'moderate_downhill', 'steep_downhill']
+        downhill_paces = [extended_paces[c] for c in downhill_cats if extended_paces.get(c)]
+        if downhill_paces:
+            avg_downhill_pace = mean(downhill_paces)
 
         # Calculate vertical ability coefficient
         vertical_ability = UserProfileService._calculate_vertical_ability(
@@ -326,68 +362,56 @@ class UserProfileService:
         # Get or create profile
         profile = await UserProfileService.get_profile(user_id, db)
 
-        if profile:
-            # Update existing profile - legacy fields
-            profile.avg_flat_pace_min_km = avg_flat_pace
-            profile.avg_uphill_pace_min_km = avg_uphill_pace
-            profile.avg_downhill_pace_min_km = avg_downhill_pace
-            # Extended 7-category fields
-            profile.avg_steep_downhill_pace_min_km = extended_paces['steep_downhill']
-            profile.avg_moderate_downhill_pace_min_km = extended_paces['moderate_downhill']
-            profile.avg_gentle_downhill_pace_min_km = extended_paces['gentle_downhill']
-            profile.avg_gentle_uphill_pace_min_km = extended_paces['gentle_uphill']
-            profile.avg_moderate_uphill_pace_min_km = extended_paces['moderate_uphill']
-            profile.avg_steep_uphill_pace_min_km = extended_paces['steep_uphill']
+        # Common profile data dict
+        profile_data = dict(
+            # Legacy 3-category
+            avg_flat_pace_min_km=avg_flat_pace,
+            avg_uphill_pace_min_km=avg_uphill_pace,
+            avg_downhill_pace_min_km=avg_downhill_pace,
+            # Legacy 7-category avg paces (weighted from 11-cat)
+            avg_steep_downhill_pace_min_km=extended_paces.get('steep_downhill'),
+            avg_moderate_downhill_pace_min_km=extended_paces.get('moderate_downhill'),
+            avg_gentle_downhill_pace_min_km=extended_paces.get('gentle_downhill'),
+            avg_gentle_uphill_pace_min_km=extended_paces.get('gentle_uphill'),
+            avg_moderate_uphill_pace_min_km=extended_paces.get('moderate_uphill'),
+            avg_steep_uphill_pace_min_km=extended_paces.get('steep_uphill'),
+            # Legacy sample counts
+            flat_sample_count=legacy_sample_counts.get('flat', 0),
+            gentle_uphill_sample_count=legacy_sample_counts.get('gentle_uphill', 0),
+            moderate_uphill_sample_count=legacy_sample_counts.get('moderate_uphill', 0),
+            steep_uphill_sample_count=legacy_sample_counts.get('steep_uphill', 0),
+            gentle_downhill_sample_count=legacy_sample_counts.get('gentle_downhill', 0),
+            moderate_downhill_sample_count=legacy_sample_counts.get('moderate_downhill', 0),
+            steep_downhill_sample_count=legacy_sample_counts.get('steep_downhill', 0),
+            # 11-category JSON fields
+            gradient_paces=gradient_paces_json,
+            gradient_percentiles=gradient_percentiles_json,
             # Stats
-            profile.vertical_ability = vertical_ability
-            profile.total_activities_analyzed = len(activity_ids)
-            profile.total_hike_activities = hike_count
-            profile.total_distance_km = total_distance
-            profile.total_elevation_m = total_elevation
-            profile.last_calculated_at = datetime.utcnow()
+            vertical_ability=vertical_ability,
+            total_activities_analyzed=len(activity_ids),
+            total_hike_activities=hike_count,
+            total_distance_km=total_distance,
+            total_elevation_m=total_elevation,
+            last_calculated_at=datetime.utcnow(),
+        )
+
+        if profile:
+            for key, value in profile_data.items():
+                setattr(profile, key, value)
             profile.updated_at = datetime.utcnow()
         else:
-            # Create new profile
-            profile = UserPerformanceProfile(
-                user_id=user_id,
-                # Legacy fields
-                avg_flat_pace_min_km=avg_flat_pace,
-                avg_uphill_pace_min_km=avg_uphill_pace,
-                avg_downhill_pace_min_km=avg_downhill_pace,
-                # Extended 7-category fields
-                avg_steep_downhill_pace_min_km=extended_paces['steep_downhill'],
-                avg_moderate_downhill_pace_min_km=extended_paces['moderate_downhill'],
-                avg_gentle_downhill_pace_min_km=extended_paces['gentle_downhill'],
-                avg_gentle_uphill_pace_min_km=extended_paces['gentle_uphill'],
-                avg_moderate_uphill_pace_min_km=extended_paces['moderate_uphill'],
-                avg_steep_uphill_pace_min_km=extended_paces['steep_uphill'],
-                # Stats
-                vertical_ability=vertical_ability,
-                total_activities_analyzed=len(activity_ids),
-                total_hike_activities=hike_count,
-                total_distance_km=total_distance,
-                total_elevation_m=total_elevation,
-                last_calculated_at=datetime.utcnow()
-            )
+            profile = UserPerformanceProfile(user_id=user_id, **profile_data)
             db.add(profile)
 
         await db.commit()
         await db.refresh(profile)
 
-        # Log with extended info
         logger.info(
-            f"Calculated detailed profile for user {user_id}: "
-            f"flat={avg_flat_pace}, uphill={avg_uphill_pace}, downhill={avg_downhill_pace}, "
-            f"vertical_ability={vertical_ability}"
-        )
-        logger.info(
-            f"Extended gradients for user {user_id}: "
-            f"steep_down={extended_paces['steep_downhill']}, "
-            f"mod_down={extended_paces['moderate_downhill']}, "
-            f"gentle_down={extended_paces['gentle_downhill']}, "
-            f"gentle_up={extended_paces['gentle_uphill']}, "
-            f"mod_up={extended_paces['moderate_uphill']}, "
-            f"steep_up={extended_paces['steep_uphill']}"
+            f"Calculated hiking profile for user {user_id}: "
+            f"flat_pace={avg_flat_pace}, "
+            f"vertical_ability={vertical_ability}, "
+            f"activities={len(activity_ids)}, "
+            f"11-cat categories={len(gradient_paces_json)}"
         )
 
         return profile
