@@ -25,11 +25,6 @@ def format_hike_profile(profile: dict) -> str:
     """Format hiking profile for display."""
     activities = profile.get("total_hike_activities", 0)
 
-    # Try to get sample counts if available
-    def get_count(field: str) -> str:
-        count = profile.get(f"{field}_sample_count")
-        return f" ({count})" if count else ""
-
     lines = [
         "📊 <b>Твой профиль хайкера</b>",
         "",
@@ -37,22 +32,33 @@ def format_hike_profile(profile: dict) -> str:
         "",
     ]
 
-    # 7-category system (use &lt; and &gt; for HTML escaping)
-    categories = [
-        ("steep_downhill", "Крутой спуск (&lt;-15%)", "avg_steep_downhill_pace_min_km"),
-        ("moderate_downhill", "Умеренный спуск", "avg_moderate_downhill_pace_min_km"),
-        ("gentle_downhill", "Пологий спуск", "avg_gentle_downhill_pace_min_km"),
-        ("flat", "Ровный участок", "avg_flat_pace_min_km"),
-        ("gentle_uphill", "Пологий подъём", "avg_gentle_uphill_pace_min_km"),
-        ("moderate_uphill", "Умеренный подъём", "avg_moderate_uphill_pace_min_km"),
-        ("steep_uphill", "Крутой подъём (&gt;15%)", "avg_steep_uphill_pace_min_km"),
-    ]
-
-    for key, label, pace_field in categories:
-        pace = profile.get(pace_field)
-        count_str = get_count(key)
-        pace_str = format_pace(pace)
-        lines.append(f"• {label}: {pace_str}/км{count_str}")
+    # Try 11-category from gradient_paces JSON
+    gradient_paces = profile.get("gradient_paces")
+    if gradient_paces:
+        for key, label in _RUN_GRADIENT_CATEGORIES:  # Same 11-cat labels
+            cat_data = gradient_paces.get(key, {})
+            pace = cat_data.get("avg")
+            samples = cat_data.get("samples", 0)
+            pace_str = format_pace(pace)
+            count_str = f" ({samples})" if samples else ""
+            lines.append(f"• {label}: {pace_str}/км{count_str}")
+    else:
+        # Fallback to legacy 7 categories
+        legacy_categories = [
+            ("steep_downhill", "Крутой спуск (&lt;-15%)", "avg_steep_downhill_pace_min_km"),
+            ("moderate_downhill", "Умеренный спуск", "avg_moderate_downhill_pace_min_km"),
+            ("gentle_downhill", "Пологий спуск", "avg_gentle_downhill_pace_min_km"),
+            ("flat", "Ровный участок", "avg_flat_pace_min_km"),
+            ("gentle_uphill", "Пологий подъём", "avg_gentle_uphill_pace_min_km"),
+            ("moderate_uphill", "Умеренный подъём", "avg_moderate_uphill_pace_min_km"),
+            ("steep_uphill", "Крутой подъём (&gt;15%)", "avg_steep_uphill_pace_min_km"),
+        ]
+        for key, label, pace_field in legacy_categories:
+            pace = profile.get(pace_field)
+            count = profile.get(f"{key}_sample_count")
+            pace_str = format_pace(pace)
+            count_str = f" ({count})" if count else ""
+            lines.append(f"• {label}: {pace_str}/км{count_str}")
 
     # Vertical ability
     va = profile.get("vertical_ability", 1.0)

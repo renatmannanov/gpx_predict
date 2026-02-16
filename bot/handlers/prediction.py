@@ -129,6 +129,16 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
     if "naismith_personalized" in totals:
         result += f"  📊 naismith (ваш темп): {format_time(totals['naismith_personalized'])}\n"
 
+    # Effort levels (if available)
+    if "tobler_personalized_fast" in totals:
+        result += "\n🎯 <b>Персональный (по уровню нагрузки):</b>\n"
+        result += f"  🔥 Fast:     tobler {format_time(totals['tobler_personalized_fast'])} "
+        result += f"| naismith {format_time(totals['naismith_personalized_fast'])}\n"
+        result += f"  ⚡ Moderate: tobler {format_time(totals['tobler_personalized_moderate'])} "
+        result += f"| naismith {format_time(totals['naismith_personalized_moderate'])}\n"
+        result += f"  🚶 Easy:    tobler {format_time(totals['tobler_personalized_easy'])} "
+        result += f"| naismith {format_time(totals['naismith_personalized_easy'])}\n"
+
     if not old_prediction.personalized:
         result += f"📊 <i>Хотите точнее? Подключите Strava для персонального расчёта на основе ваших активностей.</i>\n"
 

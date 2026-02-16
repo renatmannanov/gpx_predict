@@ -65,6 +65,10 @@ class HikingProfileResponse(BaseModel):
     total_distance_km: float = 0.0
     total_elevation_m: float = 0.0
 
+    # 11-category gradient data (JSON)
+    gradient_paces: Optional[dict] = None
+    gradient_percentiles: Optional[dict] = None
+
     # Metadata
     has_split_data: bool = False
     has_extended_gradient_data: bool = False
@@ -159,6 +163,9 @@ async def get_hiking_profile(
         avg_gentle_uphill_pace_min_km=profile.avg_gentle_uphill_pace_min_km,
         avg_moderate_uphill_pace_min_km=profile.avg_moderate_uphill_pace_min_km,
         avg_steep_uphill_pace_min_km=profile.avg_steep_uphill_pace_min_km,
+        # 11-category JSON
+        gradient_paces=profile.gradient_paces,
+        gradient_percentiles=profile.gradient_percentiles,
         # Speeds and coefficients
         flat_speed_kmh=profile.flat_speed_kmh,
         vertical_ability=profile.vertical_ability,
