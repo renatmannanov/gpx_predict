@@ -120,108 +120,25 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
     tobler_hours = totals.get("tobler", 0)
     naismith_hours = totals.get("naismith", 0)
 
-    result += f"  tobler: {format_time(tobler_hours)}\n"
-    result += f"  naismith: {format_time(naismith_hours)}\n"
+    # Base methods (dot counts tuned for Telegram proportional font)
+    result += f"  tobler (универсальный)........{format_time(tobler_hours)}\n"
+    result += f"  naismith (универсальный)...{format_time(naismith_hours)}\n"
 
-    # Personalized methods (if user has profile) or invite to connect Strava
+    # Personalized methods (if user has profile)
     if "tobler_personalized" in totals:
-        result += f"  📊 tobler (ваш темп): {format_time(totals['tobler_personalized'])}\n"
+        result += f"  tobler (ваш темп).....................{format_time(totals['tobler_personalized'])}\n"
     if "naismith_personalized" in totals:
-        result += f"  📊 naismith (ваш темп): {format_time(totals['naismith_personalized'])}\n"
+        result += f"  naismith (ваш темп)................{format_time(totals['naismith_personalized'])}\n"
 
-    # Effort levels (if available)
+    # Effort levels (if available) — single value (tobler_personalized)
     if "tobler_personalized_fast" in totals:
-        result += "\n🎯 <b>Персональный (по уровню нагрузки):</b>\n"
-        result += f"  🔥 Fast:     tobler {format_time(totals['tobler_personalized_fast'])} "
-        result += f"| naismith {format_time(totals['naismith_personalized_fast'])}\n"
-        result += f"  ⚡ Moderate: tobler {format_time(totals['tobler_personalized_moderate'])} "
-        result += f"| naismith {format_time(totals['naismith_personalized_moderate'])}\n"
-        result += f"  🚶 Easy:    tobler {format_time(totals['tobler_personalized_easy'])} "
-        result += f"| naismith {format_time(totals['naismith_personalized_easy'])}\n"
+        result += "\n🎯 <b>Персональный (по данным из Strava):</b>\n"
+        result += f"  🔥 Fast...............{format_time(totals['tobler_personalized_fast'])}\n"
+        result += f"  ⚡ Moderate...{format_time(totals['tobler_personalized_moderate'])}\n"
+        result += f"  🚶 Easy..............{format_time(totals['tobler_personalized_easy'])}\n"
 
     if not old_prediction.personalized:
         result += f"📊 <i>Хотите точнее? Подключите Strava для персонального расчёта на основе ваших активностей.</i>\n"
-
-    result += "\n——————————————\n\n"
-
-    # Additional time (was "Рекомендуем добавить")
-    rest_hours = comparison.get("rest_time_hours", 0)
-    lunch_hours = comparison.get("lunch_time_hours", 0)
-    buffer_hours = tobler_hours * 0.2  # 20% buffer
-
-    result += "<b>Дополнительное время:</b>\n"
-    if lunch_hours > 0:
-        result += f"  + {format_time(lunch_hours)} обед\n"
-    if rest_hours > 0:
-        result += f"  + {format_time(rest_hours)} отдых\n"
-    result += f"  + {format_time(buffer_hours)} (20% на непредвиденные ситуации)\n"
-
-    # Total estimate
-    total_estimate = tobler_hours + rest_hours + lunch_hours + buffer_hours
-    result += f"<b>Общее время:</b> ~{format_time(total_estimate)}\n\n"
-
-    # Recommended start with full schedule
-    sunrise = comparison.get("sunrise", "06:00")
-    sunset = comparison.get("sunset", "20:00")
-
-    # Calculate recommended start
-    sunset_hour = int(sunset.split(":")[0])
-    sunset_min = int(sunset.split(":")[1])
-    sunrise_hour = int(sunrise.split(":")[0])
-    sunrise_min = int(sunrise.split(":")[1])
-
-    # Want to return 1 hour before sunset
-    target_return = sunset_hour - 1
-    needed_hours = total_estimate
-    start_hour = target_return - needed_hours
-
-    # Don't start before sunrise
-    if start_hour < sunrise_hour:
-        start_hour = sunrise_hour
-        start_min = sunrise_min
-        recommended_start = sunrise
-    else:
-        start_min = 0
-        recommended_start = f"{int(start_hour):02d}:00"
-
-    # Calculate finish time
-    finish_hours = start_hour + start_min / 60 + total_estimate
-    finish_hour = int(finish_hours)
-    finish_min = int((finish_hours - finish_hour) * 60)
-    finish_time = f"{finish_hour:02d}:{finish_min:02d}"
-
-    # Check if late return (finish less than 1 hour before sunset or after sunset)
-    sunset_decimal = sunset_hour + sunset_min / 60
-    is_late_return = finish_hours > (sunset_decimal - 1)
-
-    result += "<b>Рекомендуемый старт:</b>\n"
-    result += f"  рассвет в {sunrise}\n"
-    result += f"  {recommended_start} старт\n"
-    result += f"  преодоление маршрута {format_time(total_estimate)}\n"
-    result += f"  {finish_time} ориентировочный финиш\n"
-    result += f"  закат в {sunset}\n"
-
-    result += "\n"
-
-    # Warnings section
-    max_elevation = comparison.get("max_elevation_m", 0)
-    warnings = []
-
-    # Late return warning (first, most critical)
-    if is_late_return:
-        warnings.append(("🚨", "Риск вернуться после заката. Стартуйте раньше или выберите маршрут короче."))
-
-    if total_estimate > 8:
-        warnings.append(("ℹ️", "Длинный поход (8+ часов). Возьмите достаточно воды и еды."))
-
-    if max_elevation > 3000:
-        warnings.append(("⚠️", f"Маршрут достигает {max_elevation:.0f}м. Следите за симптомами горной болезни."))
-
-    if warnings:
-        result += "<b>Предупреждения:</b>\n"
-        for emoji, message in warnings:
-            result += f"{emoji} {message}\n"
-        result += "\n"
 
     return result
 
@@ -245,9 +162,14 @@ def format_segments(comparison: dict) -> str:
             f"  Градиент: {seg['gradient_percent']}%\n"
         )
 
-        # Show all methods for this segment
-        for method_name, method_result in seg["methods"].items():
-            content += f"  [{method_name}] {format_time(method_result['time_hours'])}\n"
+        # Show best available time: personalized (moderate) or tobler fallback
+        methods = seg["methods"]
+        if "tobler_personalized" in methods:
+            seg_time = format_time(methods["tobler_personalized"]["time_hours"])
+            content += f"  ⚡ Moderate: {seg_time}\n"
+        elif "tobler" in methods:
+            seg_time = format_time(methods["tobler"]["time_hours"])
+            content += f"  tobler: {seg_time}\n"
 
         content += "\n"
 
@@ -444,43 +366,43 @@ async def handle_backpack(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(PredictionStates.selecting_group_size, F.data.startswith("gs:"))
 async def handle_group_size(callback: CallbackQuery, state: FSMContext):
-    """Handle group size selection."""
+    """Handle group size selection and make prediction."""
     group_size = int(callback.data.split(":")[1])
     await state.update_data(group_size=group_size)
-
-    await callback.message.edit_text(
-        "Есть ли в группе дети (до 14 лет)?",
-        reply_markup=get_yes_no_keyboard("children")
-    )
-    await state.set_state(PredictionStates.selecting_children)
     await callback.answer()
 
-
-# === Children Selection ===
-
-@router.callback_query(PredictionStates.selecting_children, F.data.startswith("children:"))
-async def handle_children(callback: CallbackQuery, state: FSMContext):
-    """Handle children selection."""
-    has_children = callback.data.split(":")[1] == "yes"
-    await state.update_data(has_children=has_children)
-
-    await callback.message.edit_text(
-        "Есть ли в группе пожилые люди (60+ лет)?",
-        reply_markup=get_yes_no_keyboard("elderly")
-    )
-    await state.set_state(PredictionStates.selecting_elderly)
-    await callback.answer()
+    await _make_prediction(callback, state)
 
 
-# === Elderly Selection ===
+# # === Children Selection (disabled) ===
+#
+# @router.callback_query(PredictionStates.selecting_children, F.data.startswith("children:"))
+# async def handle_children(callback: CallbackQuery, state: FSMContext):
+#     """Handle children selection."""
+#     has_children = callback.data.split(":")[1] == "yes"
+#     await state.update_data(has_children=has_children)
+#
+#     await callback.message.edit_text(
+#         "Есть ли в группе пожилые люди (60+ лет)?",
+#         reply_markup=get_yes_no_keyboard("elderly")
+#     )
+#     await state.set_state(PredictionStates.selecting_elderly)
+#     await callback.answer()
+#
+#
+# # === Elderly Selection (disabled) ===
+#
+# @router.callback_query(PredictionStates.selecting_elderly, F.data.startswith("elderly:"))
+# async def handle_elderly(callback: CallbackQuery, state: FSMContext):
+#     """Handle elderly selection and make prediction."""
+#     has_elderly = callback.data.split(":")[1] == "yes"
+#     await state.update_data(has_elderly=has_elderly)
+#     await callback.answer()
+#     await _make_prediction(callback, state)
 
-@router.callback_query(PredictionStates.selecting_elderly, F.data.startswith("elderly:"))
-async def handle_elderly(callback: CallbackQuery, state: FSMContext):
-    """Handle elderly selection and make prediction."""
-    has_elderly = callback.data.split(":")[1] == "yes"
-    await state.update_data(has_elderly=has_elderly)
 
-    # Get all data
+async def _make_prediction(callback: CallbackQuery, state: FSMContext):
+    """Run prediction and display results."""
     data = await state.get_data()
 
     await callback.message.edit_text("Рассчитываю прогноз...")
@@ -520,8 +442,6 @@ async def handle_elderly(callback: CallbackQuery, state: FSMContext):
             experience=experience,
             backpack=backpack,
             group_size=group_size,
-            has_children=data.get("has_children", False),
-            has_elderly=has_elderly,
             is_round_trip=data.get("is_round_trip", False),
             telegram_id=telegram_id,
         )
