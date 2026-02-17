@@ -90,7 +90,7 @@ class ComparisonService:
         points: List[Tuple[float, float, float]],
         profile_multiplier: float = 1.0,
         user_profile: Optional[UserHikingProfile] = None,
-        use_extended_gradients: bool = False,
+        use_extended_gradients: bool = True,
         apply_fatigue: bool = False
     ) -> RouteComparison:
         """

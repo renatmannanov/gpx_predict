@@ -487,6 +487,10 @@ async def handle_elderly(callback: CallbackQuery, state: FSMContext):
 
     gpx_id = data["gpx_id"]
     experience = data.get("experience", "casual")
+    # "personalized" is an internal marker (profile exists, skip experience question)
+    # API expects a valid enum value; personalization works via telegram_id
+    if experience == "personalized":
+        experience = "regular"
     backpack = data.get("backpack", "medium")
     group_size = data.get("group_size", 1)
     gpx_name = data.get("gpx_name", "")

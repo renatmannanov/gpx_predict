@@ -48,8 +48,8 @@ class CompareRequest(BaseModel):
     backpack: BackpackWeight = BackpackWeight.LIGHT
     group_size: int = Field(default=1, ge=1, le=50)
     telegram_id: Optional[str] = None  # For personalization
-    # Extended gradient system (7 categories vs legacy 3)
-    use_extended_gradients: bool = False
+    # Extended gradient system (7/11 categories vs legacy 3)
+    use_extended_gradients: bool = True
     # Fatigue modeling (slowdown on long hikes)
     apply_fatigue: bool = False
 

@@ -30,7 +30,7 @@ DEFAULT_UPHILL_SPEED_KMH = 3.3   # ~18 min/km
 DEFAULT_DOWNHILL_SPEED_KMH = 6.0  # ~10 min/km (optimal descent)
 
 # Minimum samples in a gradient category for personalization
-MIN_SAMPLES_FOR_CATEGORY = 5
+MIN_SAMPLES_FOR_CATEGORY = 3
 
 
 class HikePersonalizationService(BasePersonalizationService):

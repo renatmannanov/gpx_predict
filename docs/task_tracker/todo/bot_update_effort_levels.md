@@ -109,7 +109,7 @@ gradient_percentiles: Optional[dict] = None  # {category: {p25, p50, p75}}
 3. ✅ **service.py: _build_run_profile_info → 11 категорий** — commit 274e04e
 4. ✅ **Бот: trail_run.py** — effort levels, убран gradient profile и сегменты — commit 7792de0
 5. ✅ **Бот: profile.py** — 11 категорий из JSON — commit 7792de0
-6. ⬜ **Бот: onboarding.py** — тексты
+6. ✅ **Бот: onboarding.py** — тексты — commit 15a9a14
 
 ## Русские названия 11 категорий
 
