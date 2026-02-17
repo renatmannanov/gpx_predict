@@ -11,13 +11,16 @@ from aiogram.fsm.context import FSMContext
 
 from states.prediction import PredictionStates
 from keyboards.prediction import (
+    get_activity_type_keyboard,
     get_experience_keyboard,
     get_backpack_keyboard,
     get_group_size_keyboard,
     get_yes_no_keyboard,
     get_route_type_keyboard,
 )
+from handlers.trail_run import start_trail_run_flow
 from services.api_client import api_client, APIError
+from utils.formatters import format_time
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -35,18 +38,6 @@ def format_gpx_info(info) -> str:
         f"Макс. высота: {info.max_elevation_m:.0f} м\n"
         f"Мин. высота: {info.min_elevation_m:.0f} м"
     )
-
-
-def format_time(hours: float) -> str:
-    """Format hours as Xч Yмин."""
-    h = int(hours)
-    m = int((hours - h) * 60)
-    if h > 0 and m > 0:
-        return f"{h}ч {m}мин"
-    elif h > 0:
-        return f"{h}ч"
-    else:
-        return f"{m}мин"
 
 
 def format_prediction(prediction, gpx_name: str, gpx_info=None) -> str:
@@ -113,10 +104,6 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
 
     result = f"<b>Прогноз для маршрута:</b>\n{filename}\n"
 
-    # Show personalization info if used
-    if old_prediction.personalized:
-        result += f"🎯 <i>Персонализировано ({old_prediction.activities_used} активностей)</i>\n"
-
     result += "\n"
 
     # Route summary - distance on new line
@@ -133,93 +120,25 @@ def format_full_prediction(comparison: dict, gpx_info, old_prediction) -> str:
     tobler_hours = totals.get("tobler", 0)
     naismith_hours = totals.get("naismith", 0)
 
-    result += f"  tobler: {format_time(tobler_hours)}\n"
-    result += f"  naismith: {format_time(naismith_hours)}\n"
+    # Base methods (dot counts tuned for Telegram proportional font)
+    result += f"  tobler (универсальный)........{format_time(tobler_hours)}\n"
+    result += f"  naismith (универсальный)...{format_time(naismith_hours)}\n"
 
     # Personalized methods (if user has profile)
     if "tobler_personalized" in totals:
-        result += f"  🎯 tobler (ваш темп): {format_time(totals['tobler_personalized'])}\n"
+        result += f"  tobler (ваш темп).....................{format_time(totals['tobler_personalized'])}\n"
     if "naismith_personalized" in totals:
-        result += f"  🎯 naismith (ваш темп): {format_time(totals['naismith_personalized'])}\n"
+        result += f"  naismith (ваш темп)................{format_time(totals['naismith_personalized'])}\n"
 
-    result += "\n"
+    # Effort levels (if available) — single value (tobler_personalized)
+    if "tobler_personalized_fast" in totals:
+        result += "\n🎯 <b>Персональный (по данным из Strava):</b>\n"
+        result += f"  🔥 Fast...............{format_time(totals['tobler_personalized_fast'])}\n"
+        result += f"  ⚡ Moderate...{format_time(totals['tobler_personalized_moderate'])}\n"
+        result += f"  🚶 Easy..............{format_time(totals['tobler_personalized_easy'])}\n"
 
-    # Additional time (was "Рекомендуем добавить")
-    rest_hours = comparison.get("rest_time_hours", 0)
-    lunch_hours = comparison.get("lunch_time_hours", 0)
-    buffer_hours = tobler_hours * 0.2  # 20% buffer
-
-    result += "<b>Дополнительное время:</b>\n"
-    if lunch_hours > 0:
-        result += f"  + {format_time(lunch_hours)} обед\n"
-    if rest_hours > 0:
-        result += f"  + {format_time(rest_hours)} отдых\n"
-    result += f"  + {format_time(buffer_hours)} (20% на непредвиденные ситуации)\n"
-
-    # Total estimate
-    total_estimate = tobler_hours + rest_hours + lunch_hours + buffer_hours
-    result += f"\n<b>Общее время:</b> ~{format_time(total_estimate)}\n\n"
-
-    # Recommended start with full schedule
-    sunrise = comparison.get("sunrise", "06:00")
-    sunset = comparison.get("sunset", "20:00")
-
-    # Calculate recommended start
-    sunset_hour = int(sunset.split(":")[0])
-    sunset_min = int(sunset.split(":")[1])
-    sunrise_hour = int(sunrise.split(":")[0])
-    sunrise_min = int(sunrise.split(":")[1])
-
-    # Want to return 1 hour before sunset
-    target_return = sunset_hour - 1
-    needed_hours = total_estimate
-    start_hour = target_return - needed_hours
-
-    # Don't start before sunrise
-    if start_hour < sunrise_hour:
-        start_hour = sunrise_hour
-        start_min = sunrise_min
-        recommended_start = sunrise
-    else:
-        start_min = 0
-        recommended_start = f"{int(start_hour):02d}:00"
-
-    # Calculate finish time
-    finish_hours = start_hour + start_min / 60 + total_estimate
-    finish_hour = int(finish_hours)
-    finish_min = int((finish_hours - finish_hour) * 60)
-    finish_time = f"{finish_hour:02d}:{finish_min:02d}"
-
-    # Check if late return (finish less than 1 hour before sunset or after sunset)
-    sunset_decimal = sunset_hour + sunset_min / 60
-    is_late_return = finish_hours > (sunset_decimal - 1)
-
-    result += "<b>Рекомендуемый старт:</b>\n"
-    result += f"  рассвет в {sunrise}\n"
-    result += f"  {recommended_start} старт\n"
-    result += f"  преодоление маршрута {format_time(total_estimate)}\n"
-    result += f"  {finish_time} ориентировочный финиш\n"
-    result += f"  закат в {sunset}\n"
-
-    if is_late_return:
-        result += f"  🚨 Риск вернуться после заката. Стартуйте раньше или выберите маршрут короче.\n"
-    result += "\n"
-
-    # Other warnings (without late return warning which is now in schedule)
-    max_elevation = comparison.get("max_elevation_m", 0)
-    warnings = []
-
-    if total_estimate > 8:
-        warnings.append(("ℹ️", "Длинный поход (8+ часов). Возьмите достаточно воды и еды."))
-
-    if max_elevation > 3000:
-        warnings.append(("⚠️", f"Маршрут достигает {max_elevation:.0f}м. Следите за симптомами горной болезни."))
-
-    if warnings:
-        result += "<b>Предупреждения:</b>\n"
-        for emoji, message in warnings:
-            result += f"{emoji} {message}\n"
-        result += "\n"
+    if not old_prediction.personalized:
+        result += f"📊 <i>Хотите точнее? Подключите Strava для персонального расчёта на основе ваших активностей.</i>\n"
 
     return result
 
@@ -243,9 +162,14 @@ def format_segments(comparison: dict) -> str:
             f"  Градиент: {seg['gradient_percent']}%\n"
         )
 
-        # Show all methods for this segment
-        for method_name, method_result in seg["methods"].items():
-            content += f"  [{method_name}] {format_time(method_result['time_hours'])}\n"
+        # Show best available time: personalized (moderate) or tobler fallback
+        methods = seg["methods"]
+        if "tobler_personalized" in methods:
+            seg_time = format_time(methods["tobler_personalized"]["time_hours"])
+            content += f"  ⚡ Moderate: {seg_time}\n"
+        elif "tobler" in methods:
+            seg_time = format_time(methods["tobler"]["time_hours"])
+            content += f"  tobler: {seg_time}\n"
 
         content += "\n"
 
@@ -275,7 +199,7 @@ async def handle_document(message: Message, state: FSMContext):
         return
 
     # Download file
-    await message.answer("Загружаю файл...")
+    loading_msg = await message.answer("Загружаю файл...")
 
     try:
         file = await message.bot.get_file(document.file_id)
@@ -304,24 +228,93 @@ async def handle_document(message: Message, state: FSMContext):
         gpx_info=gpx_info,
     )
 
-    # Show GPX info
-    await message.answer(format_gpx_info(gpx_info))
+    # Show GPX info (edit loading message) and ask for activity type
+    await loading_msg.edit_text(format_gpx_info(gpx_info))
+    await message.answer(
+        "Какой прогноз нужен?",
+        reply_markup=get_activity_type_keyboard()
+    )
+    await state.set_state(PredictionStates.selecting_activity_type)
 
-    # If route is a loop (start ≈ end), skip route type question
-    if gpx_info.is_loop:
-        await state.update_data(is_round_trip=False)  # Already a complete route
-        await message.answer(
+
+# === Activity Type Selection ===
+
+@router.callback_query(PredictionStates.selecting_activity_type, F.data.startswith("activity:"))
+async def handle_activity_type(callback: CallbackQuery, state: FSMContext):
+    """Handle activity type selection after GPX upload."""
+    activity_type = callback.data.split(":")[1]
+    await state.update_data(activity_type=activity_type)
+
+    if activity_type == "trail_run":
+        # Trail run flow - delegate to trail_run handler
+        data = await state.get_data()
+        gpx_id = data.get("gpx_id")
+        gpx_info = data.get("gpx_info")
+
+        # Convert gpx_info to dict for trail_run module
+        gpx_info_dict = {
+            "gpx_id": gpx_info.gpx_id,
+            "name": gpx_info.name,
+            "filename": gpx_info.filename,
+            "distance_km": gpx_info.distance_km,
+            "elevation_gain_m": gpx_info.elevation_gain_m,
+            "elevation_loss_m": gpx_info.elevation_loss_m,
+            "max_elevation_m": gpx_info.max_elevation_m,
+            "min_elevation_m": gpx_info.min_elevation_m,
+            "is_loop": gpx_info.is_loop,
+        }
+
+        # Delete the activity type selection message and start trail run flow
+        await callback.message.delete()
+        user_id = str(callback.from_user.id)
+        await start_trail_run_flow(callback.message, state, gpx_id, gpx_info_dict, user_id=user_id)
+    else:
+        # Hiking flow - continue with existing logic
+        data = await state.get_data()
+        gpx_info = data.get("gpx_info")
+
+        # First handle route type question for non-loop routes
+        if gpx_info and not gpx_info.is_loop:
+            # Linear route - ask if round trip first
+            await callback.message.edit_text(
+                "Это маршрут в одну сторону или туда-обратно?",
+                reply_markup=get_route_type_keyboard()
+            )
+            await state.set_state(PredictionStates.selecting_route_type)
+        else:
+            # Loop route - skip route type, proceed to experience check
+            await state.update_data(is_round_trip=False)
+            await _proceed_to_experience_or_backpack(callback, state)
+
+    await callback.answer()
+
+
+async def _proceed_to_experience_or_backpack(callback: CallbackQuery, state: FSMContext):
+    """
+    Check if user has hike profile and skip experience question if so.
+    Otherwise ask about experience.
+    """
+    telegram_id = str(callback.from_user.id)
+
+    # Check if user has personalized hike profile
+    hike_profile = await api_client.get_hike_profile(telegram_id)
+    has_profile = hike_profile and hike_profile.get("avg_flat_pace_min_km")
+
+    if has_profile:
+        # User has profile - skip experience question, go directly to backpack
+        await state.update_data(experience="personalized")  # marker for personalized mode
+        await callback.message.edit_text(
+            "🎯 Использую твой персональный профиль!\n\nКакой вес рюкзака?",
+            reply_markup=get_backpack_keyboard()
+        )
+        await state.set_state(PredictionStates.selecting_backpack)
+    else:
+        # No profile - ask about experience
+        await callback.message.edit_text(
             "Какой у тебя опыт походов?",
             reply_markup=get_experience_keyboard()
         )
         await state.set_state(PredictionStates.selecting_experience)
-    else:
-        # Linear route (A→B), ask if round trip
-        await message.answer(
-            "Это маршрут в одну сторону или туда-обратно?",
-            reply_markup=get_route_type_keyboard()
-        )
-        await state.set_state(PredictionStates.selecting_route_type)
 
 
 # === Route Type Selection ===
@@ -332,11 +325,8 @@ async def handle_route_type(callback: CallbackQuery, state: FSMContext):
     is_round_trip = callback.data.split(":")[1] == "roundtrip"
     await state.update_data(is_round_trip=is_round_trip)
 
-    await callback.message.edit_text(
-        "Какой у тебя опыт походов?",
-        reply_markup=get_experience_keyboard()
-    )
-    await state.set_state(PredictionStates.selecting_experience)
+    # Check if user has profile - if yes, skip experience question
+    await _proceed_to_experience_or_backpack(callback, state)
     await callback.answer()
 
 
@@ -376,49 +366,53 @@ async def handle_backpack(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(PredictionStates.selecting_group_size, F.data.startswith("gs:"))
 async def handle_group_size(callback: CallbackQuery, state: FSMContext):
-    """Handle group size selection."""
+    """Handle group size selection and make prediction."""
     group_size = int(callback.data.split(":")[1])
     await state.update_data(group_size=group_size)
-
-    await callback.message.edit_text(
-        "Есть ли в группе дети (до 14 лет)?",
-        reply_markup=get_yes_no_keyboard("children")
-    )
-    await state.set_state(PredictionStates.selecting_children)
     await callback.answer()
 
-
-# === Children Selection ===
-
-@router.callback_query(PredictionStates.selecting_children, F.data.startswith("children:"))
-async def handle_children(callback: CallbackQuery, state: FSMContext):
-    """Handle children selection."""
-    has_children = callback.data.split(":")[1] == "yes"
-    await state.update_data(has_children=has_children)
-
-    await callback.message.edit_text(
-        "Есть ли в группе пожилые люди (60+ лет)?",
-        reply_markup=get_yes_no_keyboard("elderly")
-    )
-    await state.set_state(PredictionStates.selecting_elderly)
-    await callback.answer()
+    await _make_prediction(callback, state)
 
 
-# === Elderly Selection ===
+# # === Children Selection (disabled) ===
+#
+# @router.callback_query(PredictionStates.selecting_children, F.data.startswith("children:"))
+# async def handle_children(callback: CallbackQuery, state: FSMContext):
+#     """Handle children selection."""
+#     has_children = callback.data.split(":")[1] == "yes"
+#     await state.update_data(has_children=has_children)
+#
+#     await callback.message.edit_text(
+#         "Есть ли в группе пожилые люди (60+ лет)?",
+#         reply_markup=get_yes_no_keyboard("elderly")
+#     )
+#     await state.set_state(PredictionStates.selecting_elderly)
+#     await callback.answer()
+#
+#
+# # === Elderly Selection (disabled) ===
+#
+# @router.callback_query(PredictionStates.selecting_elderly, F.data.startswith("elderly:"))
+# async def handle_elderly(callback: CallbackQuery, state: FSMContext):
+#     """Handle elderly selection and make prediction."""
+#     has_elderly = callback.data.split(":")[1] == "yes"
+#     await state.update_data(has_elderly=has_elderly)
+#     await callback.answer()
+#     await _make_prediction(callback, state)
 
-@router.callback_query(PredictionStates.selecting_elderly, F.data.startswith("elderly:"))
-async def handle_elderly(callback: CallbackQuery, state: FSMContext):
-    """Handle elderly selection and make prediction."""
-    has_elderly = callback.data.split(":")[1] == "yes"
-    await state.update_data(has_elderly=has_elderly)
 
-    # Get all data
+async def _make_prediction(callback: CallbackQuery, state: FSMContext):
+    """Run prediction and display results."""
     data = await state.get_data()
 
     await callback.message.edit_text("Рассчитываю прогноз...")
 
     gpx_id = data["gpx_id"]
     experience = data.get("experience", "casual")
+    # "personalized" is an internal marker (profile exists, skip experience question)
+    # API expects a valid enum value; personalization works via telegram_id
+    if experience == "personalized":
+        experience = "regular"
     backpack = data.get("backpack", "medium")
     group_size = data.get("group_size", 1)
     gpx_name = data.get("gpx_name", "")
@@ -448,8 +442,6 @@ async def handle_elderly(callback: CallbackQuery, state: FSMContext):
             experience=experience,
             backpack=backpack,
             group_size=group_size,
-            has_children=data.get("has_children", False),
-            has_elderly=has_elderly,
             is_round_trip=data.get("is_round_trip", False),
             telegram_id=telegram_id,
         )

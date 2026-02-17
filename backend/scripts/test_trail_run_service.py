@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session
 import gpxpy
 
 from app.models.gpx import GPXFile
-from app.services.calculators.trail_run import TrailRunService, GAPMode
+from app.features.trail_run import TrailRunService
+from app.features.trail_run.calculators import GAPMode
 
 
 def format_time(hours: float) -> str:

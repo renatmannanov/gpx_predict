@@ -25,12 +25,14 @@ from sqlalchemy.orm import sessionmaker
 import gpxpy
 
 from app.models.user import User
-from app.models.user_profile import UserPerformanceProfile
-from app.models.user_run_profile import UserRunProfile
+from app.features.hiking import UserHikingProfile as UserPerformanceProfile
+from app.features.trail_run import UserTrailRunProfile as UserRunProfile
 from app.models.strava_activity import StravaActivity, StravaActivitySplit
 from app.models.gpx import GPXFile
 from app.services.user_profile import UserProfileService
-from app.services.calculators.trail_run import TrailRunService, GAPMode
+from app.features.trail_run import TrailRunService
+from app.features.trail_run.calculators import GAPMode
+from app.shared.constants import DEFAULT_HIKE_THRESHOLD_PERCENT
 
 
 def format_time(hours: float) -> str:
@@ -249,7 +251,7 @@ def main():
         run_profile.moderate_downhill_sample_count = len(splits_by_category['moderate_downhill'])
         run_profile.steep_downhill_sample_count = len(splits_by_category['steep_downhill'])
 
-        run_profile.walk_threshold_percent = 25.0  # Default
+        run_profile.walk_threshold_percent = DEFAULT_HIKE_THRESHOLD_PERCENT
         run_profile.total_activities = len(set(s.activity_id for s in splits))
         run_profile.total_distance_km = sum(
             a.distance_m / 1000 for a in db.query(StravaActivity).filter(

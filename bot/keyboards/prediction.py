@@ -7,6 +7,24 @@ Inline keyboards for the prediction flow.
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
+def get_activity_type_keyboard() -> InlineKeyboardMarkup:
+    """Keyboard for selecting activity type after GPX upload."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="🥾 Хайкинг",
+                callback_data="activity:hiking"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="🏃 Трейлраннинг",
+                callback_data="activity:trail_run"
+            )
+        ],
+    ])
+
+
 def get_experience_keyboard() -> InlineKeyboardMarkup:
     """Keyboard for selecting experience level."""
     return InlineKeyboardMarkup(inline_keyboard=[

@@ -18,7 +18,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '008_add_onboarding_and_notifications'
-down_revision: Union[str, None] = '537cb9c6ae39'
+down_revision: Union[str, None] = '007a_add_sample_count_columns'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

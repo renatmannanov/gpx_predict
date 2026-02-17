@@ -21,12 +21,13 @@ from sqlalchemy.orm import Session
 import gpxpy
 
 from app.models.user import User
-from app.models.user_profile import UserPerformanceProfile
-from app.models.user_run_profile import UserRunProfile
+from app.features.hiking import UserHikingProfile as UserPerformanceProfile
+from app.features.trail_run import UserTrailRunProfile as UserRunProfile
 from app.models.strava_activity import StravaActivity, StravaActivitySplit
 from app.models.gpx import GPXFile
-from app.services.calculators.trail_run import TrailRunService, GAPMode
-from app.services.calculators.segmenter import RouteSegmenter
+from app.features.trail_run import TrailRunService
+from app.features.trail_run.calculators import GAPMode
+from app.features.gpx import RouteSegmenter
 
 
 def format_time(hours: float) -> str:

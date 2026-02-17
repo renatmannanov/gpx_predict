@@ -15,12 +15,16 @@ from app.services.calculators.base import (
     MethodResult,
     SegmentType
 )
-from app.services.calculators.naismith import NaismithCalculator
-from app.services.calculators.tobler import ToblerCalculator
-from app.services.calculators.segmenter import RouteSegmenter
-from app.services.calculators.personalization import PersonalizationService
-from app.services.calculators.fatigue import FatigueService, FatigueConfig
-from app.models.user_profile import UserPerformanceProfile
+from app.features.gpx.segmenter import RouteSegmenter
+from app.features.hiking.calculators import (
+    NaismithCalculator,
+    ToblerCalculator,
+    PersonalizationService,
+    FatigueService,
+    FatigueConfig,
+)
+from app.features.hiking.models import UserHikingProfile
+from app.shared.calculator_types import EffortLevel
 
 
 @dataclass
@@ -85,8 +89,8 @@ class ComparisonService:
         self,
         points: List[Tuple[float, float, float]],
         profile_multiplier: float = 1.0,
-        user_profile: Optional[UserPerformanceProfile] = None,
-        use_extended_gradients: bool = False,
+        user_profile: Optional[UserHikingProfile] = None,
+        use_extended_gradients: bool = True,
         apply_fatigue: bool = False
     ) -> RouteComparison:
         """
@@ -122,16 +126,21 @@ class ComparisonService:
             if s.segment_type == SegmentType.DESCENT
         )
 
-        # Setup personalization if profile is valid
+        # Setup personalization if profile is valid (3 effort levels)
         personalization = None
+        personalization_by_effort: Dict[EffortLevel, PersonalizationService] = {}
         is_personalized = False
         activities_used = 0
 
         if PersonalizationService.is_profile_valid(user_profile):
-            personalization = PersonalizationService(
-                user_profile,
-                use_extended_gradients=use_extended_gradients
-            )
+            for effort in EffortLevel:
+                personalization_by_effort[effort] = PersonalizationService(
+                    user_profile,
+                    use_extended_gradients=use_extended_gradients,
+                    effort=effort,
+                )
+            # Default (MODERATE) for backward compat
+            personalization = personalization_by_effort[EffortLevel.MODERATE]
             is_personalized = True
             activities_used = user_profile.total_activities_analyzed
 
@@ -148,6 +157,10 @@ class ComparisonService:
         if personalization:
             method_totals["tobler_personalized"] = 0.0
             method_totals["naismith_personalized"] = 0.0
+            # Effort level totals
+            for effort in EffortLevel:
+                method_totals[f"tobler_personalized_{effort.value}"] = 0.0
+                method_totals[f"naismith_personalized_{effort.value}"] = 0.0
 
         # Track cumulative time per method for fatigue calculation
         cumulative_times: Dict[str, float] = {k: 0.0 for k in method_totals.keys()}
@@ -189,9 +202,10 @@ class ComparisonService:
                 comparison.methods[calculator.name] = result
                 method_totals[calculator.name] += result.time_hours
 
-            # Calculate with personalized methods
+            # Calculate with personalized methods (MODERATE for segments, all for totals)
             if personalization:
                 for base_method in ["tobler", "naismith"]:
+                    # MODERATE result goes into segment comparison (legacy compat)
                     result = personalization.calculate_segment(segment, base_method)
 
                     # Apply fatigue if enabled
@@ -213,6 +227,12 @@ class ComparisonService:
                     comparison.methods[result.method_name] = result
                     method_totals[result.method_name] += result.time_hours
 
+                    # Effort level totals (all 3 levels)
+                    for effort, pers in personalization_by_effort.items():
+                        effort_result = pers.calculate_segment(segment, base_method)
+                        key = f"{base_method}_personalized_{effort.value}"
+                        method_totals[key] += effort_result.time_hours
+
             segment_comparisons.append(comparison)
 
         # Round totals
@@ -225,6 +245,11 @@ class ComparisonService:
         if personalization:
             descriptions["tobler_personalized"] = f"Tobler + ваш темп ({activities_used} активностей)"
             descriptions["naismith_personalized"] = f"Naismith + ваш темп ({activities_used} активностей)"
+            effort_labels = {"fast": "быстрый темп", "moderate": "обычный темп", "easy": "лёгкий темп"}
+            for effort in EffortLevel:
+                label = effort_labels[effort.value]
+                descriptions[f"tobler_personalized_{effort.value}"] = f"Tobler + {label}"
+                descriptions[f"naismith_personalized_{effort.value}"] = f"Naismith + {label}"
 
         # Build fatigue info
         fatigue_info = {}
@@ -248,7 +273,7 @@ class ComparisonService:
 
     def _empty_comparison(
         self,
-        user_profile: Optional[UserPerformanceProfile] = None
+        user_profile: Optional[UserHikingProfile] = None
     ) -> RouteComparison:
         """Return empty comparison for invalid routes."""
         totals = {c.name: 0.0 for c in self.calculators}
@@ -264,6 +289,9 @@ class ComparisonService:
             totals["naismith_personalized"] = 0.0
             descriptions["tobler_personalized"] = f"Tobler + ваш темп ({activities_used} активностей)"
             descriptions["naismith_personalized"] = f"Naismith + ваш темп ({activities_used} активностей)"
+            for effort in EffortLevel:
+                totals[f"tobler_personalized_{effort.value}"] = 0.0
+                totals[f"naismith_personalized_{effort.value}"] = 0.0
 
         return RouteComparison(
             total_distance_km=0,

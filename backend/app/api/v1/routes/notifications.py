@@ -7,12 +7,11 @@ Endpoints for managing user notifications.
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
-from app.db.session import get_db
-from app.models.user import User
-from app.models.notification import Notification
+from app.db.session import get_async_db
+from app.features.users import UserRepository, NotificationRepository
 
 router = APIRouter()
 
@@ -56,7 +55,7 @@ async def get_notifications(
     unread_only: bool = True,
     limit: int = 50,
     offset: int = 0,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get notifications for a user.
@@ -67,33 +66,37 @@ async def get_notifications(
         limit: Maximum number of notifications to return
         offset: Offset for pagination
     """
+    user_repo = UserRepository(db)
+    notification_repo = NotificationRepository(db)
+
     # Find user
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user = await user_repo.get_by_telegram_id(telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Build query
-    query = db.query(Notification).filter(Notification.user_id == user.id)
-
-    if unread_only:
-        query = query.filter(Notification.read == False)
+    # Get notifications
+    notifications = await notification_repo.get_for_user(
+        user_id=user.id,
+        unread_only=unread_only,
+        limit=limit
+    )
 
     # Get counts
-    total_count = query.count()
-    unread_count = db.query(Notification).filter(
-        Notification.user_id == user.id,
-        Notification.read == False
-    ).count()
-
-    # Get notifications with pagination
-    notifications = query.order_by(
-        Notification.created_at.desc()
-    ).offset(offset).limit(limit).all()
+    all_notifications = await notification_repo.get_for_user(
+        user_id=user.id,
+        unread_only=False,
+        limit=1000
+    )
+    unread_notifications = await notification_repo.get_for_user(
+        user_id=user.id,
+        unread_only=True,
+        limit=1000
+    )
 
     return NotificationListResponse(
         notifications=[NotificationSchema.model_validate(n) for n in notifications],
-        unread_count=unread_count,
-        total_count=total_count
+        unread_count=len(unread_notifications),
+        total_count=len(all_notifications)
     )
 
 
@@ -101,7 +104,7 @@ async def get_notifications(
 async def mark_notifications_read(
     telegram_id: str,
     request: MarkReadRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Mark notifications as read.
@@ -110,23 +113,21 @@ async def mark_notifications_read(
         telegram_id: User's Telegram ID
         request: List of notification IDs to mark, or None to mark all
     """
+    user_repo = UserRepository(db)
+    notification_repo = NotificationRepository(db)
+
     # Find user
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    user = await user_repo.get_by_telegram_id(telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Build query
-    query = db.query(Notification).filter(
-        Notification.user_id == user.id,
-        Notification.read == False
-    )
-
+    # Mark as read
     if request.notification_ids:
-        query = query.filter(Notification.id.in_(request.notification_ids))
+        count = await notification_repo.mark_as_read(request.notification_ids)
+    else:
+        count = await notification_repo.mark_all_read_for_user(user.id)
 
-    # Update
-    count = query.update({"read": True}, synchronize_session=False)
-    db.commit()
+    await db.commit()
 
     return MarkReadResponse(marked_count=count)
 
@@ -136,7 +137,7 @@ async def get_all_notifications(
     telegram_id: str,
     limit: int = 50,
     offset: int = 0,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get all notifications (including read) for a user.
@@ -157,12 +158,12 @@ async def get_all_notifications(
 
 # === Helper functions for creating notifications ===
 
-def create_notification(
-    db: Session,
+async def create_notification(
+    db: AsyncSession,
     user_id: str,
     notification_type: str,
     data: Optional[dict] = None
-) -> Notification:
+):
     """
     Create a notification for a user.
 
@@ -175,26 +176,25 @@ def create_notification(
     Returns:
         Created notification
     """
-    notification = Notification(
+    notification_repo = NotificationRepository(db)
+    notification = await notification_repo.create_notification(
         user_id=user_id,
-        type=notification_type,
+        notification_type=notification_type,
         data=data
     )
-    db.add(notification)
-    db.commit()
-    db.refresh(notification)
+    await db.commit()
     return notification
 
 
-def create_profile_updated_notification(
-    db: Session,
+async def create_profile_updated_notification(
+    db: AsyncSession,
     user_id: str,
     profile_type: str,  # "hiking" or "running"
     activities_count: int,
     splits_count: int
-) -> Notification:
+):
     """Create notification when profile is updated."""
-    return create_notification(
+    return await create_notification(
         db=db,
         user_id=user_id,
         notification_type="profile_updated",
@@ -206,14 +206,14 @@ def create_profile_updated_notification(
     )
 
 
-def create_sync_complete_notification(
-    db: Session,
+async def create_sync_complete_notification(
+    db: AsyncSession,
     user_id: str,
     activities_synced: int,
     activities_with_splits: int
-) -> Notification:
+):
     """Create notification when Strava sync completes."""
-    return create_notification(
+    return await create_notification(
         db=db,
         user_id=user_id,
         notification_type="sync_complete",
@@ -224,15 +224,15 @@ def create_sync_complete_notification(
     )
 
 
-def create_sync_progress_notification(
-    db: Session,
+async def create_sync_progress_notification(
+    db: AsyncSession,
     user_id: str,
     progress_percent: int,
     activities_synced: int,
     total_estimated: int
-) -> Notification:
+):
     """Create notification for sync progress update."""
-    return create_notification(
+    return await create_notification(
         db=db,
         user_id=user_id,
         notification_type="sync_progress",

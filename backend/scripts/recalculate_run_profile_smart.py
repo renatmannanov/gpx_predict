@@ -19,7 +19,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.models.user_run_profile import UserRunProfile
+from app.features.trail_run import UserTrailRunProfile as UserRunProfile
 from app.models.strava_activity import StravaActivity, StravaActivitySplit
 
 

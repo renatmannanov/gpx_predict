@@ -35,10 +35,9 @@ from app.services.naismith import (
     HikerProfile,
     NAISMITH_BASE_SPEED_KMH
 )
-from app.repositories.gpx import GPXRepository
-from app.services.gpx_parser import GPXParserService, GPXSegment
+from app.features.gpx import GPXRepository, GPXParserService, GPXSegment
 from app.services.sun import get_sun_times
-from app.models.user_profile import UserPerformanceProfile
+from app.features.hiking import UserHikingProfile as UserPerformanceProfile
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +46,7 @@ class PredictionService:
     """Service for time predictions."""
 
     @staticmethod
-    def predict_hike(
+    async def predict_hike(
         gpx_id: str,
         experience: ExperienceLevel,
         backpack: BackpackWeight,
@@ -55,7 +54,7 @@ class PredictionService:
         has_children: bool,
         has_elderly: bool,
         is_round_trip: bool,
-        db: Session,
+        db,
         sunrise: str = "06:00",
         sunset: str = "20:00",
         user_profile: Optional[UserPerformanceProfile] = None
@@ -84,7 +83,7 @@ class PredictionService:
         """
         # Fetch GPX data from database
         gpx_repo = GPXRepository(db)
-        gpx_file = gpx_repo.get_by_id(gpx_id)
+        gpx_file = await gpx_repo.get_by_id(gpx_id)
 
         if not gpx_file:
             raise ValueError(f"GPX file not found: {gpx_id}")
@@ -321,11 +320,11 @@ class PredictionService:
         return time_hours
 
     @staticmethod
-    def predict_group(
+    async def predict_group(
         gpx_id: str,
         members: List[GroupMemberInput],
         is_round_trip: bool,
-        db: Session
+        db
     ) -> GroupPrediction:
         """
         Calculate group hike prediction.
@@ -337,7 +336,7 @@ class PredictionService:
 
         for member in members:
             # Simple prediction for each member
-            prediction = PredictionService.predict_hike(
+            prediction = await PredictionService.predict_hike(
                 gpx_id=gpx_id,
                 experience=member.experience,
                 backpack=member.backpack,

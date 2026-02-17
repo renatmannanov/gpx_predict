@@ -5,12 +5,10 @@ Endpoints for uploading and managing GPX files.
 """
 
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
-from app.schemas.gpx import GPXUploadResponse, GPXInfo
-from app.services.gpx_parser import GPXParserService
-from app.repositories.gpx import GPXRepository
+from app.db.session import get_async_db
+from app.features.gpx import GPXParserService, GPXRepository, GPXInfo, GPXUploadResponse
 
 router = APIRouter()
 
@@ -18,7 +16,7 @@ router = APIRouter()
 @router.post("/upload", response_model=GPXUploadResponse)
 async def upload_gpx(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Upload and parse a GPX file.
@@ -46,7 +44,7 @@ async def upload_gpx(
 
     # Save to database
     repo = GPXRepository(db)
-    gpx_file = repo.create(
+    gpx_file = await repo.create(
         filename=file.filename,
         content=content,
         info=gpx_info
@@ -62,11 +60,11 @@ async def upload_gpx(
 @router.get("/{gpx_id}", response_model=GPXInfo)
 async def get_gpx(
     gpx_id: str,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Get GPX file information by ID."""
     repo = GPXRepository(db)
-    gpx_file = repo.get_by_id(gpx_id)
+    gpx_file = await repo.get_by_id(gpx_id)
 
     if not gpx_file:
         raise HTTPException(status_code=404, detail="GPX file not found")

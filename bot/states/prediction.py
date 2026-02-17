@@ -11,6 +11,7 @@ class PredictionStates(StatesGroup):
     """States for hike prediction flow."""
 
     waiting_for_gpx = State()
+    selecting_activity_type = State()
     selecting_route_type = State()
     selecting_experience = State()
     selecting_backpack = State()

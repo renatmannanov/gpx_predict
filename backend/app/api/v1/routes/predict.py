@@ -7,10 +7,10 @@ Endpoints for time predictions.
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
-from app.db.session import get_db
+from app.db.session import get_async_db
 from app.schemas.prediction import (
     HikePredictRequest,
     HikePrediction,
@@ -29,14 +29,14 @@ from app.schemas.prediction import (
 )
 from app.services.prediction import PredictionService
 from app.services.calculators import ComparisonService
-from app.services.calculators.trail_run import TrailRunService, GAPMode
-from app.repositories.gpx import GPXRepository
-from app.services.gpx_parser import GPXParserService
+from app.features.trail_run import TrailRunService
+from app.features.trail_run.calculators import GAPMode
+from app.features.gpx import GPXRepository, GPXParserService
 from app.services.naismith import get_total_multiplier, estimate_rest_time, HikerProfile
 from app.services.sun import get_sun_times
-from app.models.user import User
-from app.models.user_profile import UserPerformanceProfile
-from app.models.user_run_profile import UserRunProfile
+from app.features.users import UserRepository
+from app.features.hiking import HikingProfileRepository
+from app.features.trail_run import TrailRunProfileRepository
 
 router = APIRouter()
 
@@ -48,8 +48,8 @@ class CompareRequest(BaseModel):
     backpack: BackpackWeight = BackpackWeight.LIGHT
     group_size: int = Field(default=1, ge=1, le=50)
     telegram_id: Optional[str] = None  # For personalization
-    # Extended gradient system (7 categories vs legacy 3)
-    use_extended_gradients: bool = False
+    # Extended gradient system (7/11 categories vs legacy 3)
+    use_extended_gradients: bool = True
     # Fatigue modeling (slowdown on long hikes)
     apply_fatigue: bool = False
 
@@ -57,7 +57,7 @@ class CompareRequest(BaseModel):
 @router.post("/hike", response_model=HikePrediction)
 async def predict_hike(
     request: HikePredictRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Predict hiking time for a route.
@@ -68,14 +68,15 @@ async def predict_hike(
     # Load user profile if telegram_id provided
     user_profile = None
     if request.telegram_id:
-        user = db.query(User).filter(User.telegram_id == request.telegram_id).first()
+        user_repo = UserRepository(db)
+        hiking_repo = HikingProfileRepository(db)
+
+        user = await user_repo.get_by_telegram_id(request.telegram_id)
         if user:
-            user_profile = db.query(UserPerformanceProfile).filter(
-                UserPerformanceProfile.user_id == user.id
-            ).first()
+            user_profile = await hiking_repo.get_by_user_id(user.id)
 
     try:
-        prediction = PredictionService.predict_hike(
+        prediction = await PredictionService.predict_hike(
             gpx_id=request.gpx_id,
             experience=request.experience,
             backpack=request.backpack,
@@ -94,7 +95,7 @@ async def predict_hike(
 @router.post("/group", response_model=GroupPrediction)
 async def predict_group(
     request: GroupPredictRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Predict hiking time for a group.
@@ -103,7 +104,7 @@ async def predict_group(
     for splitting, meeting points, etc.
     """
     try:
-        prediction = PredictionService.predict_group(
+        prediction = await PredictionService.predict_group(
             gpx_id=request.gpx_id,
             members=request.members,
             is_round_trip=request.is_round_trip,
@@ -117,7 +118,7 @@ async def predict_group(
 @router.post("/compare", response_model=RouteComparisonResponse)
 async def compare_methods(
     request: CompareRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Compare different prediction methods on a route.
@@ -127,7 +128,7 @@ async def compare_methods(
     """
     # Get GPX file
     gpx_repo = GPXRepository(db)
-    gpx_file = gpx_repo.get_by_id(request.gpx_id)
+    gpx_file = await gpx_repo.get_by_id(request.gpx_id)
 
     if not gpx_file:
         raise HTTPException(status_code=404, detail=f"GPX file not found: {request.gpx_id}")
@@ -138,11 +139,12 @@ async def compare_methods(
     # Load user profile if telegram_id provided
     user_profile = None
     if request.telegram_id:
-        user = db.query(User).filter(User.telegram_id == request.telegram_id).first()
+        user_repo = UserRepository(db)
+        hiking_repo = HikingProfileRepository(db)
+
+        user = await user_repo.get_by_telegram_id(request.telegram_id)
         if user:
-            user_profile = db.query(UserPerformanceProfile).filter(
-                UserPerformanceProfile.user_id == user.id
-            ).first()
+            user_profile = await hiking_repo.get_by_user_id(user.id)
 
     # Extract points
     try:
@@ -234,7 +236,7 @@ async def compare_methods(
 @router.post("/trail-run/compare", response_model=TrailRunCompareResponse)
 async def compare_trail_run_methods(
     request: TrailRunCompareRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Compare trail running prediction methods on a route.
@@ -251,7 +253,7 @@ async def compare_trail_run_methods(
     """
     # Get GPX file
     gpx_repo = GPXRepository(db)
-    gpx_file = gpx_repo.get_by_id(request.gpx_id)
+    gpx_file = await gpx_repo.get_by_id(request.gpx_id)
 
     if not gpx_file:
         raise HTTPException(status_code=404, detail=f"GPX file not found: {request.gpx_id}")
@@ -264,14 +266,14 @@ async def compare_trail_run_methods(
     run_profile = None
 
     if request.telegram_id:
-        user = db.query(User).filter(User.telegram_id == request.telegram_id).first()
+        user_repo = UserRepository(db)
+        hiking_repo = HikingProfileRepository(db)
+        run_repo = TrailRunProfileRepository(db)
+
+        user = await user_repo.get_by_telegram_id(request.telegram_id)
         if user:
-            hike_profile = db.query(UserPerformanceProfile).filter(
-                UserPerformanceProfile.user_id == user.id
-            ).first()
-            run_profile = db.query(UserRunProfile).filter(
-                UserRunProfile.user_id == user.id
-            ).first()
+            hike_profile = await hiking_repo.get_by_user_id(user.id)
+            run_profile = await run_repo.get_by_user_id(user.id)
 
     # Extract points
     try:
@@ -279,21 +281,33 @@ async def compare_trail_run_methods(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse GPX: {e}")
 
-    # Determine flat pace
-    flat_pace = request.flat_pace_min_km
-    if flat_pace is None:
-        if run_profile and run_profile.avg_flat_pace_min_km:
-            flat_pace = run_profile.avg_flat_pace_min_km
-        else:
-            flat_pace = 6.0  # Default 10 km/h
+    # Determine paces
+    manual_pace = request.flat_pace_min_km or 6.0  # User selected/entered pace
+
+    # Get strava_pace from profile (loaded by backend)
+    strava_pace = None
+    if run_profile and run_profile.avg_flat_pace_min_km:
+        strava_pace = run_profile.avg_flat_pace_min_km
+
+    # DEBUG: Log profile loading
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Trail run predict - run_profile exists: {run_profile is not None}")
+    if run_profile:
+        logger.info(f"Trail run predict - run_profile.avg_flat_pace_min_km: {run_profile.avg_flat_pace_min_km}")
+    logger.info(f"Trail run predict - strava_pace: {strava_pace}, manual_pace: {manual_pace}")
 
     # Map GAP mode enum
-    gap_mode = GAPMode.STRAVA if request.gap_mode == GAPModeEnum.STRAVA else GAPMode.MINETTI
+    gap_mode_map = {
+        GAPModeEnum.STRAVA: GAPMode.STRAVA,
+        GAPModeEnum.MINETTI: GAPMode.MINETTI,
+        GAPModeEnum.STRAVA_MINETTI: GAPMode.STRAVA_MINETTI,
+    }
+    gap_mode = gap_mode_map.get(request.gap_mode, GAPMode.STRAVA)
 
-    # Create trail run service
-    service = TrailRunService(
+    # Common service params
+    service_params = dict(
         gap_mode=gap_mode,
-        flat_pace_min_km=flat_pace,
         hike_profile=hike_profile,
         run_profile=run_profile,
         apply_fatigue=request.apply_fatigue,
@@ -302,8 +316,17 @@ async def compare_trail_run_methods(
         use_extended_gradients=request.use_extended_gradients,
     )
 
-    # Calculate
-    result = service.calculate_route(points)
+    # Calculate with manual/selected pace (always)
+    service_manual = TrailRunService(flat_pace_min_km=manual_pace, **service_params)
+    result = service_manual.calculate_route(points)
+    totals_manual = result.totals
+
+    # Calculate with Strava pace (if available)
+    totals_strava = None
+    if strava_pace and strava_pace != manual_pace:
+        service_strava = TrailRunService(flat_pace_min_km=strava_pace, **service_params)
+        result_strava = service_strava.calculate_route(points)
+        totals_strava = result_strava.totals
 
     # Convert segments to response schema
     segments = []
@@ -339,12 +362,16 @@ async def compare_trail_run_methods(
     )
 
     # Format as text for bot
-    formatted = _format_trail_run_result(result, flat_pace)
+    formatted = _format_trail_run_result(result, manual_pace)
 
     return TrailRunCompareResponse(
         activity_type="trail_run",
         segments=segments,
-        totals=result.totals,
+        totals=totals_manual,  # Primary results (manual pace)
+        totals_manual=totals_manual,
+        totals_strava=totals_strava,
+        manual_pace_used=manual_pace,
+        strava_pace_used=strava_pace,
         summary=summary,
         personalized=result.personalized,
         total_activities_used=result.total_activities_used,
@@ -377,6 +404,9 @@ def _format_trail_run_result(result, flat_pace: float) -> str:
     # Time totals
     lines.append("⏱ TIME ESTIMATES:")
     for method, hours in sorted(result.totals.items()):
+        # Skip non-numeric values (like run_profile dict)
+        if not isinstance(hours, (int, float)):
+            continue
         h = int(hours)
         m = int((hours - h) * 60)
         lines.append(f"  {method}: {h}h {m:02d}min")

@@ -1,21 +1,22 @@
 """
-User Performance Profile Model
+User Hiking Profile Model
 
-Stores calculated performance metrics from Strava activities.
+Stores calculated performance metrics from Strava hiking activities.
 Used for personalizing hiking time predictions.
 """
 
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey
+from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
+from app.shared.gradients import LEGACY_CATEGORY_MAPPING
 
 
-class UserPerformanceProfile(Base):
+class UserHikingProfile(Base):
     """
-    User's performance profile calculated from Strava activities.
+    User's hiking performance profile calculated from Strava activities.
 
     Metrics are computed from activity splits to determine:
     - Base pace on flat terrain
@@ -25,7 +26,7 @@ class UserPerformanceProfile(Base):
     All pace values are in minutes per kilometer.
     """
 
-    __tablename__ = "user_performance_profiles"
+    __tablename__ = "user_hiking_profiles"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String(36), ForeignKey("users.id"), unique=True, nullable=False)
@@ -54,6 +55,21 @@ class UserPerformanceProfile(Base):
     # Steep uphill: gradient > +15%
     avg_steep_uphill_pace_min_km = Column(Float, nullable=True)
 
+    # === Sample counts per category (for confidence assessment) ===
+    flat_sample_count = Column(Integer, default=0)
+    gentle_uphill_sample_count = Column(Integer, default=0)
+    moderate_uphill_sample_count = Column(Integer, default=0)
+    steep_uphill_sample_count = Column(Integer, default=0)
+    gentle_downhill_sample_count = Column(Integer, default=0)
+    moderate_downhill_sample_count = Column(Integer, default=0)
+    steep_downhill_sample_count = Column(Integer, default=0)
+
+    # === 11-category gradient data (JSON) ===
+    # {category: {"avg": float, "samples": int}} — 11 categories from shared/gradients.py
+    gradient_paces = Column(JSON, nullable=True)
+    # {category: {"p25": float, "p50": float, "p75": float}} — percentiles after IQR
+    gradient_percentiles = Column(JSON, nullable=True)
+
     # === Personal coefficients ===
     # How much slower on uphills vs Naismith standard
     # 1.0 = standard, <1.0 = faster than standard, >1.0 = slower
@@ -71,10 +87,10 @@ class UserPerformanceProfile(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationship
-    user = relationship("User", back_populates="performance_profile")
+    user = relationship("User", back_populates="hiking_profile")
 
     def __repr__(self):
-        return f"<UserPerformanceProfile user={self.user_id} flat_pace={self.avg_flat_pace_min_km}>"
+        return f"<UserHikingProfile user={self.user_id} flat_pace={self.avg_flat_pace_min_km}>"
 
     @property
     def has_split_data(self) -> bool:
@@ -107,6 +123,49 @@ class UserPerformanceProfile(Base):
             return round(60 / self.avg_flat_pace_min_km, 2)
         return None
 
+    def get_sample_count(self, category: str) -> int:
+        """Get sample count for a legacy 7-category gradient."""
+        mapping = {
+            'flat': self.flat_sample_count,
+            'gentle_uphill': self.gentle_uphill_sample_count,
+            'moderate_uphill': self.moderate_uphill_sample_count,
+            'steep_uphill': self.steep_uphill_sample_count,
+            'gentle_downhill': self.gentle_downhill_sample_count,
+            'moderate_downhill': self.moderate_downhill_sample_count,
+            'steep_downhill': self.steep_downhill_sample_count,
+        }
+        return mapping.get(category, 0) or 0
+
+    def get_pace_for_category(self, category: str) -> Optional[float]:
+        """Get avg pace from JSON (11-cat), fallback to legacy column (7-cat)."""
+        if self.gradient_paces and category in self.gradient_paces:
+            return self.gradient_paces[category].get('avg')
+        # Fallback to legacy column
+        legacy_name = LEGACY_CATEGORY_MAPPING.get(category)
+        if legacy_name:
+            field = f"avg_{legacy_name}_pace_min_km"
+            return getattr(self, field, None)
+        return None
+
+    def get_percentile(self, category: str, percentile: str) -> Optional[float]:
+        """Get percentile (p25/p50/p75) for a gradient category."""
+        if not self.gradient_percentiles:
+            return None
+        cat_data = self.gradient_percentiles.get(category)
+        if not cat_data:
+            return None
+        return cat_data.get(percentile)
+
+    def get_sample_count_extended(self, category: str) -> int:
+        """Get sample count from JSON (11-cat), fallback to legacy column."""
+        if self.gradient_paces and category in self.gradient_paces:
+            return self.gradient_paces[category].get('samples', 0)
+        # Fallback to legacy column
+        legacy_name = LEGACY_CATEGORY_MAPPING.get(category)
+        if legacy_name:
+            return self.get_sample_count(legacy_name)
+        return 0
+
     def to_dict(self) -> dict:
         """Convert profile to dictionary for API responses."""
         return {
@@ -121,14 +180,21 @@ class UserPerformanceProfile(Base):
             "avg_gentle_uphill_pace_min_km": self.avg_gentle_uphill_pace_min_km,
             "avg_moderate_uphill_pace_min_km": self.avg_moderate_uphill_pace_min_km,
             "avg_steep_uphill_pace_min_km": self.avg_steep_uphill_pace_min_km,
+            # 11-category JSON
+            "gradient_paces": self.gradient_paces,
+            "gradient_percentiles": self.gradient_percentiles,
             # Coefficients and stats
             "vertical_ability": self.vertical_ability,
             "flat_speed_kmh": self.flat_speed_kmh,
             "total_activities_analyzed": self.total_activities_analyzed,
             "total_hike_activities": self.total_hike_activities,
-            "total_distance_km": round(self.total_distance_km, 1),
-            "total_elevation_m": round(self.total_elevation_m, 0),
+            "total_distance_km": round(self.total_distance_km, 1) if self.total_distance_km else 0,
+            "total_elevation_m": round(self.total_elevation_m, 0) if self.total_elevation_m else 0,
             "has_split_data": self.has_split_data,
             "has_extended_gradient_data": self.has_extended_gradient_data,
             "last_calculated_at": self.last_calculated_at.isoformat() if self.last_calculated_at else None,
         }
+
+
+# Backward compatibility alias
+UserPerformanceProfile = UserHikingProfile
