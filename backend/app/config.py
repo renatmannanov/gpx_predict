@@ -5,9 +5,15 @@ Uses Pydantic Settings for type-safe configuration.
 """
 
 import os
+from pathlib import Path
 from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator, ConfigDict
+
+# Project root: gpx-predictor/
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+# Content directory: gpx-predictor/content/
+CONTENT_DIR = PROJECT_ROOT / "content"
 
 
 class Settings(BaseSettings):

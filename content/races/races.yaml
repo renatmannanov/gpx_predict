@@ -1,0 +1,33 @@
+races:
+  - id: alpine_race
+    name: Alpine Race
+    type: trail_sky
+    location: Шымбулак
+    distances:
+      - id: skyrunning
+        name: Skyrunning
+        distance_km: 4.0
+        elevation_gain_m: 900
+        start_altitude_m: 2200
+        finish_altitude_m: 3200
+        gpx_file: Almaty_Alpine_race.gpx
+        grade: orange
+      - id: skyrunning_lite
+        name: Skyrunning lite
+        distance_km: 2.5
+        elevation_gain_m: null
+        gpx_file: null
+        grade: yellow
+    editions:
+      - year: 2026
+        date: "2026-03-01"
+        registration_url: https://athletex.kz/competitions/AlpineRace2026
+      - year: 2025
+        date: "2025-03-09"
+        results_file: alpine_race_2025.json
+      - year: 2024
+        date: "2024-03-03"
+        results_file: alpine_race_2024.json
+      - year: 2023
+        date: "2023-03-05"
+        results_file: alpine_race_2023.json
