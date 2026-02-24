@@ -44,17 +44,24 @@ def calculate_stats(results: Sequence[RaceResult]) -> RaceStats:
 def search_by_name(
     results: Sequence[RaceResult], query: str
 ) -> list[RaceResult]:
-    """Fuzzy search by name (case-insensitive, partial match).
+    """Search by name (case-insensitive, all query words must match).
 
     Searches both `name` (Latin) and `name_local` (Cyrillic) fields.
+    Handles reversed name order: "Renat Mannanov" matches "Mannanov Renat".
     """
-    query_lower = query.lower()
+    query_words = query.lower().split()
+    if not query_words:
+        return []
+
     found = []
     for r in results:
-        if query_lower in r.name.lower():
+        name_lower = r.name.lower()
+        if all(w in name_lower for w in query_words):
             found.append(r)
-        elif r.name_local and query_lower in r.name_local.lower():
-            found.append(r)
+        elif r.name_local:
+            name_local_lower = r.name_local.lower()
+            if all(w in name_local_lower for w in query_words):
+                found.append(r)
     return found
 
 

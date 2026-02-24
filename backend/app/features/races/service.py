@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from app.features.gpx.parser import GPXParserService
 from app.features.trail_run.service import TrailRunService
 from app.features.trail_run.calculators.gap import GAPMode
 from app.services.calculators.comparison import ComparisonService
 
-from .catalog import RaceCatalog, RaceDistance, find_distance_results
-from .models import RaceEditionData, RaceResult, RaceStats
+from .catalog import RaceCatalog, find_distance_results
+from .models import RaceResult, RaceStats
 from .stats import calculate_stats, format_time, get_percentile
 
 
@@ -203,29 +202,3 @@ class RaceService:
         prediction.stats = stats
         prediction.percentile = percentile
         prediction.estimated_place = estimated_place
-
-
-def find_distance_results(
-    data: RaceEditionData,
-    dist_info: RaceDistance | None,
-) -> RaceEditionData | None:
-    """Find matching distance results by name (handles Russian/English variants)."""
-    if not dist_info:
-        return None
-
-    target_name = dist_info.name.lower()
-    for d in data.distances:
-        if d.distance_name.lower() == target_name:
-            return d
-        # Also match Russian variants
-        if target_name == "skyrunning" and d.distance_name.lower() in (
-            "skyrunning",
-            "скайраннинг",
-        ):
-            return d
-        if target_name == "skyrunning lite" and d.distance_name.lower() in (
-            "skyrunning lite",
-            "скайраннинг лайт",
-        ):
-            return d
-    return None

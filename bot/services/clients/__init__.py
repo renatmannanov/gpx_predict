@@ -8,6 +8,7 @@ from .users import UsersClient
 from .profiles import ProfilesClient, UserProfile
 from .health import HealthClient
 from .notifications import NotificationsClient
+from .races import RacesClient
 
 
 class APIClient:
@@ -23,6 +24,7 @@ class APIClient:
         self.profiles = ProfilesClient(base_url)
         self.health = HealthClient(base_url)
         self.notifications = NotificationsClient(base_url)
+        self.races = RacesClient(base_url)
 
     async def close(self):
         """Close all client sessions."""
@@ -34,6 +36,7 @@ class APIClient:
         await self.profiles.close()
         await self.health.close()
         await self.notifications.close()
+        await self.races.close()
 
     # =========================================================================
     # Backwards compatibility methods (delegate to sub-clients)
@@ -148,4 +151,5 @@ __all__ = [
     "UserProfile",
     "HealthClient",
     "NotificationsClient",
+    "RacesClient",
 ]

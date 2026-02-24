@@ -14,7 +14,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import settings
-from handlers import common, prediction, strava, onboarding, profile, trail_run
+from handlers import common, prediction, strava, onboarding, profile, trail_run, races
 from services.api_client import api_client
 
 
@@ -68,6 +68,7 @@ async def main():
     dp.include_router(profile.router)
     dp.include_router(prediction.router)
     dp.include_router(trail_run.router)
+    dp.include_router(races.router)
     dp.include_router(strava.router)
 
     # Register startup/shutdown hooks
