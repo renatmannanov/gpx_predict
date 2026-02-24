@@ -47,9 +47,13 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # Claude
 .claude/
 
 # Docs (internal planning)
 docs/
+
+# Reports (script output)
+backend/reports/
