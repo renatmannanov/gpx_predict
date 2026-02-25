@@ -259,7 +259,7 @@ class StravaClient:
         """
         from app.features.users import User
 
-        athlete_id = str(token_data["athlete"]["id"])
+        athlete_id = token_data["athlete"]["id"]
 
         # Check if token already exists
         result = await self.db.execute(

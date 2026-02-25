@@ -38,7 +38,7 @@ class TelegramNotifier:
 
     async def send_message(
         self,
-        chat_id: str,
+        chat_id: int,
         text: str,
         parse_mode: str = "HTML",
         reply_markup: Optional[dict] = None

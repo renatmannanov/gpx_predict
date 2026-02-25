@@ -9,7 +9,7 @@ Usage:
         def __init__(self, db: AsyncSession):
             super().__init__(db, User)
 
-        async def get_by_telegram_id(self, telegram_id: str) -> User | None:
+        async def get_by_telegram_id(self, telegram_id: int) -> User | None:
             return await self.get_by(telegram_id=telegram_id)
 """
 
