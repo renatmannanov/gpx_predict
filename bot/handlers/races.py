@@ -20,6 +20,7 @@ from keyboards.races import (
     race_pace_keyboard,
     race_stats_year_keyboard,
     race_back_keyboard,
+    race_search_result_keyboard,
 )
 from services.api_client import api_client
 from utils.formatters import format_pace
@@ -211,7 +212,10 @@ async def handle_race_action(callback: CallbackQuery, state: FSMContext):
     if action == "predict":
         await _start_predict(callback.message, state, race_id, distance_id)
     elif action == "search":
-        await _start_search(callback.message, state, race_id, distance_id)
+        telegram_id = str(callback.from_user.id)
+        await _start_search(callback.message, state, race_id, distance_id, telegram_id)
+    elif action == "srch_man":
+        await _start_manual_search(callback.message, state, race_id, distance_id, is_other=True)
     elif action == "stats":
         await _show_stats(callback.message, state, race_id, distance_id)
 
@@ -420,17 +424,71 @@ async def _do_predict(
 # =============================================================================
 
 
-async def _start_search(message, state: FSMContext, race_id: str, distance_id: str):
-    """Ask user to enter name for search."""
+async def _start_search(
+    message, state: FSMContext, race_id: str, distance_id: str, telegram_id: str,
+):
+    """Auto-search by saved name or ask user to enter name."""
     await state.update_data(
         race_id=race_id, distance_id=distance_id, waiting_custom_pace=False
     )
-    await state.set_state(RaceStates.waiting_for_name)
-    await message.edit_text(
-        "<b>\U0001f50d Поиск в результатах гонок</b>\n\n"
-        "Введи имя и фамилию как при регистрации на гонку.\n"
-        "Например: <i>Artem Kuznetsov</i> или <i>Артём Кузнецов</i>"
+
+    # Check if user has a saved race search name
+    user_info = await api_client.get_user_info(telegram_id)
+    saved_name = user_info.get("race_search_name") if user_info else None
+
+    if saved_name:
+        # Auto-search with saved name
+        results = await api_client.races.search(
+            race_id=race_id, name=saved_name, distance_id=distance_id
+        )
+        if results is None:
+            await message.edit_text(
+                "\u274c Ошибка при поиске. Попробуй позже.",
+                reply_markup=race_back_keyboard(race_id, distance_id),
+            )
+            return
+
+        text = _format_search_results(saved_name, results)
+        await message.edit_text(
+            text, reply_markup=race_search_result_keyboard(race_id, distance_id)
+        )
+        return
+
+    # No saved name — ask for manual input
+    await _start_manual_search(message, state, race_id, distance_id)
+
+
+async def _start_manual_search(
+    message, state: FSMContext, race_id: str, distance_id: str,
+    is_other: bool = False,
+):
+    """Ask user to enter name for search.
+
+    Args:
+        is_other: True when user clicked "Search other name" (don't save).
+    """
+    await state.update_data(
+        race_id=race_id, distance_id=distance_id, search_is_other=is_other,
     )
+    await state.set_state(RaceStates.waiting_for_name)
+
+    if is_other:
+        text = (
+            "<b>\U0001f50d Поиск участника</b>\n\n"
+            "Введи имя и фамилию.\n"
+            "Например: <i>Artem Kuznetsov</i>"
+        )
+    else:
+        text = (
+            "<b>\U0001f50d Поиск в результатах гонок</b>\n\n"
+            "Введи СВОЕ имя и фамилию как при регистрации на гонку.\n"
+            "Например: <i>Artem Kuznetsov</i> или <i>Артём Кузнецов</i>\n\n"
+            "Мы сохраним это значение в твой профиль, "
+            "чтобы не нужно было вводить заново.\n"
+            "А дальше сможешь искать других участников."
+        )
+
+    await message.edit_text(text)
 
 
 @router.message(RaceStates.waiting_for_name)
@@ -469,9 +527,17 @@ async def handle_name_input(message: Message, state: FSMContext):
         await state.clear()
         return
 
+    # Save name to user profile only if results were found and this is not "other" search
+    is_other = data.get("search_is_other", False)
+    if not is_other:
+        found_any = any(r.get("result") for r in results)
+        if found_any:
+            telegram_id = str(message.from_user.id)
+            await api_client.users.update_race_search_name(telegram_id, name)
+
     text = _format_search_results(name, results)
     await message.answer(
-        text, reply_markup=race_back_keyboard(race_id, distance_id)
+        text, reply_markup=race_search_result_keyboard(race_id, distance_id)
     )
     await state.clear()
 
@@ -538,6 +604,11 @@ async def handle_stats_year(callback: CallbackQuery, state: FSMContext):
     dist_info = _find_dist_data(race_data, distance_id)
     dist_name = dist_info.get("name", "") if dist_info else ""
 
+    # Load user's race results (if race_search_name is saved)
+    user_results_by_year = await _load_user_results(
+        callback.from_user.id, race_id, distance_id,
+    )
+
     if year_str == "all":
         # Load all years and show combined summary
         years_with_results = []
@@ -562,7 +633,9 @@ async def handle_stats_year(callback: CallbackQuery, state: FSMContext):
             )
             return
 
-        text = _format_stats_all_years(all_year_stats, race_name, dist_name)
+        text = _format_stats_all_years(
+            all_year_stats, race_name, dist_name, user_results_by_year,
+        )
         await callback.message.edit_text(
             text,
             reply_markup=race_stats_year_keyboard(
@@ -590,7 +663,8 @@ async def handle_stats_year(callback: CallbackQuery, state: FSMContext):
         )
         return
 
-    text = _format_stats(dist_data, year, race_name, dist_name)
+    user_result = user_results_by_year.get(year)
+    text = _format_stats(dist_data, year, race_name, dist_name, user_result)
     await callback.message.edit_text(
         text,
         reply_markup=race_stats_year_keyboard(
@@ -604,6 +678,33 @@ async def handle_stats_year(callback: CallbackQuery, state: FSMContext):
 # =============================================================================
 # Helpers
 # =============================================================================
+
+
+async def _load_user_results(
+    telegram_user_id: int, race_id: str, distance_id: str,
+) -> dict[int, dict]:
+    """Load user's race results by saved race_search_name.
+
+    Returns: {year: result_dict} for years where user was found.
+    """
+    telegram_id = str(telegram_user_id)
+    user_info = await api_client.get_user_info(telegram_id)
+    saved_name = user_info.get("race_search_name") if user_info else None
+    if not saved_name:
+        return {}
+
+    search_results = await api_client.races.search(
+        race_id=race_id, name=saved_name, distance_id=distance_id,
+    )
+    if not search_results:
+        return {}
+
+    by_year = {}
+    for entry in search_results:
+        r = entry.get("result")
+        if r:
+            by_year[entry["year"]] = r
+    return by_year
 
 
 def _find_dist_data(race_data: dict, distance_id: str) -> dict | None:
@@ -834,22 +935,34 @@ def _format_search_results(query: str, results: list[dict]) -> str:
 
 def _format_stats(
     dist_data: dict, year: int, race_name: str = "", dist_name: str = "",
+    user_result: dict = None,
 ) -> str:
     """Format distance statistics for a single year."""
     stats = dist_data.get("stats", {})
+    finishers = stats.get("finishers", 0)
 
     lines = [
         f"<b>Аналитика за {year} год</b>",
         "",
         f"<b>Гонка:</b> {race_name}",
         f"<b>Дистанция:</b> {dist_name}",
+    ]
+
+    if user_result:
+        lines.append("")
+        place = user_result.get("place")
+        time_fmt = user_result.get("time_formatted", "-")
+        place_str = f" / {place}-е место из {finishers}" if place else ""
+        lines.append(f"\U0001f464 Твой результат: {time_fmt}{place_str}")
+
+    lines.extend([
         "",
-        f"Финишёров: {stats.get('finishers', 0)}",
+        f"Финишёров: {finishers}",
         f"Лучший: {stats.get('best_time', '-')}",
         f"Медиана: {stats.get('median_time', '-')}",
         f"Топ-25%: {stats.get('p25_time', '-')}",
         f"Топ-75%: {stats.get('p75_time', '-')}",
-    ]
+    ])
 
     lines.extend(_format_buckets(stats.get("time_buckets", [])))
 
@@ -860,8 +973,11 @@ def _format_stats_all_years(
     all_year_stats: list[tuple[int, dict]],
     race_name: str,
     dist_name: str,
+    user_results_by_year: dict[int, dict] = None,
 ) -> str:
     """Format aggregated stats summary across all years."""
+    user_results_by_year = user_results_by_year or {}
+
     lines = [
         "<b>Аналитика за все годы</b>",
         "",
@@ -871,10 +987,19 @@ def _format_stats_all_years(
 
     for year, dist_data in all_year_stats:
         stats = dist_data.get("stats", {})
+        finishers = stats.get("finishers", 0)
         lines.append("")
         lines.append(f"<b>{year}</b>")
+
+        ur = user_results_by_year.get(year)
+        if ur:
+            place = ur.get("place")
+            time_fmt = ur.get("time_formatted", "-")
+            place_str = f" / {place}-е место из {finishers}" if place else ""
+            lines.append(f"  \U0001f464 Твой результат: {time_fmt}{place_str}")
+
         lines.append(
-            f"  Финишёров: {stats.get('finishers', 0)} / "
+            f"  Финишёров: {finishers} / "
             f"Лучший: {stats.get('best_time', '-')} / "
             f"Медиана: {stats.get('median_time', '-')}"
         )

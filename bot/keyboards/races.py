@@ -84,7 +84,7 @@ def race_card_keyboard(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="\U0001f50d \u041d\u0430\u0439\u0442\u0438 \u0441\u0435\u0431\u044f",
+                    text="\U0001f50d \u041f\u043e\u0438\u0441\u043a",
                     callback_data=f"race_act:{race_id}:{distance_id}:search",
                 ),
                 InlineKeyboardButton(

@@ -55,6 +55,18 @@ class UsersClient(BaseAPIClient):
             logger.error(f"Complete onboarding failed: {e}")
             return False
 
+    async def update_race_search_name(self, telegram_id: str, name: str) -> bool:
+        """Save the name used for searching race results."""
+        try:
+            await self._put(
+                f"/api/v1/users/{telegram_id}/race-search-name",
+                json={"race_search_name": name},
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Update race search name failed: {e}")
+            return False
+
     async def update_preferences(self, telegram_id: str, activity_type: str) -> bool:
         """
         Update user preferences.

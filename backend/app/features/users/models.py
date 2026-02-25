@@ -30,6 +30,7 @@ class User(Base):
 
     # Profile
     name = Column(String(100), nullable=True)
+    race_search_name = Column(String(100), nullable=True)
 
     # Strava integration
     strava_athlete_id = Column(String(20), nullable=True)

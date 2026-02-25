@@ -21,6 +21,7 @@ class UserInfoSchema(BaseModel):
     """User info response schema."""
     telegram_id: str
     name: Optional[str] = None
+    race_search_name: Optional[str] = None
     strava_connected: bool
     onboarding_complete: bool
     preferred_activity_type: Optional[str] = None
@@ -70,6 +71,7 @@ async def get_user_info(telegram_id: str, db: AsyncSession = Depends(get_async_d
     return UserInfoSchema(
         telegram_id=user.telegram_id,
         name=user.name,
+        race_search_name=user.race_search_name,
         strava_connected=user.strava_connected or False,
         onboarding_complete=user.onboarding_complete or False,
         preferred_activity_type=user.preferred_activity_type
@@ -144,6 +146,30 @@ async def update_preferences(
     )
 
 
+class RaceSearchNameRequest(BaseModel):
+    """Request to update race search name."""
+    race_search_name: str
+
+
+@router.put("/{telegram_id}/race-search-name", response_model=UserUpdateResponse)
+async def update_race_search_name(
+    telegram_id: str,
+    request: RaceSearchNameRequest,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Save the name used for searching race results."""
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_telegram_id(telegram_id)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await user_repo.update(user, race_search_name=request.race_search_name)
+    await db.commit()
+
+    return UserUpdateResponse(success=True, message="Race search name updated")
+
+
 @router.post("/{telegram_id}/create", response_model=UserInfoSchema)
 async def create_user(
     telegram_id: str,
@@ -163,6 +189,7 @@ async def create_user(
     return UserInfoSchema(
         telegram_id=user.telegram_id,
         name=user.name,
+        race_search_name=user.race_search_name,
         strava_connected=user.strava_connected or False,
         onboarding_complete=user.onboarding_complete or False,
         preferred_activity_type=user.preferred_activity_type
