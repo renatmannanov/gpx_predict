@@ -307,7 +307,7 @@ async def handle_profile_callback(callback: CallbackQuery):
 
     elif action == "connect_strava":
         # Redirect to Strava connection
-        auth_url = api_client.get_strava_auth_url(telegram_id)
+        auth_url = await api_client.get_strava_auth_url(telegram_id)
         await callback.message.edit_text(
             f"🔗 Для подключения Strava перейди по ссылке:\n{auth_url}",
             parse_mode="HTML"

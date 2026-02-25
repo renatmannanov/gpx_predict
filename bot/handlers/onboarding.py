@@ -290,7 +290,7 @@ async def handle_personalization_continue(callback: CallbackQuery, state: FSMCon
     telegram_id = callback.from_user.id
 
     # Get Strava auth URL
-    auth_url = api_client.get_strava_auth_url(telegram_id)
+    auth_url = await api_client.get_strava_auth_url(telegram_id)
 
     # Use different text if localhost (URL can't be in button)
     if "localhost" in auth_url or "127.0.0.1" in auth_url:

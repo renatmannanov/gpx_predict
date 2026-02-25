@@ -3,6 +3,8 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
+import aiohttp
+
 from .base import BaseAPIClient
 
 logger = logging.getLogger(__name__)
@@ -57,12 +59,35 @@ class ActivitiesSyncStatus:
 class StravaClient(BaseAPIClient):
     """Client for Strava integration endpoints."""
 
-    def get_auth_url(self, telegram_id: int) -> str:
+    def __init__(self, base_url: str, ayda_run_api_url: str | None = None, cross_service_api_key: str | None = None):
+        super().__init__(base_url)
+        self._ayda_run_api_url = ayda_run_api_url.rstrip("/") if ayda_run_api_url else None
+        self._cross_service_api_key = cross_service_api_key
+
+    async def get_auth_url(self, telegram_id: int) -> str:
         """
         Get URL for Strava OAuth authorization.
 
-        User should be redirected to this URL to connect Strava.
+        If ayda_run is configured, requests OAuth URL from ayda_run API.
+        Falls back to local OAuth URL (dev mode).
         """
+        if self._ayda_run_api_url and self._cross_service_api_key:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                        f"{self._ayda_run_api_url}/api/internal/strava/auth",
+                        params={"telegram_id": telegram_id},
+                        headers={"X-API-Key": self._cross_service_api_key},
+                        timeout=aiohttp.ClientTimeout(total=10),
+                    ) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            return data["auth_url"]
+                        logger.warning("ayda_run OAuth URL request failed: status=%s", resp.status)
+            except Exception as e:
+                logger.warning("ayda_run OAuth URL request error: %s", e)
+
+        # Fallback: local OAuth URL (dev mode)
         return f"{self.base_url}/api/v1/auth/strava?telegram_id={telegram_id}"
 
     async def get_status(self, telegram_id: int) -> StravaStatus:

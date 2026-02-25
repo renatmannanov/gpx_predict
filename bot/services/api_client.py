@@ -18,7 +18,11 @@ from .clients import (
 )
 
 # Global client instance
-api_client = APIClient(settings.backend_url)
+api_client = APIClient(
+    settings.backend_url,
+    ayda_run_api_url=settings.ayda_run_api_url,
+    cross_service_api_key=settings.cross_service_api_key,
+)
 
 # Re-export for backwards compatibility
 __all__ = [

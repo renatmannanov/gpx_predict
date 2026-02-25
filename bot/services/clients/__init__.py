@@ -14,12 +14,12 @@ from .races import RacesClient
 class APIClient:
     """Unified API client with all sub-clients."""
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, ayda_run_api_url: str | None = None, cross_service_api_key: str | None = None):
         self.base_url = base_url
         self.gpx = GPXClient(base_url)
         self.hiking = HikingClient(base_url)
         self.trail_run = TrailRunClient(base_url)
-        self.strava = StravaClient(base_url)
+        self.strava = StravaClient(base_url, ayda_run_api_url, cross_service_api_key)
         self.users = UsersClient(base_url)
         self.profiles = ProfilesClient(base_url)
         self.health = HealthClient(base_url)
@@ -58,8 +58,8 @@ class APIClient:
         return await self.trail_run.predict(*args, **kwargs)
 
     # Strava
-    def get_strava_auth_url(self, telegram_id: int) -> str:
-        return self.strava.get_auth_url(telegram_id)
+    async def get_strava_auth_url(self, telegram_id: int) -> str:
+        return await self.strava.get_auth_url(telegram_id)
 
     async def get_strava_status(self, telegram_id: int) -> StravaStatus:
         return await self.strava.get_status(telegram_id)

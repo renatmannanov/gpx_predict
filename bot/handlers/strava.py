@@ -54,7 +54,7 @@ async def cmd_strava(message: Message):
         )
     else:
         # Show connect link
-        auth_url = api_client.get_strava_auth_url(telegram_id)
+        auth_url = await api_client.get_strava_auth_url(telegram_id)
 
         # Check if localhost (dev mode) - can't use inline URL button
         if "localhost" in auth_url or "127.0.0.1" in auth_url:
