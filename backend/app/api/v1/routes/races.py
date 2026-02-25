@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.config import CONTENT_DIR
-from app.features.races.catalog import RaceCatalog
+from app.features.races.catalog import RaceCatalog, normalize_distance_name
 from app.features.races.matching import find_across_years
 from app.features.races.service import RaceService
 from app.features.races.stats import calculate_stats, format_time
@@ -255,9 +255,12 @@ async def get_results(race_id: str, year: int):
             )
             for r in dist.results
         ]
+        # Normalize distance name to canonical catalog form
+        # (e.g. "Скайраннинг" → "Skyrunning" for 2023 data)
+        canonical_name = normalize_distance_name(dist.distance_name, race)
         result.append(
             DistanceResultsSchema(
-                distance_name=dist.distance_name,
+                distance_name=canonical_name,
                 distance_km=dist.distance_km,
                 year=year,
                 stats=RaceStatsSchema(

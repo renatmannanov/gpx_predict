@@ -209,6 +209,35 @@ def _load_results_json(path: Path) -> RaceEditionData:
     )
 
 
+# Mapping: result file names (may be Russian) → canonical catalog names
+_DISTANCE_NAME_ALIASES: dict[str, str] = {
+    "скайраннинг": "skyrunning",
+    "скайраннинг лайт": "skyrunning lite",
+}
+
+
+def normalize_distance_name(
+    result_name: str, race: Race | None,
+) -> str:
+    """Map a distance name from results to the canonical catalog name.
+
+    Handles Russian/English variants (e.g. "Скайраннинг" → "Skyrunning").
+    Returns original name if no mapping found.
+    """
+    lower = result_name.lower()
+
+    # Check alias mapping
+    canonical_lower = _DISTANCE_NAME_ALIASES.get(lower, lower)
+
+    # Find matching catalog distance to get proper casing
+    if race:
+        for d in race.distances:
+            if d.name.lower() == canonical_lower:
+                return d.name
+
+    return result_name
+
+
 def find_distance_results(
     data: RaceEditionData,
     dist_info: RaceDistance | None,
@@ -218,18 +247,11 @@ def find_distance_results(
         return None
 
     target_name = dist_info.name.lower()
+    canonical_target = _DISTANCE_NAME_ALIASES.get(target_name, target_name)
+
     for d in data.distances:
-        if d.distance_name.lower() == target_name:
-            return d
-        # Match Russian variants
-        if target_name == "skyrunning" and d.distance_name.lower() in (
-            "skyrunning",
-            "скайраннинг",
-        ):
-            return d
-        if target_name == "skyrunning lite" and d.distance_name.lower() in (
-            "skyrunning lite",
-            "скайраннинг лайт",
-        ):
+        d_lower = d.distance_name.lower()
+        d_canonical = _DISTANCE_NAME_ALIASES.get(d_lower, d_lower)
+        if d_canonical == canonical_target:
             return d
     return None

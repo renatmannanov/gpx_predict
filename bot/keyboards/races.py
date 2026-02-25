@@ -74,7 +74,7 @@ def race_card_keyboard(
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="\U0001f52e \u041c\u043e\u0439 \u043f\u0440\u043e\u0433\u043d\u043e\u0437",
+                    text="\U0001f3c3 \u0420\u0430\u0441\u0441\u0447\u0438\u0442\u0430\u0442\u044c \u043f\u0440\u043e\u0433\u043d\u043e\u0437",
                     callback_data=f"race_act:{race_id}:{distance_id}:predict",
                 )
             ]
@@ -88,7 +88,7 @@ def race_card_keyboard(
                     callback_data=f"race_act:{race_id}:{distance_id}:search",
                 ),
                 InlineKeyboardButton(
-                    text="\U0001f4ca \u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0430",
+                    text="\U0001f4ca \u0410\u043d\u0430\u043b\u0438\u0442\u0438\u043a\u0430",
                     callback_data=f"race_act:{race_id}:{distance_id}:stats",
                 ),
             ]
@@ -179,6 +179,70 @@ def race_pace_keyboard(
         ]
     )
 
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def race_search_result_keyboard(
+    race_id: str, distance_id: str
+) -> InlineKeyboardMarkup:
+    """Keyboard shown after auto-search results: manual search + back."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="\U0001f50d \u0418\u0441\u043a\u0430\u0442\u044c \u0434\u0440\u0443\u0433\u043e\u0435 \u0438\u043c\u044f",
+                    callback_data=f"race_act:{race_id}:{distance_id}:srch_man",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="\u2190 \u041a \u0433\u043e\u043d\u043a\u0435",
+                    callback_data=f"race_dist:{race_id}:{distance_id}",
+                )
+            ],
+        ]
+    )
+
+
+def race_stats_year_keyboard(
+    race_id: str, distance_id: str, years: list[int]
+) -> InlineKeyboardMarkup:
+    """Year selection keyboard for stats (individual years + all years)."""
+    rows = []
+    # Individual year buttons (2-3 per row, newest first)
+    sorted_years = sorted(years, reverse=True)
+    row: list[InlineKeyboardButton] = []
+    for y in sorted_years:
+        row.append(
+            InlineKeyboardButton(
+                text=str(y),
+                callback_data=f"race_stats:{race_id}:{distance_id}:{y}",
+            )
+        )
+        if len(row) == 3:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+
+    # "All years" button
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="\U0001f4ca \u0412\u0441\u0435 \u0433\u043e\u0434\u044b",
+                callback_data=f"race_stats:{race_id}:{distance_id}:all",
+            )
+        ]
+    )
+    # Back
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="\u2190 \u041a \u0433\u043e\u043d\u043a\u0435",
+                callback_data=f"race_dist:{race_id}:{distance_id}",
+            )
+        ]
+    )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
