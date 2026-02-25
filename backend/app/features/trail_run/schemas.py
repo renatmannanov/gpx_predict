@@ -21,7 +21,7 @@ class GAPMethod(str, Enum):
 class TrailRunRequest(BaseModel):
     """Request for trail run prediction."""
     gpx_id: str
-    telegram_id: str
+    telegram_id: int
     flat_pace_min_km: float = 6.0
     gap_method: GAPMethod = GAPMethod.STRAVA
     enable_fatigue: bool = True

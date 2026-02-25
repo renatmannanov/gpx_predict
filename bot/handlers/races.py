@@ -212,7 +212,7 @@ async def handle_race_action(callback: CallbackQuery, state: FSMContext):
     if action == "predict":
         await _start_predict(callback.message, state, race_id, distance_id)
     elif action == "search":
-        telegram_id = str(callback.from_user.id)
+        telegram_id = callback.from_user.id
         await _start_search(callback.message, state, race_id, distance_id, telegram_id)
     elif action == "srch_man":
         await _start_manual_search(callback.message, state, race_id, distance_id, is_other=True)
@@ -280,7 +280,7 @@ async def handle_predict_mode(callback: CallbackQuery, state: FSMContext):
         return
 
     # Trail run — ask for pace
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
 
     # Check Strava for run profile
     strava_pace = None
@@ -332,7 +332,7 @@ async def handle_pace_selection(callback: CallbackQuery, state: FSMContext):
     race_data = data.get("race_data")
     dist_data = _find_dist_data(race_data, distance_id)
     strava_pace = data.get("strava_pace")
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
     await state.clear()
     await _do_predict(
         callback.message, race_id, distance_id, pace, mode="trail_run",
@@ -369,7 +369,7 @@ async def handle_custom_pace_input(message: Message, state: FSMContext):
         race_data = data.get("race_data")
         dist_data = _find_dist_data(race_data, distance_id)
         strava_pace = data.get("strava_pace")
-        telegram_id = str(message.from_user.id)
+        telegram_id = message.from_user.id
         await state.clear()
         await _do_predict(
             message, race_id, distance_id, pace, mode="trail_run",
@@ -392,7 +392,7 @@ async def _do_predict(
     race_data: dict = None,
     dist_data: dict = None,
     strava_pace: float = None,
-    telegram_id: str = None,
+    telegram_id: int = None,
 ):
     """Execute prediction and show result."""
     loading = await message.answer("\U0001f504 Рассчитываю прогноз...")
@@ -440,7 +440,7 @@ async def _do_predict(
 
 
 async def _start_search(
-    message, state: FSMContext, race_id: str, distance_id: str, telegram_id: str,
+    message, state: FSMContext, race_id: str, distance_id: str, telegram_id: int,
 ):
     """Auto-search by saved name or ask user to enter name."""
     await state.update_data(
@@ -547,7 +547,7 @@ async def handle_name_input(message: Message, state: FSMContext):
     if not is_other:
         found_any = any(r.get("result") for r in results)
         if found_any:
-            telegram_id = str(message.from_user.id)
+            telegram_id = message.from_user.id
             await api_client.users.update_race_search_name(telegram_id, name)
 
     text = _format_search_results(name, results)

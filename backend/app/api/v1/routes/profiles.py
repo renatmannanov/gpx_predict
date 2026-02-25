@@ -131,7 +131,7 @@ class SyncSplitsResponse(BaseModel):
 
 @router.get("/{telegram_id}/hiking", response_model=HikingProfileResponse)
 async def get_hiking_profile(
-    telegram_id: str,
+    telegram_id: int,
     db: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -183,7 +183,7 @@ async def get_hiking_profile(
 
 @router.post("/{telegram_id}/hiking/calculate", response_model=ProfileCalculateResponse)
 async def calculate_hiking_profile(
-    telegram_id: str,
+    telegram_id: int,
     use_splits: bool = Query(True, description="Use detailed split data for better accuracy"),
     db: AsyncSession = Depends(get_async_db)
 ):
@@ -232,7 +232,7 @@ async def calculate_hiking_profile(
 
 @router.get("/{telegram_id}/trail-run", response_model=TrailRunProfileResponse)
 async def get_trail_run_profile(
-    telegram_id: str,
+    telegram_id: int,
     db: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -293,7 +293,7 @@ async def get_trail_run_profile(
 
 @router.post("/{telegram_id}/trail-run/calculate", response_model=ProfileCalculateResponse)
 async def calculate_trail_run_profile(
-    telegram_id: str,
+    telegram_id: int,
     db: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -338,7 +338,7 @@ async def calculate_trail_run_profile(
 
 @router.post("/{telegram_id}/sync-splits", response_model=SyncSplitsResponse)
 async def sync_splits(
-    telegram_id: str,
+    telegram_id: int,
     max_activities: int = Query(20, ge=1, le=100, description="Maximum activities to sync"),
     activity_types: str = Query("hike,walk,run", description="Comma-separated activity types"),
     db: AsyncSession = Depends(get_async_db)

@@ -36,7 +36,7 @@ async def cmd_start(message: Message, state: FSMContext):
     """Handle /start command - check onboarding status."""
     await state.clear()
 
-    telegram_id = str(message.from_user.id)
+    telegram_id = message.from_user.id
 
     try:
         # Check if user exists and has completed onboarding

@@ -166,7 +166,7 @@ def format_empty_profile(profile_type: str) -> str:
 @router.message(Command("profile"))
 async def cmd_profile(message: Message):
     """Handle /profile command."""
-    telegram_id = str(message.from_user.id)
+    telegram_id = message.from_user.id
 
     try:
         # Get user info to determine preferred activity type
@@ -237,7 +237,7 @@ async def handle_profile_callback(callback: CallbackQuery):
     await callback.answer()
 
     action = callback.data.split(":", 1)[1]
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
 
     if action == "recalculate":
         # Trigger profile recalculation

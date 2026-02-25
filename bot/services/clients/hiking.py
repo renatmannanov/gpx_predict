@@ -47,7 +47,7 @@ class HikingClient(BaseAPIClient):
         has_children: bool = False,
         has_elderly: bool = False,
         is_round_trip: bool = False,
-        telegram_id: Optional[str] = None,
+        telegram_id: Optional[int] = None,
     ) -> HikePrediction:
         """
         Get hike prediction from backend.
@@ -116,7 +116,7 @@ class HikingClient(BaseAPIClient):
         experience: str = "regular",
         backpack: str = "light",
         group_size: int = 1,
-        telegram_id: Optional[str] = None,
+        telegram_id: Optional[int] = None,
     ) -> dict:
         """
         Compare different prediction methods on a route.

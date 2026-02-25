@@ -43,7 +43,7 @@ class RacesClient(BaseAPIClient):
         distance_id: str,
         flat_pace_min_km: float,
         mode: str = "trail_run",
-        telegram_id: Optional[str] = None,
+        telegram_id: Optional[int] = None,
     ) -> Optional[dict]:
         """Predict race time."""
         payload = {

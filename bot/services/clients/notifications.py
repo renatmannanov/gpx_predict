@@ -12,7 +12,7 @@ class NotificationsClient(BaseAPIClient):
 
     async def get(
         self,
-        telegram_id: str,
+        telegram_id: int,
         unread_only: bool = True,
         limit: int = 10
     ) -> list[dict]:
@@ -38,7 +38,7 @@ class NotificationsClient(BaseAPIClient):
 
     async def mark_read(
         self,
-        telegram_id: str,
+        telegram_id: int,
         notification_ids: Optional[list[int]] = None
     ) -> bool:
         """

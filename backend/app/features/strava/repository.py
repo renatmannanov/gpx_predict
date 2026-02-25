@@ -31,7 +31,7 @@ class StravaTokenRepository(BaseRepository[StravaToken]):
         """
         return await self.get_by(user_id=user_id)
 
-    async def get_by_athlete_id(self, athlete_id: str) -> StravaToken | None:
+    async def get_by_athlete_id(self, athlete_id: int) -> StravaToken | None:
         """
         Get token by Strava athlete ID.
 

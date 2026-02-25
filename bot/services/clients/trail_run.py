@@ -13,7 +13,7 @@ class TrailRunClient(BaseAPIClient):
     async def predict(
         self,
         gpx_id: str,
-        telegram_id: Optional[str] = None,
+        telegram_id: Optional[int] = None,
         gap_mode: str = "strava_gap",
         flat_pace_min_km: Optional[float] = None,
         apply_fatigue: bool = False,

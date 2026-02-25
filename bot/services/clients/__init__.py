@@ -58,39 +58,39 @@ class APIClient:
         return await self.trail_run.predict(*args, **kwargs)
 
     # Strava
-    def get_strava_auth_url(self, telegram_id: str) -> str:
+    def get_strava_auth_url(self, telegram_id: int) -> str:
         return self.strava.get_auth_url(telegram_id)
 
-    async def get_strava_status(self, telegram_id: str) -> StravaStatus:
+    async def get_strava_status(self, telegram_id: int) -> StravaStatus:
         return await self.strava.get_status(telegram_id)
 
-    async def get_strava_stats(self, telegram_id: str) -> StravaStats | None:
+    async def get_strava_stats(self, telegram_id: int) -> StravaStats | None:
         return await self.strava.get_stats(telegram_id)
 
-    async def disconnect_strava(self, telegram_id: str) -> bool:
+    async def disconnect_strava(self, telegram_id: int) -> bool:
         return await self.strava.disconnect(telegram_id)
 
     async def get_strava_activities(self, *args, **kwargs):
         return await self.strava.get_activities(*args, **kwargs)
 
-    async def trigger_strava_sync(self, telegram_id: str, immediate: bool = True) -> bool:
+    async def trigger_strava_sync(self, telegram_id: int, immediate: bool = True) -> bool:
         return await self.strava.trigger_sync(telegram_id, immediate)
 
     # Users
-    async def get_user_info(self, telegram_id: str):
+    async def get_user_info(self, telegram_id: int):
         return await self.users.get_info(telegram_id)
 
-    async def create_user(self, telegram_id: str):
+    async def create_user(self, telegram_id: int):
         return await self.users.create(telegram_id)
 
-    async def complete_onboarding(self, telegram_id: str, activity_type: str) -> bool:
+    async def complete_onboarding(self, telegram_id: int, activity_type: str) -> bool:
         return await self.users.complete_onboarding(telegram_id, activity_type)
 
-    async def update_preferences(self, telegram_id: str, activity_type: str) -> bool:
+    async def update_preferences(self, telegram_id: int, activity_type: str) -> bool:
         return await self.users.update_preferences(telegram_id, activity_type)
 
     # Profiles
-    async def get_user_profile(self, telegram_id: str) -> UserProfile | None:
+    async def get_user_profile(self, telegram_id: int) -> UserProfile | None:
         data = await self.profiles.get_hiking(telegram_id)
         if not data:
             return None
@@ -105,16 +105,16 @@ class APIClient:
             has_split_data=data.get("has_split_data", False),
         )
 
-    async def get_hike_profile(self, telegram_id: str):
+    async def get_hike_profile(self, telegram_id: int):
         return await self.profiles.get_hiking(telegram_id)
 
-    async def get_run_profile(self, telegram_id: str):
+    async def get_run_profile(self, telegram_id: int):
         return await self.profiles.get_trail_run(telegram_id)
 
-    async def calculate_profile(self, telegram_id: str, use_splits: bool = True) -> UserProfile | None:
+    async def calculate_profile(self, telegram_id: int, use_splits: bool = True) -> UserProfile | None:
         return await self.profiles.calculate_hiking(telegram_id, use_splits)
 
-    async def recalculate_profile(self, telegram_id: str, profile_type: str = "hiking") -> bool:
+    async def recalculate_profile(self, telegram_id: int, profile_type: str = "hiking") -> bool:
         return await self.profiles.recalculate(telegram_id, profile_type)
 
     async def sync_splits(self, *args, **kwargs) -> dict:

@@ -51,7 +51,7 @@ class MarkReadResponse(BaseModel):
 
 @router.get("/notifications/{telegram_id}", response_model=NotificationListResponse)
 async def get_notifications(
-    telegram_id: str,
+    telegram_id: int,
     unread_only: bool = True,
     limit: int = 50,
     offset: int = 0,
@@ -102,7 +102,7 @@ async def get_notifications(
 
 @router.post("/notifications/{telegram_id}/read", response_model=MarkReadResponse)
 async def mark_notifications_read(
-    telegram_id: str,
+    telegram_id: int,
     request: MarkReadRequest,
     db: AsyncSession = Depends(get_async_db)
 ):
@@ -134,7 +134,7 @@ async def mark_notifications_read(
 
 @router.get("/notifications/{telegram_id}/all", response_model=NotificationListResponse)
 async def get_all_notifications(
-    telegram_id: str,
+    telegram_id: int,
     limit: int = 50,
     offset: int = 0,
     db: AsyncSession = Depends(get_async_db)

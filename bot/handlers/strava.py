@@ -35,7 +35,7 @@ async def cmd_strava(message: Message):
     If not connected - show connect button.
     If connected - show stats summary and options.
     """
-    telegram_id = str(message.from_user.id)
+    telegram_id = message.from_user.id
 
     # Check connection status
     status = await api_client.get_strava_status(telegram_id)
@@ -87,7 +87,7 @@ async def cmd_strava(message: Message):
 @router.message(Command("strava_stats"))
 async def cmd_strava_stats(message: Message):
     """Show detailed Strava statistics."""
-    telegram_id = str(message.from_user.id)
+    telegram_id = message.from_user.id
 
     # Check connection
     status = await api_client.get_strava_status(telegram_id)
@@ -132,7 +132,7 @@ async def cmd_strava_stats(message: Message):
 @router.message(Command("strava_disconnect"))
 async def cmd_strava_disconnect(message: Message):
     """Disconnect Strava account."""
-    telegram_id = str(message.from_user.id)
+    telegram_id = message.from_user.id
 
     status = await api_client.get_strava_status(telegram_id)
 
@@ -156,7 +156,7 @@ async def callback_strava_stats(callback: CallbackQuery):
     """Handle stats button click."""
     await callback.answer()
 
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
     stats = await api_client.get_strava_stats(telegram_id)
 
     if not stats:
@@ -201,7 +201,7 @@ async def callback_confirm_disconnect(callback: CallbackQuery):
     """Handle disconnect confirmation."""
     await callback.answer()
 
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
     success = await api_client.disconnect_strava(telegram_id)
 
     if success:
@@ -263,7 +263,7 @@ def format_activity(a) -> str:
 @router.message(Command("strava_activities"))
 async def cmd_strava_activities(message: Message):
     """Show synced Strava activities."""
-    telegram_id = str(message.from_user.id)
+    telegram_id = message.from_user.id
 
     # Check connection
     status = await api_client.get_strava_status(telegram_id)
@@ -280,7 +280,7 @@ async def cmd_strava_activities(message: Message):
 
 async def show_activities(
     message: Message,
-    telegram_id: str,
+    telegram_id: int,
     activity_type: str = None,
     offset: int = 0,
     edit: bool = False
@@ -351,7 +351,7 @@ async def show_activities(
 async def callback_activities(callback: CallbackQuery):
     """Handle activities button click."""
     await callback.answer()
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
     await show_activities(callback.message, telegram_id, activity_type=None, offset=0, edit=False)
 
 
@@ -368,7 +368,7 @@ async def callback_activities_page(callback: CallbackQuery):
     activity_type = parts[2] if parts[2] != "all" else None
     offset = int(parts[3])
 
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
     await show_activities(
         callback.message,
         telegram_id,
@@ -383,7 +383,7 @@ async def callback_sync(callback: CallbackQuery):
     """Handle sync button click."""
     await callback.answer("Запускаю синхронизацию...")
 
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
     success = await api_client.trigger_strava_sync(telegram_id)
 
     if success:

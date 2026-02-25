@@ -96,7 +96,7 @@ class PredictRequest(BaseModel):
     distance_id: str
     flat_pace_min_km: float = Field(ge=3.0, le=15.0)
     mode: str = "trail_run"  # "trail_run" or "hiking"
-    telegram_id: Optional[str] = None
+    telegram_id: Optional[int] = None
 
 
 class PredictionMethodSchema(BaseModel):

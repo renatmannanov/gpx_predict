@@ -287,7 +287,7 @@ async def handle_personalization_continue(callback: CallbackQuery, state: FSMCon
     """Handle 'Continue' after personalization explanation."""
     await callback.answer()
 
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
 
     # Get Strava auth URL
     auth_url = api_client.get_strava_auth_url(telegram_id)
@@ -370,7 +370,7 @@ async def handle_finish(callback: CallbackQuery, state: FSMContext):
     """Handle 'Finish' button - complete onboarding."""
     await callback.answer()
 
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
     data = await state.get_data()
     activity_type = data.get("activity_type", "hiking")
 

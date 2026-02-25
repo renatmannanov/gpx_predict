@@ -52,7 +52,7 @@ _oauth_states: dict[str, dict] = {}
 
 class StravaStatus(BaseModel):
     connected: bool
-    athlete_id: Optional[str] = None
+    athlete_id: Optional[int] = None
     scope: Optional[str] = None
     connected_at: Optional[datetime] = None
 
@@ -73,7 +73,7 @@ class StravaStats(BaseModel):
 
 @router.get("/auth/strava")
 async def strava_auth(
-    telegram_id: str = Query(..., description="Telegram user ID"),
+    telegram_id: int = Query(..., description="Telegram user ID"),
     redirect_to: str = Query(default="telegram", description="Where to redirect after auth")
 ):
     """
@@ -147,7 +147,7 @@ async def strava_callback(
         return _error_page("Ошибка при получении токена от Strava")
 
     athlete = token_data.get("athlete", {})
-    athlete_id = str(athlete.get("id"))
+    athlete_id = athlete.get("id")
 
     user_repo = UserRepository(db)
     notification_repo = NotificationRepository(db)
@@ -218,7 +218,7 @@ async def strava_callback(
 
 @router.get("/strava/status/{telegram_id}", response_model=StravaStatus)
 async def get_strava_status(
-    telegram_id: str,
+    telegram_id: int,
     db: AsyncSession = Depends(get_async_db)
 ):
     """Check Strava connection status for a user."""
@@ -243,7 +243,7 @@ async def get_strava_status(
 
 @router.post("/strava/disconnect/{telegram_id}")
 async def disconnect_strava(
-    telegram_id: str,
+    telegram_id: int,
     db: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -287,7 +287,7 @@ async def disconnect_strava(
 
 @router.get("/strava/stats/{telegram_id}", response_model=StravaStats)
 async def get_strava_stats(
-    telegram_id: str,
+    telegram_id: int,
     db: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -470,7 +470,7 @@ class SyncStatusResponse(BaseModel):
 
 @router.get("/strava/activities/{telegram_id}", response_model=ActivitiesResponse)
 async def get_strava_activities(
-    telegram_id: str,
+    telegram_id: int,
     activity_type: Optional[str] = Query(None, description="Filter by type: Run, Hike, Walk"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -538,7 +538,7 @@ async def get_strava_activities(
 
 @router.get("/strava/sync-status/{telegram_id}", response_model=SyncStatusResponse)
 async def get_user_sync_status(
-    telegram_id: str,
+    telegram_id: int,
     db: AsyncSession = Depends(get_async_db)
 ):
     """Get sync status for a user."""
@@ -571,7 +571,7 @@ async def get_user_sync_status(
 
 @router.post("/strava/sync/{telegram_id}")
 async def trigger_sync(
-    telegram_id: str,
+    telegram_id: int,
     immediate: bool = Query(False, description="Sync immediately instead of queuing"),
     db: AsyncSession = Depends(get_async_db)
 ):

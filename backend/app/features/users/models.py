@@ -7,7 +7,7 @@ Models:
 """
 
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Boolean, Integer, ForeignKey, JSON
+from sqlalchemy import Column, String, DateTime, Boolean, Integer, BigInteger, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 import uuid
 
@@ -25,7 +25,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    telegram_id = Column(String(20), unique=True, index=True, nullable=True)
+    telegram_id = Column(BigInteger, unique=True, index=True, nullable=True)
     email = Column(String(255), unique=True, index=True, nullable=True)
 
     # Profile
@@ -33,7 +33,7 @@ class User(Base):
     race_search_name = Column(String(100), nullable=True)
 
     # Strava integration
-    strava_athlete_id = Column(String(20), nullable=True)
+    strava_athlete_id = Column(BigInteger, nullable=True)
     strava_connected = Column(Boolean, default=False)
 
     # Onboarding

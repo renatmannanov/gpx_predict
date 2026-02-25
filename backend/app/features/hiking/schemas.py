@@ -11,7 +11,7 @@ from datetime import datetime
 class HikePredictRequest(BaseModel):
     """Request for hiking prediction."""
     gpx_id: str
-    telegram_id: str
+    telegram_id: int
     experience: str = "intermediate"
     backpack: str = "light"
     group_size: int = 1

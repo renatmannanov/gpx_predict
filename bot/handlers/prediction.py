@@ -266,7 +266,7 @@ async def handle_activity_type(callback: CallbackQuery, state: FSMContext):
 
         # Delete the activity type selection message and start trail run flow
         await callback.message.delete()
-        user_id = str(callback.from_user.id)
+        user_id = callback.from_user.id
         await start_trail_run_flow(callback.message, state, gpx_id, gpx_info_dict, user_id=user_id)
     else:
         # Hiking flow - continue with existing logic
@@ -294,7 +294,7 @@ async def _proceed_to_experience_or_backpack(callback: CallbackQuery, state: FSM
     Check if user has hike profile and skip experience question if so.
     Otherwise ask about experience.
     """
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
 
     # Check if user has personalized hike profile
     hike_profile = await api_client.get_hike_profile(telegram_id)
@@ -418,7 +418,7 @@ async def _make_prediction(callback: CallbackQuery, state: FSMContext):
     gpx_name = data.get("gpx_name", "")
 
     # Get telegram_id for personalization
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
 
     # Get comparison of methods (with personalization if profile exists)
     comparison = None

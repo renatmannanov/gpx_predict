@@ -18,7 +18,7 @@ class UserRepository(BaseRepository[User]):
     def __init__(self, db: AsyncSession):
         super().__init__(db, User)
 
-    async def get_by_telegram_id(self, telegram_id: str) -> User | None:
+    async def get_by_telegram_id(self, telegram_id: int) -> User | None:
         """
         Get user by Telegram ID.
 
@@ -30,7 +30,7 @@ class UserRepository(BaseRepository[User]):
         """
         return await self.get_by(telegram_id=telegram_id)
 
-    async def get_with_profiles(self, telegram_id: str) -> User | None:
+    async def get_with_profiles(self, telegram_id: int) -> User | None:
         """
         Get user with hiking and run profiles eagerly loaded.
 
@@ -50,7 +50,7 @@ class UserRepository(BaseRepository[User]):
         )
         return result.scalar_one_or_none()
 
-    async def get_or_create(self, telegram_id: str, **kwargs) -> tuple[User, bool]:
+    async def get_or_create(self, telegram_id: int, **kwargs) -> tuple[User, bool]:
         """
         Get existing user or create new one.
 
@@ -71,7 +71,7 @@ class UserRepository(BaseRepository[User]):
         self,
         user: User,
         connected: bool,
-        athlete_id: str | None = None
+        athlete_id: int | None = None
     ) -> User:
         """
         Update user's Strava connection status.

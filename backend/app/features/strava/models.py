@@ -31,7 +31,7 @@ class StravaToken(Base):
     user_id = Column(String(36), ForeignKey("users.id"), unique=True, nullable=False)
 
     # Strava athlete info
-    strava_athlete_id = Column(String(20), unique=True, nullable=False)
+    strava_athlete_id = Column(BigInteger, unique=True, nullable=False)
 
     # OAuth tokens (should be encrypted in production)
     access_token = Column(Text, nullable=False)

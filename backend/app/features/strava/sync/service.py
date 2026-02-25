@@ -256,7 +256,7 @@ class StravaSyncService:
     async def _fetch_and_set_estimated(
         self,
         access_token: str,
-        athlete_id: str,
+        athlete_id: int,
         sync_status: StravaSyncStatus
     ):
         """Fetch athlete stats and set total_activities_estimated."""

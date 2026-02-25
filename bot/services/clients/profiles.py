@@ -25,7 +25,7 @@ class UserProfile:
 class ProfilesClient(BaseAPIClient):
     """Client for user profile endpoints."""
 
-    async def get_hiking(self, telegram_id: str) -> Optional[dict]:
+    async def get_hiking(self, telegram_id: int) -> Optional[dict]:
         """
         Get user's hiking (performance) profile.
 
@@ -37,7 +37,7 @@ class ProfilesClient(BaseAPIClient):
         """
         return await self._get_optional(f"/api/v1/profiles/{telegram_id}/hiking")
 
-    async def get_trail_run(self, telegram_id: str) -> Optional[dict]:
+    async def get_trail_run(self, telegram_id: int) -> Optional[dict]:
         """
         Get user's running profile.
 
@@ -49,7 +49,7 @@ class ProfilesClient(BaseAPIClient):
         """
         return await self._get_optional(f"/api/v1/profiles/{telegram_id}/trail-run")
 
-    async def calculate_hiking(self, telegram_id: str, use_splits: bool = True) -> Optional[UserProfile]:
+    async def calculate_hiking(self, telegram_id: int, use_splits: bool = True) -> Optional[UserProfile]:
         """
         Calculate or recalculate user's hiking performance profile.
 
@@ -87,7 +87,7 @@ class ProfilesClient(BaseAPIClient):
             logger.error(f"Calculate profile failed: {e}")
             return None
 
-    async def recalculate(self, telegram_id: str, profile_type: str = "hiking") -> bool:
+    async def recalculate(self, telegram_id: int, profile_type: str = "hiking") -> bool:
         """
         Recalculate user's profile.
 
@@ -112,7 +112,7 @@ class ProfilesClient(BaseAPIClient):
 
     async def sync_splits(
         self,
-        telegram_id: str,
+        telegram_id: int,
         max_activities: int = 20,
         activity_types: str = "hike,walk"
     ) -> dict:

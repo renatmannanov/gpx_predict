@@ -382,7 +382,7 @@ class StravaClient:
     async def get_athlete_stats(
         self,
         access_token: str,
-        athlete_id: str
+        athlete_id: int
     ) -> dict:
         """
         Get athlete stats including best efforts.
@@ -488,7 +488,7 @@ class StravaClient:
 # Standalone API Functions (no db dependency)
 # =============================================================================
 
-async def fetch_athlete_stats(access_token: str, athlete_id: str) -> dict:
+async def fetch_athlete_stats(access_token: str, athlete_id: int) -> dict:
     """
     Fetch athlete stats from Strava API.
 

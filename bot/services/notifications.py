@@ -20,7 +20,7 @@ class NotificationService:
     @staticmethod
     async def check_and_show_notifications(
         message: Message,
-        telegram_id: str,
+        telegram_id: int,
         max_notifications: int = 3
     ) -> bool:
         """

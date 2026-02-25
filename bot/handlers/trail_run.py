@@ -263,7 +263,7 @@ async def start_trail_run_flow(
         user_id: User's Telegram ID (required when called from callback)
     """
     # Use provided user_id or try to get from message
-    telegram_id = user_id or str(message.from_user.id)
+    telegram_id = user_id or message.from_user.id
 
     # 1. Check Strava connection status
     strava_status = await api_client.get_strava_status(telegram_id)
@@ -450,7 +450,7 @@ async def handle_confirm(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     data = await state.get_data()
-    telegram_id = str(callback.from_user.id)
+    telegram_id = callback.from_user.id
 
     gpx_id = data.get("gpx_id")
     gpx_info = data.get("gpx_info", {})

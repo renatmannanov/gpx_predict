@@ -70,7 +70,7 @@ class HikePredictRequest(BaseModel):
     sunset: str = "20:00"
 
     # Optional: for personalized predictions
-    telegram_id: Optional[str] = None
+    telegram_id: Optional[int] = None
 
 
 class GroupMemberInput(BaseModel):
@@ -238,7 +238,7 @@ class RouteComparisonResponse(BaseModel):
 class TrailRunCompareRequest(BaseModel):
     """Request for trail run method comparison."""
     gpx_id: str
-    telegram_id: Optional[str] = None
+    telegram_id: Optional[int] = None
 
     # Activity type
     activity_type: ActivityType = ActivityType.TRAIL_RUN

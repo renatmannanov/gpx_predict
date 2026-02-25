@@ -13,7 +13,7 @@ class StravaStatus:
     """Strava connection status."""
 
     connected: bool
-    athlete_id: Optional[str] = None
+    athlete_id: Optional[int] = None
     scope: Optional[str] = None
 
 
@@ -57,7 +57,7 @@ class ActivitiesSyncStatus:
 class StravaClient(BaseAPIClient):
     """Client for Strava integration endpoints."""
 
-    def get_auth_url(self, telegram_id: str) -> str:
+    def get_auth_url(self, telegram_id: int) -> str:
         """
         Get URL for Strava OAuth authorization.
 
@@ -65,7 +65,7 @@ class StravaClient(BaseAPIClient):
         """
         return f"{self.base_url}/api/v1/auth/strava?telegram_id={telegram_id}"
 
-    async def get_status(self, telegram_id: str) -> StravaStatus:
+    async def get_status(self, telegram_id: int) -> StravaStatus:
         """
         Check if user has Strava connected.
 
@@ -86,7 +86,7 @@ class StravaClient(BaseAPIClient):
             logger.error(f"Strava status check failed: {e}")
             return StravaStatus(connected=False)
 
-    async def get_stats(self, telegram_id: str) -> Optional[StravaStats]:
+    async def get_stats(self, telegram_id: int) -> Optional[StravaStats]:
         """
         Get Strava athlete statistics.
 
@@ -111,7 +111,7 @@ class StravaClient(BaseAPIClient):
             logger.error(f"Strava stats fetch failed: {e}")
             return None
 
-    async def disconnect(self, telegram_id: str) -> bool:
+    async def disconnect(self, telegram_id: int) -> bool:
         """
         Disconnect Strava account.
 
@@ -130,7 +130,7 @@ class StravaClient(BaseAPIClient):
 
     async def get_activities(
         self,
-        telegram_id: str,
+        telegram_id: int,
         activity_type: Optional[str] = None,
         limit: int = 20,
         offset: int = 0
@@ -181,7 +181,7 @@ class StravaClient(BaseAPIClient):
             logger.error(f"Strava activities fetch failed: {e}")
             return [], 0, ActivitiesSyncStatus(None, 0, False)
 
-    async def trigger_sync(self, telegram_id: str, immediate: bool = True) -> bool:
+    async def trigger_sync(self, telegram_id: int, immediate: bool = True) -> bool:
         """
         Manually trigger Strava sync for a user.
 

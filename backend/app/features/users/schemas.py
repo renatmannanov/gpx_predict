@@ -12,7 +12,7 @@ from datetime import datetime
 class UserCreate(BaseModel):
     """Create user request."""
 
-    telegram_id: Optional[str] = None
+    telegram_id: Optional[int] = None
     email: Optional[str] = None
     name: Optional[str] = None
 
@@ -21,7 +21,7 @@ class UserResponse(BaseModel):
     """User response."""
 
     id: str
-    telegram_id: Optional[str]
+    telegram_id: Optional[int]
     email: Optional[str]
     name: Optional[str]
     strava_connected: bool

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class UsersClient(BaseAPIClient):
     """Client for user endpoints."""
 
-    async def get_info(self, telegram_id: str) -> Optional[dict]:
+    async def get_info(self, telegram_id: int) -> Optional[dict]:
         """
         Get user info including onboarding status.
 
@@ -22,7 +22,7 @@ class UsersClient(BaseAPIClient):
         """
         return await self._get_optional(f"/api/v1/users/{telegram_id}")
 
-    async def create(self, telegram_id: str) -> Optional[dict]:
+    async def create(self, telegram_id: int) -> Optional[dict]:
         """
         Create user or get existing one.
 
@@ -34,7 +34,7 @@ class UsersClient(BaseAPIClient):
         """
         return await self._post_optional(f"/api/v1/users/{telegram_id}/create")
 
-    async def complete_onboarding(self, telegram_id: str, activity_type: str) -> bool:
+    async def complete_onboarding(self, telegram_id: int, activity_type: str) -> bool:
         """
         Complete user onboarding.
 
@@ -55,7 +55,7 @@ class UsersClient(BaseAPIClient):
             logger.error(f"Complete onboarding failed: {e}")
             return False
 
-    async def update_race_search_name(self, telegram_id: str, name: str) -> bool:
+    async def update_race_search_name(self, telegram_id: int, name: str) -> bool:
         """Save the name used for searching race results."""
         try:
             await self._put(
@@ -67,7 +67,7 @@ class UsersClient(BaseAPIClient):
             logger.error(f"Update race search name failed: {e}")
             return False
 
-    async def update_preferences(self, telegram_id: str, activity_type: str) -> bool:
+    async def update_preferences(self, telegram_id: int, activity_type: str) -> bool:
         """
         Update user preferences.
 

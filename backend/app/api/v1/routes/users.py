@@ -19,7 +19,7 @@ router = APIRouter()
 
 class UserInfoSchema(BaseModel):
     """User info response schema."""
-    telegram_id: str
+    telegram_id: int
     name: Optional[str] = None
     race_search_name: Optional[str] = None
     strava_connected: bool
@@ -56,7 +56,7 @@ async def get_current_user(db: AsyncSession = Depends(get_async_db)):
 
 
 @router.get("/{telegram_id}", response_model=UserInfoSchema)
-async def get_user_info(telegram_id: str, db: AsyncSession = Depends(get_async_db)):
+async def get_user_info(telegram_id: int, db: AsyncSession = Depends(get_async_db)):
     """
     Get user info by Telegram ID.
 
@@ -80,7 +80,7 @@ async def get_user_info(telegram_id: str, db: AsyncSession = Depends(get_async_d
 
 @router.post("/{telegram_id}/onboarding", response_model=UserUpdateResponse)
 async def complete_onboarding(
-    telegram_id: str,
+    telegram_id: int,
     request: OnboardingCompleteRequest,
     db: AsyncSession = Depends(get_async_db)
 ):
@@ -114,7 +114,7 @@ async def complete_onboarding(
 
 @router.put("/{telegram_id}/preferences", response_model=UserUpdateResponse)
 async def update_preferences(
-    telegram_id: str,
+    telegram_id: int,
     request: PreferencesUpdateRequest,
     db: AsyncSession = Depends(get_async_db)
 ):
@@ -153,7 +153,7 @@ class RaceSearchNameRequest(BaseModel):
 
 @router.put("/{telegram_id}/race-search-name", response_model=UserUpdateResponse)
 async def update_race_search_name(
-    telegram_id: str,
+    telegram_id: int,
     request: RaceSearchNameRequest,
     db: AsyncSession = Depends(get_async_db),
 ):
@@ -172,7 +172,7 @@ async def update_race_search_name(
 
 @router.post("/{telegram_id}/create", response_model=UserInfoSchema)
 async def create_user(
-    telegram_id: str,
+    telegram_id: int,
     db: AsyncSession = Depends(get_async_db)
 ):
     """
