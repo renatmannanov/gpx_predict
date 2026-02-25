@@ -112,35 +112,11 @@ Bot → POST /races/{id}/predict {distance_id, flat_pace, mode, telegram_id}
 
 ---
 
-### Задача 3: Strava через ayda_run
+### Задача 3: Strava через ayda_run → ВЫНЕСЕНО
 
-**Суть:** gpx_predictor получает Strava-токены через API ayda_run (одобренную Strava интеграцию).
+**Вынесено в отдельный план:** `docs/task_tracker/todo/cross_service_integration.md`
 
-**Архитектура (Вариант D):**
-```
-Пользователь → ayda_run OAuth → Strava → токен в ayda_run БД
-gpx_predictor → GET ayda_run/api/strava/token?telegram_id=X → access_token
-gpx_predictor → Strava API (activities, splits) — с полученным токеном
-```
-
-**Файлы:**
-
-| Файл | Изменение |
-|------|-----------|
-| `backend/app/config.py` | Добавить `ayda_run_api_url`, `ayda_run_api_key` |
-| `backend/app/features/strava/ayda_client.py` | **Новый.** `AydaRunClient` — `get_strava_token(telegram_id)` |
-| `backend/app/features/strava/client.py` | `get_valid_token()` — сначала ayda_run, fallback на локальные токены |
-
-**API контракт ayda_run (реализовать на стороне ayda_run):**
-```
-GET /api/strava/token?telegram_id={id}
-Headers: X-API-Key: {shared_secret}
-Response: {access_token, athlete_id, scope} | 404
-```
-
-**Синхронизация активностей:** Polling раз в неделю. Одна новая тренировка не меняет gradient-pace профиль (нужны десятки). Реализация: cron/scheduled task, не webhook.
-
-**Критерий готовности:** С `AYDA_RUN_API_URL` → токен через ayda_run. Без — fallback на локальные.
+Задача выросла в полноценную кросс-сервисную интеграцию (4 шага: токены, авто-профилирование, предикт, матчинг).
 
 ---
 
@@ -149,7 +125,7 @@ Response: {access_token, athlete_id, scope} | 404
 1. ~~Задача 0 — фиксы вывода~~ ✅
 2. ~~Задача 1 — авто-поиск + результат в аналитике~~ ✅
 3. ~~Задача 2 — персональный прогноз~~ ✅
-4. Задача 3 — ayda_run интеграция (~150 строк, кросс-сервис)
+4. ~~Задача 3~~ → вынесено в `cross_service_integration.md`
 
 ## Что НЕ делаем в этой фазе
 
