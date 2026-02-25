@@ -42,6 +42,7 @@ from .client import (
     extract_best_efforts,
     aggregate_activities,
 )
+from .ayda_client import AydaRunClient, get_ayda_client
 from .repository import (
     StravaTokenRepository,
     StravaActivityRepository,
@@ -72,6 +73,9 @@ __all__ = [
     "fetch_athlete_stats",
     "extract_best_efforts",
     "aggregate_activities",
+    # Cross-service
+    "AydaRunClient",
+    "get_ayda_client",
     # Repositories
     "StravaTokenRepository",
     "StravaActivityRepository",

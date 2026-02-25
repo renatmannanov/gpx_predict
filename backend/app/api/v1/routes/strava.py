@@ -35,6 +35,7 @@ from app.features.strava import (
     fetch_athlete_stats,
 )
 from app.features.strava.sync import trigger_user_sync, get_sync_stats, StravaSyncService
+from app.features.strava.ayda_client import get_ayda_client
 from app.features.users import UserRepository, NotificationRepository, NotificationService
 
 logger = logging.getLogger(__name__)
@@ -591,7 +592,7 @@ async def trigger_sync(
 
     if immediate:
         # Sync immediately
-        service = StravaSyncService(db)
+        service = StravaSyncService(db, ayda_client=get_ayda_client())
         result = await service.sync_user_activities(user.id)
         return {
             "status": "completed",

@@ -4,10 +4,10 @@ Strava API client.
 Provides methods for interacting with Strava API.
 Handles rate limiting, authentication, and error handling.
 
-Strava API Limits:
-- 200 requests per 15 minutes
-- 2,000 requests per day
-- After Developer Program approval: 30,000/day
+Strava API Limits (gpx_predictor share of shared quota):
+- 200 read requests per 15 minutes
+- 2,000 read requests per day
+- Shared with ayda_run (which gets 100/15min, 1000/day)
 
 Data Policy:
 - Raw activity data can be cached for max 7 days
@@ -64,9 +64,9 @@ class StravaRateLimiter:
     """
     In-memory rate limiter for Strava API.
 
-    Limits:
-    - 200 requests per 15 minutes (short-term)
-    - 2000 requests per day (daily)
+    Limits (gpx_predictor share of shared Strava quota):
+    - 200 read requests per 15 minutes
+    - 2000 read requests per day
     """
 
     def __init__(

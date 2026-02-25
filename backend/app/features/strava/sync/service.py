@@ -30,6 +30,7 @@ from app.services.user_profile import UserProfileService
 
 from ..models import StravaToken, StravaActivity, StravaSyncStatus
 from ..client import fetch_athlete_stats
+from ..ayda_client import AydaRunClient
 from .config import (
     SyncConfig,
     ACTIVITY_TYPES_FOR_HIKE_PROFILE,
@@ -53,8 +54,9 @@ class StravaSyncService:
         result = await service.sync_user_activities(user_id)
     """
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, ayda_client: AydaRunClient | None = None):
         self.db = db
+        self.ayda_client = ayda_client
         self.activity_sync = ActivitySyncService(db)
         self.splits_sync = SplitsSyncService(db)
         self.notification_service = NotificationService(db)
@@ -75,15 +77,18 @@ class StravaSyncService:
         )
         user = result.scalar_one_or_none()
 
-        if not user or not user.strava_connected:
-            return {"status": "skipped", "reason": "not_connected"}
+        if not user:
+            return {"status": "skipped", "reason": "user_not_found"}
 
+        # Get local token (may be None if user authorized via ayda_run only)
         result = await self.db.execute(
             select(StravaToken).where(StravaToken.user_id == user_id)
         )
         token = result.scalar_one_or_none()
 
-        if not token:
+        if not token and not self.ayda_client:
+            if not user.strava_connected:
+                return {"status": "skipped", "reason": "not_connected"}
             return {"status": "skipped", "reason": "no_token"}
 
         # Get or create sync status
@@ -106,8 +111,25 @@ class StravaSyncService:
         await self.db.commit()
 
         try:
-            # Get valid access token
-            access_token = await self.activity_sync.get_valid_token(token)
+            # Get valid access token: local first, then ayda_run fallback
+            access_token = None
+            if token:
+                access_token = await self.activity_sync.get_valid_token(token)
+
+            if not access_token and self.ayda_client and user.telegram_id:
+                token_data = await self.ayda_client.get_strava_token(user.telegram_id)
+                if token_data:
+                    access_token = token_data["access_token"]
+                    # Update athlete_id if not set
+                    if not user.strava_athlete_id and token_data.get("athlete_id"):
+                        user.strava_athlete_id = token_data["athlete_id"]
+                        user.strava_connected = True
+                    logger.info(f"Using ayda_run token for user {user_id}")
+
+            if not access_token:
+                sync_status.sync_in_progress = 0
+                await self.db.commit()
+                return {"status": "skipped", "reason": "no_token"}
 
             # Fetch total_activities_estimated on first sync
             if sync_status.total_activities_estimated is None:
@@ -155,7 +177,8 @@ class StravaSyncService:
                         split_result = await self.splits_sync.sync_activity_splits(
                             user_id=user_id,
                             activity_id=activity.id,
-                            strava_activity_id=activity.strava_id
+                            strava_activity_id=activity.strava_id,
+                            access_token=access_token,
                         )
                         if split_result.get("status") == "success":
                             splits_synced_count += 1

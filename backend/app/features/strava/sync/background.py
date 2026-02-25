@@ -13,6 +13,7 @@ from typing import Optional
 from app.features.users import User
 
 from ..models import StravaSyncStatus
+from ..ayda_client import get_ayda_client
 from .config import SyncConfig
 from .service import StravaSyncService
 
@@ -152,7 +153,7 @@ class BackgroundSyncRunner:
         for user_id in user_ids:
             try:
                 async with self._db_factory() as db:
-                    service = StravaSyncService(db)
+                    service = StravaSyncService(db, ayda_client=get_ayda_client())
                     result = await service.sync_user_activities(user_id)
                     logger.debug(f"Sync result for {user_id}: {result}")
 
@@ -227,7 +228,7 @@ class BackgroundSyncRunner:
         while batches_done < max_batches:
             try:
                 async with self._db_factory() as db:
-                    service = StravaSyncService(db)
+                    service = StravaSyncService(db, ayda_client=get_ayda_client())
                     result = await service.sync_user_activities(user_id)
 
                     if result.get("status") != "success":
@@ -256,7 +257,7 @@ class BackgroundSyncRunner:
         if batches_done > 1:  # Only if we did more than first batch
             try:
                 async with self._db_factory() as db:
-                    service = StravaSyncService(db)
+                    service = StravaSyncService(db, ayda_client=get_ayda_client())
                     await service.handle_priority_sync_complete(user_id)
             except Exception as e:
                 logger.error(f"Failed to handle priority sync completion: {e}")

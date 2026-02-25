@@ -58,7 +58,8 @@ class SplitsSyncService:
         self,
         user_id: str,
         activity_id: int,
-        strava_activity_id: int
+        strava_activity_id: int,
+        access_token: str | None = None,
     ) -> dict:
         """
         Sync splits for a specific activity.
@@ -67,21 +68,24 @@ class SplitsSyncService:
             user_id: User ID
             activity_id: Local database activity ID
             strava_activity_id: Strava's activity ID
+            access_token: Pre-fetched access token (skips DB lookup if provided)
 
         Returns:
             dict with sync results: {"status": "success/error", ...}
         """
-        # Get token
-        result = await self.db.execute(
-            select(StravaToken).where(StravaToken.user_id == user_id)
-        )
-        token = result.scalar_one_or_none()
+        if not access_token:
+            # Get token from DB
+            result = await self.db.execute(
+                select(StravaToken).where(StravaToken.user_id == user_id)
+            )
+            token = result.scalar_one_or_none()
 
-        if not token:
-            return {"status": "error", "reason": "no_token"}
+            if not token:
+                return {"status": "error", "reason": "no_token"}
+
+            access_token = await self._activity_service.get_valid_token(token)
 
         try:
-            access_token = await self._activity_service.get_valid_token(token)
 
             # Fetch detailed activity with splits
             activity_data = await self.fetch_activity_detail(

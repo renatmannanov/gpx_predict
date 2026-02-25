@@ -26,6 +26,7 @@ from app.features.hiking import HikingProfileRepository
 from app.features.trail_run import TrailRunProfileRepository
 from app.services.user_profile import UserProfileService
 from app.features.strava.sync import StravaSyncService
+from app.features.strava.ayda_client import get_ayda_client
 
 logger = logging.getLogger(__name__)
 
@@ -372,7 +373,7 @@ async def sync_splits(
     ]
 
     try:
-        service = StravaSyncService(db)
+        service = StravaSyncService(db, ayda_client=get_ayda_client())
         result = await service.sync_splits_for_user(
             user_id=user.id,
             max_activities=max_activities,

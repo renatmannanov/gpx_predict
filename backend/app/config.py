@@ -60,6 +60,16 @@ class Settings(BaseSettings):
         description="Telegram Bot token for push notifications"
     )
 
+    # === Cross-service integration ===
+    cross_service_api_key: Optional[str] = Field(
+        default=None,
+        description="Shared API key for cross-service communication"
+    )
+    ayda_run_api_url: Optional[str] = Field(
+        default=None,
+        description="ayda_run API URL for Strava token fallback"
+    )
+
     @field_validator('database_url')
     @classmethod
     def fix_postgres_url(cls, v: str) -> str:
