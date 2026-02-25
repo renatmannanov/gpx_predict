@@ -23,7 +23,7 @@ from keyboards.races import (
     race_search_result_keyboard,
 )
 from services.api_client import api_client
-from utils.formatters import format_pace
+from utils.formatters import format_pace, format_time
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -227,8 +227,16 @@ async def handle_race_action(callback: CallbackQuery, state: FSMContext):
 
 async def _start_predict(message, state: FSMContext, race_id: str, distance_id: str):
     """Ask user: running or hiking?"""
+    data = await state.get_data()
+    race_data = data.get("race_data")
+    dist_data = _find_dist_data(race_data, distance_id)
+    race_name = race_data.get("name", "") if race_data else ""
+    dist_name = dist_data.get("name", "") if dist_data else ""
+
     await message.edit_text(
-        "<b>\U0001f52e Прогноз</b>\n\n"
+        "<b>Рассчитываю прогноз</b>\n\n"
+        f"<b>Гонка:</b> {race_name}\n"
+        f"<b>Дистанция:</b> {dist_name}\n\n"
         "Как ты планируешь проходить дистанцию?",
         reply_markup=race_predict_mode_keyboard(race_id, distance_id),
     )
@@ -324,10 +332,12 @@ async def handle_pace_selection(callback: CallbackQuery, state: FSMContext):
     race_data = data.get("race_data")
     dist_data = _find_dist_data(race_data, distance_id)
     strava_pace = data.get("strava_pace")
+    telegram_id = str(callback.from_user.id)
     await state.clear()
     await _do_predict(
         callback.message, race_id, distance_id, pace, mode="trail_run",
         race_data=race_data, dist_data=dist_data, strava_pace=strava_pace,
+        telegram_id=telegram_id,
     )
 
 
@@ -359,10 +369,12 @@ async def handle_custom_pace_input(message: Message, state: FSMContext):
         race_data = data.get("race_data")
         dist_data = _find_dist_data(race_data, distance_id)
         strava_pace = data.get("strava_pace")
+        telegram_id = str(message.from_user.id)
         await state.clear()
         await _do_predict(
             message, race_id, distance_id, pace, mode="trail_run",
             race_data=race_data, dist_data=dist_data, strava_pace=strava_pace,
+            telegram_id=telegram_id,
         )
 
     except (ValueError, IndexError):
@@ -380,6 +392,7 @@ async def _do_predict(
     race_data: dict = None,
     dist_data: dict = None,
     strava_pace: float = None,
+    telegram_id: str = None,
 ):
     """Execute prediction and show result."""
     loading = await message.answer("\U0001f504 Рассчитываю прогноз...")
@@ -390,6 +403,7 @@ async def _do_predict(
         distance_id=distance_id,
         flat_pace_min_km=pace,
         mode=mode,
+        telegram_id=telegram_id,
     )
 
     if not result:
@@ -404,6 +418,7 @@ async def _do_predict(
             distance_id=distance_id,
             flat_pace_min_km=strava_pace,
             mode=mode,
+            telegram_id=telegram_id,
         )
 
     text = _format_prediction_result(
@@ -796,31 +811,43 @@ def _format_card_header(
     return lines
 
 
-def _format_comparison(result: dict) -> list[str]:
-    """Format comparison with past results."""
-    if not result.get("comparison_year"):
+
+def _format_personalized(result: dict) -> list[str]:
+    """Format personalized prediction sections (effort levels + Strava stats)."""
+    p_times = result.get("personalized_times")
+    if not p_times:
         return []
 
     lines = [
         "",
-        "\u2501" * 24,
-        "",
-        f"<b>\U0001f4ca Сравнение с {result['comparison_year']}:</b>",
+        "\U0001f3af Персонализированный расчет на основе данных из Strava:",
+        f"  \U0001f525 Fast...............{format_time(p_times['fast'] / 3600)}",
+        f"  \u26a1 Moderate...{format_time(p_times['moderate'] / 3600)}",
+        f"  \U0001f6b6 Easy..............{format_time(p_times['easy'] / 3600)}",
     ]
 
-    if result.get("estimated_place") and result.get("total_finishers"):
+    rps = result.get("run_profile_stats")
+    if rps:
+        km = rps.get("total_distance_km", 0)
+        acts = rps.get("total_activities", 0)
+        splits = rps.get("total_splits", 0)
+        filled = rps.get("categories_filled", 0)
+        total = rps.get("categories_total", 11)
+        lines.append("")
+        lines.append("\u2501" * 24)
+        lines.append("")
+        lines.append("\U0001f4c8 Персонализация основана на данных из Strava:")
         lines.append(
-            f"  \U0001f3c6 ~{result['estimated_place']}-е место "
-            f"из {result['total_finishers']}"
+            f"{km:.0f} км, {acts} активностей, {splits} сплитов, "
+            f"профиль заполнен {filled} из {total}"
         )
-    if result.get("percentile") is not None:
-        pct = result["percentile"]
-        lines.append(f"  \U0001f4c8 Быстрее {pct:.0f}% участников")
 
-    if result.get("stats"):
-        stats = result["stats"]
-        lines.append(f"  \U0001f947 Лучший: {stats['best_time']}")
-        lines.append(f"  \U0001f4ca Медиана: {stats['median_time']}")
+    lines.extend([
+        "",
+        "\U0001f525 Fast \u2014 гоночный/асфальтовый темп",
+        "\u26a1 Moderate \u2014 обычная тренировка",
+        "\U0001f6b6 Easy \u2014 лёгкий бег / разведка",
+    ])
 
     return lines
 
@@ -892,8 +919,8 @@ def _format_prediction_result(
         lines.append("\U0001f97e Прогноз (пешком):")
         lines.extend(_format_methods(result["all_methods"], mode))
 
-    # Comparison with past results
-    lines.extend(_format_comparison(result))
+    # Personalized prediction (if run_profile available)
+    lines.extend(_format_personalized(result))
 
     return "\n".join(lines)
 

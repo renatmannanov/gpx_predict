@@ -43,6 +43,7 @@ class RacesClient(BaseAPIClient):
         distance_id: str,
         flat_pace_min_km: float,
         mode: str = "trail_run",
+        telegram_id: Optional[str] = None,
     ) -> Optional[dict]:
         """Predict race time."""
         payload = {
@@ -50,6 +51,8 @@ class RacesClient(BaseAPIClient):
             "flat_pace_min_km": flat_pace_min_km,
             "mode": mode,
         }
+        if telegram_id:
+            payload["telegram_id"] = telegram_id
         return await self._post_optional(
             f"/api/v1/races/{race_id}/predict", json=payload
         )

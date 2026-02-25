@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Optional
 
 from app.features.gpx.parser import GPXParserService
 from app.features.trail_run.service import TrailRunService
 from app.features.trail_run.calculators.gap import GAPMode
+from app.models.user_run_profile import UserRunProfile
 from app.services.calculators.comparison import ComparisonService
 
 from .catalog import RaceCatalog, find_distance_results
@@ -37,6 +39,11 @@ class RacePrediction:
     comparison_year: int | None = None
     stats: RaceStats | None = None
 
+    # Personalization (if run_profile available)
+    personalized: bool = False
+    personalized_times: dict[str, int] | None = None  # {fast, moderate, easy} → seconds
+    run_profile_stats: dict | None = None  # {total_distance_km, total_activities, ...}
+
     # User's past result (if found)
     past_result: RaceResult | None = None
     past_result_year: int | None = None
@@ -54,6 +61,7 @@ class RaceService:
         distance_id: str,
         flat_pace_min_km: float,
         mode: str = "trail_run",
+        run_profile: Optional[UserRunProfile] = None,
     ) -> RacePrediction:
         """Predict race time based on flat pace (no Strava profile needed).
 
@@ -85,12 +93,24 @@ class RaceService:
         # Calculate prediction
         if mode == "trail_run":
             predicted_s, method_name, all_methods = self._predict_trail_run(
-                points, flat_pace_min_km
+                points, flat_pace_min_km, run_profile=run_profile
             )
         else:
             predicted_s, method_name, all_methods = self._predict_hiking(
                 points
             )
+
+        # Extract personalization from all_methods (if run_profile was used)
+        personalized_times = None
+        run_profile_stats = None
+        if all_methods.get("all_run_personalized_fast"):
+            personalized_times = {
+                "fast": all_methods["all_run_personalized_fast"],
+                "moderate": all_methods["all_run_personalized_moderate"],
+                "easy": all_methods["all_run_personalized_easy"],
+            }
+        if "_run_profile" in all_methods:
+            run_profile_stats = all_methods.pop("_run_profile")
 
         # Build prediction
         prediction = RacePrediction(
@@ -102,6 +122,9 @@ class RaceService:
             method=method_name,
             flat_pace_used=flat_pace_min_km,
             all_methods=all_methods,
+            personalized=personalized_times is not None,
+            personalized_times=personalized_times,
+            run_profile_stats=run_profile_stats,
         )
 
         # Add comparison with latest results
@@ -113,18 +136,19 @@ class RaceService:
         self,
         points: list[tuple],
         flat_pace_min_km: float,
+        run_profile: Optional[UserRunProfile] = None,
     ) -> tuple[int, str, dict[str, int]]:
         """Run trail running prediction. Returns (seconds, method_name, all_methods)."""
         service = TrailRunService(
             gap_mode=GAPMode.STRAVA,
             flat_pace_min_km=flat_pace_min_km,
+            run_profile=run_profile,
             apply_fatigue=False,
         )
         result = service.calculate_route(points)
 
         # Convert hours → seconds for all methods
-        all_methods: dict[str, int] = {}
-        for key in [
+        time_keys = [
             "all_run_strava",
             "all_run_minetti",
             "all_run_strava_minetti",
@@ -134,12 +158,21 @@ class RaceService:
             "run_hike_minetti_naismith",
             "run_hike_strava_minetti_tobler",
             "run_hike_strava_minetti_naismith",
+            "all_run_personalized_fast",
+            "all_run_personalized_moderate",
+            "all_run_personalized_easy",
             "tobler",
             "naismith",
-        ]:
+        ]
+        all_methods: dict[str, int] = {}
+        for key in time_keys:
             val = result.totals.get(key)
             if val is not None:
                 all_methods[key] = int(val * 3600)
+
+        # Stash run_profile metadata (non-time data, extracted by caller)
+        if result.totals.get("run_profile"):
+            all_methods["_run_profile"] = result.totals["run_profile"]
 
         # Primary method: all_run_strava
         primary_key = "all_run_strava"

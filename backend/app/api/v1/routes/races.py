@@ -6,14 +6,18 @@ Endpoints for race catalog, results, search, and predictions.
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import CONTENT_DIR
+from app.db.session import get_async_db
 from app.features.races.catalog import RaceCatalog, normalize_distance_name
 from app.features.races.matching import find_across_years
 from app.features.races.service import RaceService
 from app.features.races.stats import calculate_stats, format_time
+from app.features.trail_run.repository import TrailRunProfileRepository
+from app.features.users.repository import UserRepository
 
 router = APIRouter()
 
@@ -92,6 +96,7 @@ class PredictRequest(BaseModel):
     distance_id: str
     flat_pace_min_km: float = Field(ge=3.0, le=15.0)
     mode: str = "trail_run"  # "trail_run" or "hiking"
+    telegram_id: Optional[str] = None
 
 
 class PredictionMethodSchema(BaseModel):
@@ -110,6 +115,10 @@ class PredictResponse(BaseModel):
     method: str
     flat_pace_used: float
     all_methods: list[PredictionMethodSchema] = []
+    # Personalization
+    personalized: bool = False
+    personalized_times: Optional[dict] = None  # {fast, moderate, easy} → time_s
+    run_profile_stats: Optional[dict] = None
     # Comparison
     percentile: Optional[float] = None
     estimated_place: Optional[int] = None
@@ -338,14 +347,28 @@ async def search_results(
 
 
 @router.post("/{race_id}/predict", response_model=PredictResponse)
-async def predict_race(race_id: str, request: PredictRequest):
+async def predict_race(
+    race_id: str,
+    request: PredictRequest,
+    db: AsyncSession = Depends(get_async_db),
+):
     """Predict race time based on flat pace."""
+    # Load run profile if telegram_id provided
+    run_profile = None
+    if request.telegram_id:
+        user_repo = UserRepository(db)
+        user = await user_repo.get_by_telegram_id(request.telegram_id)
+        if user:
+            run_repo = TrailRunProfileRepository(db)
+            run_profile = await run_repo.get_by_user_id(user.id)
+
     try:
         prediction = _service.predict_by_pace(
             race_id=race_id,
             distance_id=request.distance_id,
             flat_pace_min_km=request.flat_pace_min_km,
             mode=request.mode,
+            run_profile=run_profile,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -387,6 +410,9 @@ async def predict_race(race_id: str, request: PredictRequest):
         method=prediction.method,
         flat_pace_used=prediction.flat_pace_used,
         all_methods=all_methods,
+        personalized=prediction.personalized,
+        personalized_times=prediction.personalized_times,
+        run_profile_stats=prediction.run_profile_stats,
         percentile=prediction.percentile,
         estimated_place=prediction.estimated_place,
         comparison_year=prediction.comparison_year,
