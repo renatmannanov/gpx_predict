@@ -6,7 +6,7 @@ Combines all route modules.
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import gpx, predict, users, strava, profiles, notifications, races, internal
+from app.api.v1.routes import gpx, predict, users, strava, profiles, notifications, races, internal, telegram
 
 api_router = APIRouter()
 
@@ -18,3 +18,4 @@ api_router.include_router(strava.router, tags=["Strava"])
 api_router.include_router(profiles.router, tags=["Profiles"])
 api_router.include_router(notifications.router, tags=["Notifications"])
 api_router.include_router(internal.router, tags=["Internal"])
+api_router.include_router(telegram.router, tags=["Telegram"])

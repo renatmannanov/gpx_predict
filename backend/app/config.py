@@ -57,7 +57,13 @@ class Settings(BaseSettings):
     # === Telegram ===
     telegram_bot_token: Optional[str] = Field(
         default=None,
-        description="Telegram Bot token for push notifications"
+        description="Telegram Bot token for push notifications and webhook bot"
+    )
+
+    # === Deployment ===
+    base_url: Optional[str] = Field(
+        default=None,
+        description="Public base URL (for Telegram webhook registration)"
     )
 
     # === Cross-service integration ===

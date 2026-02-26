@@ -55,7 +55,7 @@ async def main():
     """Main entry point."""
     # Create bot
     bot = Bot(
-        token=settings.bot_token,
+        token=settings.token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
 
