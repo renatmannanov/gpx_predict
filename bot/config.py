@@ -4,9 +4,16 @@ Bot Configuration
 Settings loaded from environment variables.
 """
 
+import os
 from typing import Optional
 
 from pydantic_settings import BaseSettings
+
+
+def _default_backend_url() -> str:
+    """Use PORT env var if available (Railway), otherwise default 8000."""
+    port = os.environ.get("PORT", "8000")
+    return f"http://localhost:{port}"
 
 
 class Settings(BaseSettings):
@@ -14,7 +21,7 @@ class Settings(BaseSettings):
 
     bot_token: Optional[str] = None
     telegram_bot_token: Optional[str] = None
-    backend_url: str = "http://localhost:8000"
+    backend_url: str = _default_backend_url()
 
     debug: bool = False
     log_level: str = "INFO"
