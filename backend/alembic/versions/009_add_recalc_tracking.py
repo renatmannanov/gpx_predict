@@ -1,7 +1,7 @@
 """Add profile recalculation tracking fields
 
 Revision ID: 009_add_recalc_tracking
-Revises: 008_add_onboarding_and_notifications
+Revises: 008_add_onboarding
 Create Date: 2026-01-24
 
 Adds:
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '009_add_recalc_tracking'
-down_revision: Union[str, None] = '008_add_onboarding_and_notifications'
+down_revision: Union[str, None] = '008_add_onboarding'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

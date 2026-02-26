@@ -1,6 +1,6 @@
 """Add onboarding fields and notifications table
 
-Revision ID: 008_add_onboarding_and_notifications
+Revision ID: 008_add_onboarding
 Revises: 007_add_user_run_profiles
 Create Date: 2026-01-24
 
@@ -17,7 +17,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '008_add_onboarding_and_notifications'
+revision: str = '008_add_onboarding'
 down_revision: Union[str, None] = '007a_add_sample_count_columns'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
