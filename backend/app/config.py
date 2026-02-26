@@ -30,9 +30,9 @@ class Settings(BaseSettings):
     )
 
     # === CORS ===
-    cors_origins: List[str] = Field(
-        default_factory=lambda: ["http://localhost:5173", "http://localhost:3000"],
-        description="Allowed CORS origins"
+    cors_origins: str = Field(
+        default="http://localhost:5173,http://localhost:3000",
+        description="Allowed CORS origins (comma-separated)"
     )
 
     # === Elevation API ===
@@ -84,13 +84,10 @@ class Settings(BaseSettings):
             return v.replace("postgres://", "postgresql://", 1)
         return v
 
-    @field_validator('cors_origins', mode='before')
-    @classmethod
-    def parse_cors_origins(cls, v):
+    @property
+    def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(',')]
-        return v
+        return [origin.strip() for origin in self.cors_origins.split(',') if origin.strip()]
 
     model_config = ConfigDict(
         env_file=".env",
