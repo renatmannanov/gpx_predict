@@ -12,6 +12,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import BotCommand
 
 from config import settings
 from handlers import common, prediction, strava, onboarding, profile, trail_run, races
@@ -29,9 +30,25 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+BOT_COMMANDS = [
+    BotCommand(command="start", description="Начать / перезапустить"),
+    BotCommand(command="help", description="Справка"),
+    BotCommand(command="profile", description="Мой профиль темпа"),
+    BotCommand(command="races", description="Календарь гонок"),
+    BotCommand(command="strava", description="Управление Strava"),
+    BotCommand(command="strava_stats", description="Статистика Strava"),
+    BotCommand(command="strava_activities", description="Мои активности"),
+    BotCommand(command="cancel", description="Отменить операцию"),
+]
+
+
 async def on_startup(bot: Bot):
     """Startup hook."""
     logger.info("Starting GPX Predictor Bot...")
+
+    # Set bot commands menu
+    await bot.set_my_commands(BOT_COMMANDS)
+    logger.info("Bot commands menu set")
 
     # Check backend health
     healthy = await api_client.health_check()

@@ -46,6 +46,7 @@ async def _setup_bot(app: FastAPI):
     from aiogram.client.default import DefaultBotProperties
     from aiogram.enums import ParseMode
     from aiogram.fsm.storage.memory import MemoryStorage
+    from aiogram.types import BotCommand
     from handlers import common, prediction, strava, onboarding, profile, trail_run, races
 
     bot = Bot(
@@ -61,6 +62,19 @@ async def _setup_bot(app: FastAPI):
     dp.include_router(trail_run.router)
     dp.include_router(races.router)
     dp.include_router(strava.router)
+
+    # Set bot commands menu
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Начать / перезапустить"),
+        BotCommand(command="help", description="Справка"),
+        BotCommand(command="profile", description="Мой профиль темпа"),
+        BotCommand(command="races", description="Календарь гонок"),
+        BotCommand(command="strava", description="Управление Strava"),
+        BotCommand(command="strava_stats", description="Статистика Strava"),
+        BotCommand(command="strava_activities", description="Мои активности"),
+        BotCommand(command="cancel", description="Отменить операцию"),
+    ])
+    logger.info("Bot commands menu set")
 
     webhook_url = f"{settings.base_url.rstrip('/')}/api/v1/telegram/webhook"
     await bot.set_webhook(webhook_url)
