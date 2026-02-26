@@ -125,8 +125,6 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
 
     lines.append("")
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-    lines.append("")
-    lines.append("Весь маршрут бегом:")
 
     if totals_strava and strava_pace:
         # Dual results: Strava pace + manual pace
