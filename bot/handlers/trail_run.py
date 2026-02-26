@@ -154,26 +154,6 @@ def format_trail_run_result(result: dict, gpx_name: str) -> str:
             lines.append(f"На основе выбранного темпа - {format_pace(manual_pace)}/км")
         lines.extend(_format_gap_results(totals_manual, include_personalized=True))
 
-    lines.append("")
-    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-    lines.append("")
-
-    # Run/Hike breakdown (based on threshold) - use totals data if available
-    threshold = totals_manual.get("threshold_used") or result.get("walk_threshold_used", 15)
-    run_dist_totals = totals_manual.get("run_distance_km", run_dist)
-    hike_dist_totals = totals_manual.get("hike_distance_km", hike_dist)
-    run_pct = totals_manual.get("run_percent") or ((run_dist_totals / distance * 100) if distance > 0 else 100)
-    hike_pct = totals_manual.get("hike_percent") or ((hike_dist_totals / distance * 100) if distance > 0 else 0)
-
-    lines.append(f"Бег + шаг (порог перехода на шаг {threshold:.0f}%↗):")
-    lines.append(f" 🏃 {run_dist_totals:.1f}км ({run_pct:.0f}%) | 🥾 {hike_dist_totals:.1f}км ({hike_pct:.0f}%)")
-    lines.append("")
-
-    # Show 6 run+hike combinations
-    run_hike_lines = _format_run_hike_results(totals_manual)
-    if run_hike_lines:
-        lines.extend(run_hike_lines)
-
     # Profile meta-info (if personalized)
     run_profile = totals_manual.get("run_profile")
     if run_profile:

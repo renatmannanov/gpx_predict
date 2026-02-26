@@ -462,26 +462,6 @@ async def _make_prediction(callback: CallbackQuery, state: FSMContext):
         # Main prediction message
         result = format_full_prediction(comparison, gpx_info, prediction)
         await callback.message.edit_text(result, parse_mode="HTML")
-
-        # Segments as separate message (may be long)
-        segments_text = format_segments(comparison)
-        # Split into chunks if too long (Telegram limit is 4096)
-        if len(segments_text) <= 4096:
-            await callback.message.answer(segments_text, parse_mode="HTML")
-        else:
-            # Split by segments (each segment block ends with \n\n)
-            chunks = []
-            current_chunk = "<b>Разбивка по участкам:</b>\n\n"
-            for segment_block in segments_text.split("\n\n")[1:]:  # Skip header
-                if len(current_chunk) + len(segment_block) + 2 > 4000:
-                    chunks.append(current_chunk.strip())
-                    current_chunk = ""
-                current_chunk += segment_block + "\n\n"
-            if current_chunk.strip():
-                chunks.append(current_chunk.strip())
-
-            for chunk in chunks:
-                await callback.message.answer(chunk, parse_mode="HTML")
     else:
         # Fallback to old format
         result = format_prediction(
