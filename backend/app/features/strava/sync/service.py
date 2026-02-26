@@ -142,12 +142,19 @@ class StravaSyncService:
                         access_token, athlete_id, sync_status
                     )
 
-            # Determine sync window
-            if sync_status.newest_synced_date:
+            # Determine sync window (sync from present backwards)
+            # Strava API returns activities sorted newest-first by default.
+            # - First batch: no constraints → get most recent activities
+            # - Initial sync (ongoing): before=oldest → go deeper into past
+            # - After initial sync: after=newest → catch only new activities
+            if sync_status.initial_sync_complete and sync_status.newest_synced_date:
                 after = sync_status.newest_synced_date
                 before = None
-            else:
+            elif sync_status.oldest_synced_date:
                 after = datetime.utcnow() - timedelta(days=SyncConfig.MAX_HISTORY_DAYS)
+                before = sync_status.oldest_synced_date
+            else:
+                after = None
                 before = None
 
             # Fetch activities from Strava

@@ -132,7 +132,7 @@ def format_run_profile(profile: dict) -> str:
             lines.append(f"• {label}: {pace_str}/км{count_str}")
 
     # Walk threshold
-    threshold = profile.get("walk_threshold_percent", 25.0)
+    threshold = profile.get("walk_threshold_percent") or 25.0
     lines.append("")
     lines.append(f"Порог перехода на шаг: {threshold:.0f}%")
     lines.append(f"(на подъёмах круче {threshold:.0f}% ты переходишь на шаг)")
