@@ -38,6 +38,22 @@ def mock_run_profile():
 
     # Return enough samples for personalization (MIN_SAMPLES_FOR_CATEGORY = 5)
     profile.get_sample_count.return_value = 10
+    profile.get_sample_count_extended.return_value = 10
+
+    # No 11-category JSON data (use legacy 7-cat)
+    profile.gradient_paces = None
+
+    # Percentile data not available (falls back to avg)
+    profile.get_percentile.return_value = None
+    profile.get_pace_for_category.side_effect = lambda cat: {
+        "steep_downhill": 5.5,
+        "moderate_downhill": 5.8,
+        "gentle_downhill": 5.9,
+        "flat": 6.0,
+        "gentle_uphill": 7.0,
+        "moderate_uphill": 8.5,
+        "steep_uphill": 12.0,
+    }.get(cat)
 
     return profile
 
@@ -61,6 +77,14 @@ def mock_minimal_profile():
 
     # Low sample count triggers GAP fallback
     profile.get_sample_count.return_value = 2
+    profile.get_sample_count_extended.return_value = 2
+
+    # No 11-category JSON data
+    profile.gradient_paces = None
+
+    # Percentile data not available
+    profile.get_percentile.return_value = None
+    profile.get_pace_for_category.return_value = None
 
     return profile
 
@@ -290,7 +314,7 @@ class TestProfileSummary:
 
         assert summary["activities_analyzed"] == 10
         assert summary["flat_pace_min_km"] == 6.0
-        assert summary["walk_threshold_percent"] == 25.0
+        assert summary["walk_threshold_percent"] == DEFAULT_HIKE_THRESHOLD_PERCENT
 
     def test_summary_with_extended(self, mock_run_profile):
         """Test summary with extended gradient data."""

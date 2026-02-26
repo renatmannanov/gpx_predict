@@ -72,6 +72,22 @@ def mock_run_profile():
 
     # Return enough samples for personalization
     profile.get_sample_count.return_value = 10
+    profile.get_sample_count_extended.return_value = 10
+
+    # No 11-category JSON data (use legacy 7-cat)
+    profile.gradient_paces = None
+
+    # Percentile data not available (falls back to avg)
+    profile.get_percentile.return_value = None
+    profile.get_pace_for_category.side_effect = lambda cat: {
+        "steep_downhill": 5.0,
+        "moderate_downhill": 5.2,
+        "gentle_downhill": 5.3,
+        "flat": 5.5,
+        "gentle_uphill": 6.5,
+        "moderate_uphill": 8.0,
+        "steep_uphill": 11.0,
+    }.get(cat)
 
     return profile
 
@@ -92,6 +108,25 @@ def mock_hike_profile():
 
     profile.has_split_data = True
     profile.has_extended_gradient_data = True
+
+    # Sample counts for personalization
+    profile.get_sample_count.return_value = 10
+    profile.get_sample_count_extended.return_value = 10
+
+    # No 11-category JSON data
+    profile.gradient_paces = None
+
+    # Percentile data not available
+    profile.get_percentile.return_value = None
+    profile.get_pace_for_category.side_effect = lambda cat: {
+        "steep_downhill": 10.0,
+        "moderate_downhill": 11.0,
+        "gentle_downhill": 11.5,
+        "flat": 12.0,
+        "gentle_uphill": 14.0,
+        "moderate_uphill": 18.0,
+        "steep_uphill": 25.0,
+    }.get(cat)
 
     return profile
 
@@ -125,13 +160,14 @@ class TestInitialization:
         assert service.gap_mode == GAPMode.MINETTI
 
     def test_init_pace_from_profile(self, mock_run_profile):
-        """Flat pace should come from profile if available."""
+        """Flat pace is set explicitly by caller, profile is for personalization."""
         service = TrailRunService(
-            flat_pace_min_km=6.0,  # This should be overridden
+            flat_pace_min_km=6.0,
             run_profile=mock_run_profile
         )
 
-        assert service.flat_pace == 5.5  # From profile
+        # Service uses the explicitly provided flat_pace
+        assert service.flat_pace == 6.0
 
     def test_init_with_fatigue(self):
         """Test initialization with fatigue enabled."""
@@ -168,7 +204,7 @@ class TestRouteCalculation:
         assert isinstance(result, TrailRunResult)
         assert len(result.segments) > 0
         assert result.summary.total_distance_km > 0
-        assert result.totals["strava_gap"] > 0
+        assert result.totals["all_run_strava"] > 0
         assert result.totals["combined"] > 0
 
     def test_calculate_all_runnable_route(self):
@@ -178,8 +214,8 @@ class TestRouteCalculation:
 
         # All segments should be running
         for seg in result.segments:
-            # With default 25% threshold, moderate grades should be runnable
-            if seg.segment.gradient_percent < 25:
+            # With default 30% threshold, moderate grades should be runnable
+            if seg.segment.gradient_percent < 30:
                 assert seg.movement.mode == MovementMode.RUN
 
     def test_calculate_with_fatigue(self):
@@ -198,8 +234,8 @@ class TestRouteCalculation:
         service = TrailRunService(flat_pace_min_km=6.0)
         result = service.calculate_route(SIMPLE_ROUTE_POINTS)
 
-        assert "strava_gap" in result.totals
-        assert "minetti_gap" in result.totals
+        assert "all_run_strava" in result.totals
+        assert "all_run_minetti" in result.totals
         assert "combined" in result.totals
 
     def test_summary_distance_matches_segments(self):
@@ -273,10 +309,10 @@ class TestThresholdDetection:
     """Tests for run/hike threshold detection."""
 
     def test_default_threshold(self):
-        """Default threshold should be 25%."""
+        """Default threshold should be 30%."""
         service = TrailRunService()
 
-        assert service._threshold_service.base_uphill_threshold == 25.0
+        assert service._threshold_service.base_uphill_threshold == DEFAULT_HIKE_THRESHOLD_PERCENT
 
     def test_threshold_from_profile(self, mock_run_profile):
         """Threshold should come from profile if available."""

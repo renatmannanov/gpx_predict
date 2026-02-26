@@ -82,3 +82,59 @@ distances:
 1. Добавить percentiles в `UserHikingProfile` (аналогично `UserRunProfile.gradient_percentiles`)
 2. Добавить effort levels в `HikePersonalizationService`
 3. Либо прокинуть `hike_profile` в races hiking flow, либо использовать `TrailRunService` с `hike_profile` для hiking mode
+
+---
+
+## 5. Предикт трассы из ayda_run (cross-service, шаг 3)
+
+Перенесено из `cross_service_integration_v2.md` (шаг 3).
+
+### Суть
+
+ayda_run может запросить прогноз прохождения GPX-трассы для пользователя через internal API.
+
+### API
+
+```
+POST /api/v1/internal/predict
+Headers: X-API-Key: {CROSS_SERVICE_API_KEY}
+Body: {
+  "telegram_id": "123456",
+  "gpx_file_id": "uuid-of-gpx",       // ИЛИ
+  "race_id": "uuid-of-race",          // ИЛИ
+  "distance_id": "uuid-of-distance",
+  "mode": "trail_run",                // trail_run | hiking
+  "flat_pace": 330                    // опционально, секунд/км
+}
+```
+
+**Response 200:**
+```json
+{
+  "personalized": true,
+  "times": {
+    "fast": "1:10:00",
+    "moderate": "1:21:00",
+    "easy": "1:31:00"
+  },
+  "gap_time": "1:15:00",
+  "profile_stats": {
+    "total_km": 1091,
+    "total_activities": 111,
+    "gradient_coverage": "11/11"
+  }
+}
+```
+
+**Логика:** Переиспользовать существующий `RaceService.predict_by_pace()` / `TrailRunService`, добавив API-обёртку.
+
+### Обе стороны
+
+- [gpx_predictor] Endpoint `/api/v1/internal/predict`
+- [ayda_run] `GPXPredictorClient.predict_race()` — клиент для запроса
+
+### Критерии готовности
+
+- [ ] [gpx_predictor] Endpoint `/api/v1/internal/predict` работает
+- [ ] [ayda_run] Клиент может запросить прогноз
+- [ ] Персонализированный прогноз если есть профиль, GAP-only если нет

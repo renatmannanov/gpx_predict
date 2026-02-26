@@ -10,9 +10,9 @@ from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator, ConfigDict
 
-# Project root: gpx-predictor/
+# Project root: gpx-predict/
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-# Content directory: gpx-predictor/content/
+# Content directory: gpx-predict/content/
 CONTENT_DIR = PROJECT_ROOT / "content"
 
 

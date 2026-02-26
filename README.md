@@ -1,4 +1,4 @@
-# GPX Predictor
+# GPX Predict
 
 Сервис прогнозирования времени походов и забегов с учётом рельефа.
 
@@ -32,7 +32,7 @@ npm run dev
 ## Структура проекта
 
 ```
-gpx-predictor/
+gpx-predict/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py           # FastAPI app

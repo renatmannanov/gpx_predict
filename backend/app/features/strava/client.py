@@ -4,7 +4,7 @@ Strava API client.
 Provides methods for interacting with Strava API.
 Handles rate limiting, authentication, and error handling.
 
-Strava API Limits (gpx_predictor share of shared quota):
+Strava API Limits (gpx_predict share of shared quota):
 - 200 read requests per 15 minutes
 - 2,000 read requests per day
 - Shared with ayda_run (which gets 100/15min, 1000/day)
@@ -64,7 +64,7 @@ class StravaRateLimiter:
     """
     In-memory rate limiter for Strava API.
 
-    Limits (gpx_predictor share of shared Strava quota):
+    Limits (gpx_predict share of shared Strava quota):
     - 200 read requests per 15 minutes
     - 2000 read requests per day
     """

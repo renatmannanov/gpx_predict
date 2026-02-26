@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16
-    container_name: gpx-predictor-db
+    container_name: gpx-predict-db
     environment:
       POSTGRES_DB: gpx_predictor
       POSTGRES_USER: gpx

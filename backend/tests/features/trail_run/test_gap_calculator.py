@@ -231,17 +231,15 @@ class TestMinettiCalculations:
         assert result.pace_adjustment > 1.0
         assert result.energy_cost_ratio > 1.0
 
-    def test_downhill_uses_strava(self, minetti_calculator):
-        """Downhill should use Strava model (not Minetti)."""
+    def test_downhill_uses_minetti_model(self, minetti_calculator):
+        """Pure Minetti mode uses Minetti model for downhill too."""
         result = minetti_calculator.calculate(-10)
 
-        # Should match Strava for downhill
-        strava = GAPCalculator(6.0, GAPMode.STRAVA)
-        strava_result = strava.calculate(-10)
-
-        assert result.pace_adjustment == pytest.approx(
-            strava_result.pace_adjustment, rel=0.01
-        )
+        # Minetti predicts less speedup on downhills than Strava
+        # (energy cost based, more conservative)
+        assert result.pace_adjustment < 1.0  # Faster than flat
+        assert result.pace_adjustment > 0.5  # But not extreme
+        assert result.mode == "minetti_gap"
 
     def test_minetti_energy_cost_formula(self, minetti_calculator):
         """Test Minetti's energy cost polynomial."""
@@ -272,7 +270,7 @@ class TestModeComparison:
         # Check structure
         assert "strava_adj" in comparison["0%"]
         assert "minetti_adj" in comparison["0%"]
-        assert "difference" in comparison["0%"]
+        assert "strava_minetti_adj" in comparison["0%"]
 
     def test_minetti_more_aggressive_steep_uphill(self):
         """Minetti should be more aggressive on steep uphills."""

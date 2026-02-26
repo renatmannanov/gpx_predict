@@ -1,7 +1,7 @@
 """
 Client for getting Strava tokens via ayda_run API.
 
-Used as fallback when gpx_predictor doesn't have a local Strava token
+Used as fallback when gpx_predict doesn't have a local Strava token
 for a user (e.g. user authorized through ayda_run only).
 """
 

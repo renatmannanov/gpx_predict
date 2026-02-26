@@ -99,7 +99,7 @@ class TestStaticThreshold:
         """Test default threshold values."""
         service = HikeRunThresholdService()
 
-        assert service.base_uphill_threshold == 25.0
+        assert service.base_uphill_threshold == 30.0
         assert service.downhill_threshold == -30.0
         assert service.dynamic is False
 
@@ -194,27 +194,27 @@ class TestDynamicThreshold:
 
     def test_no_fatigue_at_start(self):
         """No fatigue adjustment at start of race."""
-        service = HikeRunThresholdService(uphill_threshold=25.0, dynamic=True)
+        service = HikeRunThresholdService(uphill_threshold=35.0, dynamic=True)
 
         threshold = service.get_threshold(elapsed_hours=0)
-        assert threshold == 25.0
+        assert threshold == 35.0
 
     def test_fatigue_after_2_hours(self):
         """Threshold should decrease after 2 hours."""
-        service = HikeRunThresholdService(uphill_threshold=25.0, dynamic=True)
+        service = HikeRunThresholdService(uphill_threshold=35.0, dynamic=True)
 
         threshold = service.get_threshold(elapsed_hours=3.0)
-        assert threshold < 25.0
-        # After 1 hour past threshold: 25 - 1.5 = 23.5
-        assert threshold == pytest.approx(23.5, rel=0.1)
+        assert threshold < 35.0
+        # After 1 hour past fatigue onset (2h): 35 - 1.5 = 33.5
+        assert threshold == pytest.approx(33.5, rel=0.1)
 
     def test_fatigue_after_4_hours(self):
         """Threshold should decrease more after 4 hours."""
-        service = HikeRunThresholdService(uphill_threshold=25.0, dynamic=True)
+        service = HikeRunThresholdService(uphill_threshold=35.0, dynamic=True)
 
         threshold = service.get_threshold(elapsed_hours=4.0)
-        # After 2 hours past threshold: 25 - 3.0 = 22.0
-        assert threshold < 23.0
+        # After 2 hours past fatigue onset: 35 - 3.0 = 32.0
+        assert threshold < 33.0
 
     def test_minimum_threshold(self):
         """Threshold should not go below minimum."""
@@ -225,7 +225,7 @@ class TestDynamicThreshold:
 
     def test_ultra_distance_adjustment(self):
         """Extra threshold reduction for ultra distances."""
-        service = HikeRunThresholdService(uphill_threshold=25.0, dynamic=True)
+        service = HikeRunThresholdService(uphill_threshold=35.0, dynamic=True)
 
         # 50k+ should have additional reduction
         threshold_50k = service.get_threshold(elapsed_hours=3.0, total_distance_km=60)
@@ -301,11 +301,11 @@ class TestStravaProfileDetection:
 
     def test_from_strava_with_data(self):
         """Should detect threshold from pace jump."""
-        # Simulated splits: pace jumps significantly at 22% gradient
+        # Simulated splits: pace jumps significantly at 32% gradient
         splits = []
-        for gradient in range(5, 35, 2):
-            # Pace increases linearly until 22%, then jumps
-            if gradient < 22:
+        for gradient in range(5, 40, 2):
+            # Pace increases linearly until 32%, then jumps
+            if gradient < 32:
                 pace = 6.0 + gradient * 0.2  # gradual increase
             else:
                 pace = 6.0 + gradient * 0.2 + 3.0  # sudden jump (walking)
@@ -317,8 +317,8 @@ class TestStravaProfileDetection:
 
         service = HikeRunThresholdService.from_strava_profile(splits)
 
-        # Should detect threshold around 22%
-        assert 18 <= service.base_uphill_threshold <= 28
+        # Should detect threshold around 32% (clamped to MIN_THRESHOLD..MAX_THRESHOLD)
+        assert 30 <= service.base_uphill_threshold <= 35
 
     def test_from_user_preference(self):
         """Test creation from user preference."""
@@ -349,10 +349,10 @@ class TestServiceInfo:
 
     def test_get_info_dynamic(self):
         """Test info output for dynamic mode."""
-        service = HikeRunThresholdService(uphill_threshold=25.0, dynamic=True)
+        service = HikeRunThresholdService(uphill_threshold=35.0, dynamic=True)
         info = service.get_info()
 
         assert info["dynamic"] is True
         assert "example_thresholds" in info
-        assert info["example_thresholds"]["start"] == 25.0
-        assert info["example_thresholds"]["after_2h"] < 25.0
+        assert info["example_thresholds"]["start"] == 35.0
+        assert info["example_thresholds"]["after_2h"] < 35.0
