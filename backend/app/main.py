@@ -88,9 +88,11 @@ async def _shutdown_bot(app: FastAPI):
     """Cleanup bot on shutdown."""
     bot = getattr(app.state, "bot", None)
     if bot:
-        await bot.delete_webhook()
+        # Don't delete webhook on shutdown — during Railway redeploy the old
+        # container shuts down after the new one starts, which would remove
+        # the webhook the new container just registered.
         await bot.session.close()
-        logger.info("Telegram webhook removed")
+        logger.info("Bot session closed")
 
 
 # === Lifespan ===
