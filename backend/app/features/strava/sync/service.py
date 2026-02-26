@@ -133,9 +133,14 @@ class StravaSyncService:
 
             # Fetch total_activities_estimated on first sync
             if sync_status.total_activities_estimated is None:
-                await self._fetch_and_set_estimated(
-                    access_token, token.strava_athlete_id, sync_status
+                athlete_id = (
+                    user.strava_athlete_id
+                    or (token.strava_athlete_id if token else None)
                 )
+                if athlete_id:
+                    await self._fetch_and_set_estimated(
+                        access_token, athlete_id, sync_status
+                    )
 
             # Determine sync window
             if sync_status.newest_synced_date:
