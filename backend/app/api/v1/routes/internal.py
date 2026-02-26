@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.db.session import get_async_db
 from app.features.users.models import User
+from app.features.users import NotificationService
 from app.features.strava.sync import trigger_user_sync
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,15 @@ async def strava_connected(
     # Update Strava fields
     user.strava_athlete_id = request.athlete_id
     user.strava_connected = True
+    await db.commit()
+
+    # Send "strava_connected" notification (continues onboarding if in progress)
+    notification_service = NotificationService(db)
+    await notification_service.create_and_send(
+        user_id=user.id,
+        notification_type="strava_connected",
+        data={"athlete_id": request.athlete_id},
+    )
     await db.commit()
 
     # Trigger background sync (will use ayda_run token via fallback)
