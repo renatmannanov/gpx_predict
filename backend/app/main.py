@@ -104,8 +104,12 @@ async def lifespan(app: FastAPI):
     init_db()
     logger.info("Database initialized")
 
-    # Start background Strava sync
-    if settings.strava_client_id and settings.strava_client_secret:
+    # Start background Strava sync (local Strava credentials OR ayda_run fallback)
+    strava_enabled = (
+        (settings.strava_client_id and settings.strava_client_secret)
+        or (settings.ayda_run_api_url and settings.cross_service_api_key)
+    )
+    if strava_enabled:
         await background_sync.start(AsyncSessionLocal)
         logger.info("Strava background sync started")
 
@@ -116,7 +120,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     await _shutdown_bot(app)
-    if settings.strava_client_id and settings.strava_client_secret:
+    if background_sync._running:
         await background_sync.stop()
         logger.info("Strava background sync stopped")
     logger.info("Shutting down...")
