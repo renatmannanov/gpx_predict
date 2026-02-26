@@ -1,1 +1,1 @@
-"""Tests for GPX Predictor backend."""
+"""Tests for GPX Predict backend."""

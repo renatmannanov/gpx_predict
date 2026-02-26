@@ -1,5 +1,5 @@
 """
-Feature modules for GPX Predictor.
+Feature modules for GPX Predict.
 
 Each feature is a self-contained module with:
 - models.py - SQLAlchemy models

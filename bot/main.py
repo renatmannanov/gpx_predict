@@ -1,5 +1,5 @@
 """
-GPX Predictor Telegram Bot
+GPX Predict Telegram Bot
 
 Entry point for the bot.
 """
@@ -44,7 +44,7 @@ BOT_COMMANDS = [
 
 async def on_startup(bot: Bot):
     """Startup hook."""
-    logger.info("Starting GPX Predictor Bot...")
+    logger.info("Starting GPX Predict Bot...")
 
     # Set bot commands menu
     await bot.set_my_commands(BOT_COMMANDS)

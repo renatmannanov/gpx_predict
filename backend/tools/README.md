@@ -1,6 +1,6 @@
 # Development Tools
 
-Инструменты разработки для GPX Predictor. Не являются частью production кода.
+Инструменты разработки для GPX Predict. Не являются частью production кода.
 
 ---
 

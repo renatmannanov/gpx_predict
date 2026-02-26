@@ -5,7 +5,7 @@ services:
     image: postgres:16
     container_name: gpx-predict-db
     environment:
-      POSTGRES_DB: gpx_predictor
+      POSTGRES_DB: gpx_predict
       POSTGRES_USER: gpx
       POSTGRES_PASSWORD: secret
     ports:
@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gpx -d gpx_predictor"]
+      test: ["CMD-SHELL", "pg_isready -U gpx -d gpx_predict"]
       interval: 5s
       timeout: 5s
       retries: 5

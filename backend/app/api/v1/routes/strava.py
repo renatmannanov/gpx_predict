@@ -384,7 +384,7 @@ def _success_page(name: str) -> HTMLResponse:
         <div class="card">
             <div class="icon">✅</div>
             <h1>Привет, {name}!</h1>
-            <p>Strava успешно подключён к GPX Predictor</p>
+            <p>Strava успешно подключён к GPX Predict</p>
             <p class="close-hint">Можете закрыть это окно и вернуться в Telegram</p>
         </div>
     </body>

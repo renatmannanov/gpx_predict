@@ -36,7 +36,7 @@ from .report import ReportGenerator
 
 @click.group()
 def cli():
-    """Calibration tools for GPX Predictor."""
+    """Calibration tools for GPX Predict."""
     pass
 
 

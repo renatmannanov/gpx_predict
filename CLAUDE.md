@@ -1,4 +1,4 @@
-# Claude Code Rules for GPX Predictor
+# Claude Code Rules for GPX Predict
 
 ## Вопрос ≠ задача
 

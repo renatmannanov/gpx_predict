@@ -1,1 +1,1 @@
-"""Development tools for GPX Predictor."""
+"""Development tools for GPX Predict."""
