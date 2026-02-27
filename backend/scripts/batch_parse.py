@@ -50,6 +50,7 @@ from app.features.races.db_models import (
     RaceResultDB,
 )
 from app.features.races.models import RaceEditionData
+from app.features.races.name_utils import normalize_name
 from app.features.races.stats import format_time
 
 # Paths
@@ -128,6 +129,7 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData)
             result = RaceResultDB(
                 distance_id=distance.id,
                 name=r.name,
+                name_normalized=normalize_name(r.name),
                 time_seconds=r.time_seconds,
                 place=r.place,
                 category=r.category,

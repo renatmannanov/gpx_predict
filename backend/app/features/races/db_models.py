@@ -99,13 +99,14 @@ class RaceResultDB(Base):
 
     __tablename__ = "race_results"
     __table_args__ = (
-        Index("ix_race_results_name", "name"),
+        Index("ix_race_results_name_normalized", "name_normalized"),
         Index("ix_race_results_distance_id", "distance_id"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     distance_id = Column(Integer, ForeignKey("race_distances.id"), nullable=False)
-    name = Column(String(255), nullable=False)  # "Iyemberdiyev Diyas"
+    name = Column(String(255), nullable=False)  # "Iyemberdiyev Diyas" (original)
+    name_normalized = Column(String(255), nullable=True)  # "diyas iyemberdiyev" (sorted, lowercase)
     time_seconds = Column(Integer, nullable=False)
     place = Column(Integer, nullable=False)
     category = Column(String(32), nullable=True)  # "M_30-39"
@@ -113,7 +114,7 @@ class RaceResultDB(Base):
     club = Column(String(255), nullable=True)
     bib = Column(String(16), nullable=True)
     birth_year = Column(Integer, nullable=True)
-    nationality = Column(String(8), nullable=True)  # "KAZ"
+    nationality = Column(String(32), nullable=True)  # "KAZ", "Кыргызстан"
     over_time_limit = Column(Boolean, default=False)
 
     distance = relationship("RaceDistance", back_populates="results")
