@@ -5,14 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+from sqlalchemy.orm import Session
+
 from app.features.gpx.parser import GPXParserService
 from app.features.trail_run.service import TrailRunService
 from app.features.trail_run.calculators.gap import GAPMode
 from app.models.user_run_profile import UserRunProfile
 from app.services.calculators.comparison import ComparisonService
 
-from .catalog import RaceCatalog, find_distance_results
+from .catalog import RaceCatalog
 from .models import RaceResult, RaceStats
+from .repository import RaceRepository
 from .stats import calculate_stats, format_time, get_percentile
 
 
@@ -52,8 +55,9 @@ class RacePrediction:
 class RaceService:
     """Predicts race times and compares with historical results."""
 
-    def __init__(self, catalog: RaceCatalog):
+    def __init__(self, catalog: RaceCatalog, db: Session | None = None):
         self.catalog = catalog
+        self.db = db
 
     def predict_by_pace(
         self,
@@ -66,11 +70,12 @@ class RaceService:
         """Predict race time based on flat pace (no Strava profile needed).
 
         Args:
-            race_id: Race ID from catalog (e.g. "alpine_race")
-            distance_id: Distance ID (e.g. "skyrunning")
+            race_id: Race ID from catalog (e.g. "alpine_race_kz")
+            distance_id: Distance name (e.g. "Skyrunning")
             flat_pace_min_km: Runner's flat pace in min/km
             mode: "trail_run" (GAP-based) or "hiking" (Tobler/Naismith)
         """
+        # GPX lookup still uses catalog (file system)
         race = self.catalog.get_race(race_id)
         if not race:
             raise ValueError(f"Race not found: {race_id}")
@@ -127,7 +132,7 @@ class RaceService:
             run_profile_stats=run_profile_stats,
         )
 
-        # Add comparison with latest results
+        # Add comparison with latest results from DB
         self._add_comparison(prediction, race_id, distance_id)
 
         return prediction
@@ -204,20 +209,27 @@ class RaceService:
         race_id: str,
         distance_id: str,
     ) -> None:
-        """Add percentile and stats from latest past results."""
-        latest = self.catalog.get_latest_results_path(race_id)
-        if not latest:
+        """Add percentile and stats from latest past results (from DB)."""
+        if not self.db:
             return
 
-        year, path = latest
-        data = self.catalog.load_results(race_id, year)
+        repo = RaceRepository(self.db)
+        latest_year = repo.get_latest_year(race_id)
+        if not latest_year:
+            return
+
+        data = repo.load_results(race_id, latest_year)
         if not data:
             return
 
-        # Find matching distance in results
-        # Match by distance_id or by lowercase name
-        dist_info = self.catalog.get_distance(race_id, distance_id)
-        dist_results = find_distance_results(data, dist_info)
+        # Find matching distance by name (distance_id is the name)
+        dist_results = None
+        target = distance_id.lower()
+        for d in data.distances:
+            if d.distance_name.lower() == target:
+                dist_results = d
+                break
+
         if not dist_results or not dist_results.results:
             return
 
@@ -231,7 +243,7 @@ class RaceService:
         )
         estimated_place = faster_count + 1
 
-        prediction.comparison_year = year
+        prediction.comparison_year = latest_year
         prediction.stats = stats
         prediction.percentile = percentile
         prediction.estimated_place = estimated_place
