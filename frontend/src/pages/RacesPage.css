@@ -1,0 +1,9 @@
+.races-toolbar {
+  margin-bottom: 28px;
+}
+
+.races-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
