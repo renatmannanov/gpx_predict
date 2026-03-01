@@ -1,0 +1,84 @@
+.time-histogram {
+  margin-bottom: 32px;
+}
+
+.histogram-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+  margin-bottom: 16px;
+}
+
+.histogram-subtitle {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
+.histogram-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.histogram-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.histogram-label {
+  flex: 0 0 160px;
+  font-size: 14px;
+  color: var(--dim);
+  text-align: left;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.histogram-track {
+  flex: 1;
+  height: 28px;
+  background: var(--card);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.histogram-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.histogram-value {
+  flex: 0 0 90px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.histogram-pct {
+  color: var(--dim);
+  font-weight: 400;
+}
+
+@media (max-width: 600px) {
+  .histogram-label {
+    flex: 0 0 110px;
+    font-size: 12px;
+  }
+
+  .histogram-value {
+    flex: 0 0 70px;
+    font-size: 12px;
+  }
+
+  .histogram-track {
+    height: 24px;
+  }
+}

@@ -1,103 +1,133 @@
 import { useState, useMemo } from 'react';
 import type { RaceResult } from '../../types/races';
+import './DataTable.css';
 import './ResultsTable.css';
 
 const INITIAL_LIMIT = 50;
+const FINISHED_STATUSES = ['finished', 'over_time_limit'];
 
 interface ResultsTableProps {
   results: RaceResult[];
+  externalFilter?: string;
 }
 
-export default function ResultsTable({ results }: ResultsTableProps) {
+function isDnfDns(r: RaceResult): boolean {
+  return !FINISHED_STATUSES.includes(r.status);
+}
+
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case 'dnf': return 'DNF';
+    case 'dns': return 'DNS';
+    case 'dsq': return 'DSQ';
+    default: return status.toUpperCase();
+  }
+}
+
+export default function ResultsTable({ results, externalFilter }: ResultsTableProps) {
   const [expanded, setExpanded] = useState(false);
-  const [filterQuery, setFilterQuery] = useState('');
 
-  const queryLower = filterQuery.toLowerCase().trim();
+  const queryLower = (externalFilter || '').toLowerCase().trim();
 
-  const filtered = useMemo(() => {
-    if (!queryLower) return results;
-    return results.filter(
+  // Split finishers and DNF/DNS
+  const { finishers, dnfDns } = useMemo(() => {
+    const fin: RaceResult[] = [];
+    const dd: RaceResult[] = [];
+    for (const r of results) {
+      if (isDnfDns(r)) dd.push(r);
+      else fin.push(r);
+    }
+    return { finishers: fin, dnfDns: dd };
+  }, [results]);
+
+  const filteredFinishers = useMemo(() => {
+    if (!queryLower) return finishers;
+    return finishers.filter(
       (r) =>
         r.name.toLowerCase().includes(queryLower) ||
         (r.club && r.club.toLowerCase().includes(queryLower))
     );
-  }, [results, queryLower]);
+  }, [finishers, queryLower]);
 
-  const visible = expanded ? filtered : filtered.slice(0, INITIAL_LIMIT);
-  const hasMore = filtered.length > INITIAL_LIMIT;
+  const filteredDnf = useMemo(() => {
+    if (!queryLower) return dnfDns;
+    return dnfDns.filter(
+      (r) =>
+        r.name.toLowerCase().includes(queryLower) ||
+        (r.club && r.club.toLowerCase().includes(queryLower))
+    );
+  }, [dnfDns, queryLower]);
+
+  const visibleFinishers = expanded
+    ? filteredFinishers
+    : filteredFinishers.slice(0, INITIAL_LIMIT);
+  const hasMore = filteredFinishers.length > INITIAL_LIMIT;
+  const totalFiltered = filteredFinishers.length + filteredDnf.length;
 
   return (
-    <div className="results-table-wrap">
-      <div className="table-filter-wrap">
-        <svg
-          className="table-filter-icon"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          type="text"
-          className="table-filter-input"
-          placeholder="Фильтр по имени или клубу..."
-          value={filterQuery}
-          onChange={(e) => {
-            setFilterQuery(e.target.value);
-            setExpanded(false);
-          }}
-        />
-        {filterQuery && (
-          <button
-            className="table-filter-clear"
-            onClick={() => setFilterQuery('')}
-            title="Очистить"
-          >
-            &times;
-          </button>
-        )}
-      </div>
-
-      <table className="results-table">
+    <div className="data-table-wrap">
+      <table className="data-table results-table">
         <thead>
           <tr>
-            <th className="col-place">#</th>
-            <th className="col-name">Имя</th>
-            <th className="col-time">Время</th>
-            <th className="col-cat">Кат.</th>
-            <th className="col-gender">Пол</th>
-            <th className="col-club">Клуб</th>
+            <th className="dt-col-rank">#</th>
+            <th>Имя</th>
+            <th className="rt-col-time">Время</th>
+            <th className="rt-col-cat">Кат.</th>
+            <th className="rt-col-gender">Пол</th>
+            <th className="rt-col-club">Клуб</th>
           </tr>
         </thead>
         <tbody>
-          {visible.map((r, i) => (
-            <tr key={i} className="result-row">
-              <td className={`col-place ${getMedalClass(r.place)}`}>
+          {visibleFinishers.map((r, i) => (
+            <tr key={i}>
+              <td className={`dt-col-rank ${getMedalClass(r.place)}`}>
                 {r.place}
               </td>
-              <td className="col-name">
-                <span className="avatar">{getInitials(r.name)}</span>
-                <span>{highlightMatch(r.name, queryLower)}</span>
+              <td className="dt-col-name">
+                <div className="dt-col-name-inner">
+                  <span className="avatar">{getInitials(r.name)}</span>
+                  <span>{highlightMatch(r.name, queryLower)}</span>
+                </div>
               </td>
-              <td className="col-time">{r.time_formatted}</td>
-              <td className="col-cat">{r.category || '—'}</td>
-              <td className="col-gender">{r.gender || '—'}</td>
-              <td className="col-club">
+              <td className="dt-col-num">{r.time_formatted}</td>
+              <td className="dt-col-dim">{r.category || '—'}</td>
+              <td className="dt-col-dim">{r.gender || '—'}</td>
+              <td className="dt-col-dim">
                 {r.club ? highlightMatch(r.club, queryLower) : '—'}
               </td>
             </tr>
           ))}
+
+          {/* DNF/DNS section */}
+          {filteredDnf.length > 0 && (expanded || !hasMore) && (
+            <>
+              <tr className="dnf-separator-row">
+                <td colSpan={6} className="dnf-separator">
+                  DNF / DNS ({filteredDnf.length})
+                </td>
+              </tr>
+              {filteredDnf.map((r, i) => (
+                <tr key={`dnf-${i}`} className="row-dnf">
+                  <td className="dt-col-rank">—</td>
+                  <td className="dt-col-name">
+                    <span className="avatar">{getInitials(r.name)}</span>
+                    <span>{highlightMatch(r.name, queryLower)}</span>
+                  </td>
+                  <td className="dt-col-num rt-col-status">{getStatusLabel(r.status)}</td>
+                  <td className="dt-col-dim">{r.category || '—'}</td>
+                  <td className="dt-col-dim">{r.gender || '—'}</td>
+                  <td className="dt-col-dim">
+                    {r.club ? highlightMatch(r.club, queryLower) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </>
+          )}
         </tbody>
       </table>
 
-      {queryLower && filtered.length === 0 && (
-        <div className="table-filter-empty">
+      {queryLower && totalFiltered === 0 && (
+        <div className="data-table-empty">
           Не найдено
         </div>
       )}
@@ -107,7 +137,7 @@ export default function ResultsTable({ results }: ResultsTableProps) {
           className="btn btn-ghost results-show-all"
           onClick={() => setExpanded(true)}
         >
-          Показать всех ({filtered.length})
+          Показать всех ({filteredFinishers.length}{filteredDnf.length > 0 ? ` + ${filteredDnf.length} DNF` : ''})
         </button>
       )}
     </div>

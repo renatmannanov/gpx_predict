@@ -6,6 +6,8 @@ interface StatsCardProps {
 }
 
 export default function StatsCard({ stats }: StatsCardProps) {
+  const hasDnf = (stats.dnf_count ?? 0) > 0;
+
   return (
     <div className="stats-row">
       <div className="stat-item">
@@ -22,6 +24,14 @@ export default function StatsCard({ stats }: StatsCardProps) {
         <div className="stat-n">{stats.median_time}</div>
         <div className="stat-l">медиана</div>
       </div>
+      {hasDnf && (
+        <div className="stat-item stat-dnf">
+          <div className="stat-n">{stats.dnf_count} DNF</div>
+          <div className="stat-l">
+            {stats.dnf_rate != null ? `${stats.dnf_rate}%` : ''}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

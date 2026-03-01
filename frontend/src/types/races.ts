@@ -36,6 +36,26 @@ export interface TimeBucket {
   percent: number;
 }
 
+export interface GenderDistribution {
+  gender: string;
+  count: number;
+  percent: number;
+}
+
+export interface CategoryDistribution {
+  category: string;
+  count: number;
+  percent: number;
+}
+
+export interface ClubStatsData {
+  club: string;
+  count: number;
+  best_time_s: number;
+  best_time: string;
+  avg_percentile: number;
+}
+
 export interface RaceStats {
   finishers: number;
   best_time: string;
@@ -44,6 +64,13 @@ export interface RaceStats {
   p25_time: string;
   p75_time: string;
   time_buckets: TimeBucket[];
+  gender_distribution: GenderDistribution[];
+  category_distribution: CategoryDistribution[];
+  club_stats: ClubStatsData[];
+  total_participants?: number;
+  dnf_count?: number;
+  dns_count?: number;
+  dnf_rate?: number | null;
 }
 
 export interface RaceResult {
@@ -56,6 +83,9 @@ export interface RaceResult {
   gender: string | null;
   club: string | null;
   pace: string | null;
+  name_normalized?: string;
+  runner_id?: number;
+  status: string; // "finished" | "dnf" | "dns" | "dsq" | "over_time_limit"
 }
 
 export interface DistanceResults {
@@ -71,6 +101,11 @@ export interface DistanceResults {
 export interface SearchResult {
   year: number;
   result: RaceResult | null;
+  percentile?: number | null;
+  total_finishers?: number | null;
+  gender_percentile?: number | null;
+  category_rank?: number | null;
+  category_total?: number | null;
 }
 
 // === Хелперы ===
