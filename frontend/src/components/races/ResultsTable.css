@@ -1,3 +1,74 @@
+/* Table filter */
+.table-filter-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.table-filter-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--dim);
+  pointer-events: none;
+}
+
+.table-filter-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 11px 36px 11px 40px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  color: var(--text);
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.table-filter-input:hover {
+  background: var(--card-hover);
+}
+
+.table-filter-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.table-filter-input::placeholder {
+  color: var(--dim);
+}
+
+.table-filter-clear {
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 6px;
+  margin-left: -30px;
+  line-height: 1;
+}
+
+.table-filter-clear:hover {
+  color: var(--text);
+}
+
+.table-filter-empty {
+  padding: 24px 14px;
+  text-align: center;
+  color: var(--dim);
+  font-size: 14px;
+}
+
+.filter-highlight {
+  background: rgba(232, 98, 42, 0.25);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Table */
 .results-table-wrap {
   overflow-x: auto;
 }
@@ -63,8 +134,12 @@
   margin: 24px auto 0;
 }
 
-/* Hide less important columns on mobile */
+/* Mobile adjustments */
 @media (max-width: 600px) {
+  .table-filter-input {
+    max-width: none;
+  }
+
   .col-cat,
   .col-gender,
   .col-club {

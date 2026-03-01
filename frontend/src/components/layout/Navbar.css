@@ -49,6 +49,11 @@
 
 .nav-right {
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.navbar-search-spacer {
+  display: none;
 }
 
 @media (max-width: 860px) {
@@ -58,5 +63,14 @@
 
   .nav-links {
     display: none;
+  }
+
+  .nav-right {
+    margin-left: auto;
+  }
+
+  .navbar-search-spacer {
+    display: block;
+    height: 52px; /* mobile search bar height */
   }
 }

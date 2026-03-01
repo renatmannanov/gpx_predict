@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchRace, fetchResults } from '../api/races';
@@ -47,17 +47,25 @@ export default function RaceDetailPage() {
     enabled: !!raceId && selectedYear !== null,
   });
 
-  // Set default distance when results load
-  useEffect(() => {
-    if (results && results.length > 0 && !selectedDistance) {
-      setSelectedDistance(results[0].distance_name);
-    }
-  }, [results, selectedDistance]);
+  // Sort distances: longest first
+  const sortedResults = useMemo(() => {
+    if (!results) return null;
+    return [...results].sort((a, b) => (b.distance_km ?? 0) - (a.distance_km ?? 0));
+  }, [results]);
 
-  // Reset selected distance when year changes
+  // Auto-select first distance when results load or year changes
   useEffect(() => {
+    if (sortedResults && sortedResults.length > 0) {
+      setSelectedDistance(sortedResults[0].distance_name);
+    } else {
+      setSelectedDistance(null);
+    }
+  }, [sortedResults]);
+
+  const handleYearChange = useCallback((year: number) => {
+    setSelectedYear(year);
     setSelectedDistance(null);
-  }, [selectedYear]);
+  }, []);
 
   // Document title
   useEffect(() => {
@@ -94,7 +102,7 @@ export default function RaceDetailPage() {
     ? race.type.replace(/_/g, ' ')
     : getRaceCategoryLabel(category);
 
-  const activeResult = results?.find((r) => r.distance_name === selectedDistance);
+  const activeResult = sortedResults?.find((r) => r.distance_name === selectedDistance);
 
   return (
     <div className="page">
@@ -114,15 +122,15 @@ export default function RaceDetailPage() {
           <YearTabs
             years={years}
             selected={selectedYear}
-            onChange={setSelectedYear}
+            onChange={handleYearChange}
           />
         </div>
       )}
 
       {/* Distance tabs */}
-      {results && results.length > 1 && (
+      {sortedResults && sortedResults.length > 1 && (
         <div className="distance-tabs">
-          {results.map((dr) => (
+          {sortedResults.map((dr) => (
             <button
               key={dr.distance_name}
               className={`distance-tab${dr.distance_name === selectedDistance ? ' active' : ''}`}
@@ -146,7 +154,7 @@ export default function RaceDetailPage() {
         <DistanceResults data={activeResult} />
       )}
 
-      {results && results.length === 0 && (
+      {sortedResults && sortedResults.length === 0 && (
         <div className="loading-text">Нет результатов за {selectedYear} год</div>
       )}
     </div>
