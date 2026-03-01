@@ -33,7 +33,7 @@ from app.models.user_profile import UserPerformanceProfile  # noqa
 from app.models.user_run_profile import UserRunProfile  # noqa
 from app.models.profile_snapshot import ProfileSnapshot  # noqa
 from app.features.races.db_models import (  # noqa
-    Race, RaceEdition, RaceDistance, RaceResultDB, UserRaceResult
+    Club, Runner, Race, RaceEdition, RaceDistance, RaceResultDB, UserRaceResult
 )
 
 # this is the Alembic Config object

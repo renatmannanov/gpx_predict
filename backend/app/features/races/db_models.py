@@ -5,6 +5,7 @@ Tables:
 - race_editions: One year/edition of a race
 - race_distances: Distance within an edition (Skyrunning, VK 1000, etc.)
 - race_results: Individual participant results
+- runners: Unique runners across all races
 - user_race_results: Links our users to their race results
 """
 
@@ -25,6 +26,48 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
+
+
+class Club(Base):
+    """Unique running club across all races."""
+
+    __tablename__ = "clubs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)  # display name: "SRG", "RUNFINITY"
+    name_normalized = Column(String(255), nullable=False, unique=True, index=True)  # lowercase
+    runners_count = Column(Integer, default=0)  # cached count of unique runners
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    runners = relationship("Runner", back_populates="club_ref")
+
+    def __repr__(self):
+        return f"<Club {self.id} '{self.name}'>"
+
+
+class Runner(Base):
+    """Unique runner across all races, identified by name_normalized."""
+
+    __tablename__ = "runners"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)  # display name (from latest result)
+    name_normalized = Column(String(255), nullable=False, unique=True, index=True)
+    club = Column(String(255), nullable=True)  # latest known club (text)
+    club_id = Column(Integer, ForeignKey("clubs.id"), nullable=True)
+    gender = Column(String(4), nullable=True)  # "M" / "F"
+    category = Column(String(32), nullable=True)  # latest category
+    birth_year = Column(Integer, nullable=True)
+    races_count = Column(Integer, default=0)  # cached count of unique race editions
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    results = relationship("RaceResultDB", back_populates="runner")
+    club_ref = relationship("Club", back_populates="runners")
+
+    def __repr__(self):
+        return f"<Runner {self.id} '{self.name}'>"
 
 
 class Race(Base):
@@ -101,10 +144,12 @@ class RaceResultDB(Base):
     __table_args__ = (
         Index("ix_race_results_name_normalized", "name_normalized"),
         Index("ix_race_results_distance_id", "distance_id"),
+        Index("ix_race_results_runner_id", "runner_id"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     distance_id = Column(Integer, ForeignKey("race_distances.id"), nullable=False)
+    runner_id = Column(Integer, ForeignKey("runners.id"), nullable=True)  # nullable during migration
     name = Column(String(255), nullable=False)  # "Iyemberdiyev Diyas" (original)
     name_normalized = Column(String(255), nullable=True)  # "diyas iyemberdiyev" (sorted, lowercase)
     time_seconds = Column(Integer, nullable=False)
@@ -115,9 +160,11 @@ class RaceResultDB(Base):
     bib = Column(String(16), nullable=True)
     birth_year = Column(Integer, nullable=True)
     nationality = Column(String(32), nullable=True)  # "KAZ", "Кыргызстан"
-    over_time_limit = Column(Boolean, default=False)
+    over_time_limit = Column(Boolean, default=False)  # legacy, use status instead
+    status = Column(String(20), default="finished")  # finished/dnf/dns/dsq/over_time_limit
 
     distance = relationship("RaceDistance", back_populates="results")
+    runner = relationship("Runner", back_populates="results")
     user_links = relationship("UserRaceResult", back_populates="race_result")
 
     def __repr__(self):

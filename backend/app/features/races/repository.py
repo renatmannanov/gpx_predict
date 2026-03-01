@@ -8,7 +8,9 @@ from __future__ import annotations
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .db_models import Race, RaceDistance, RaceEdition, RaceResultDB
+from datetime import datetime
+
+from .db_models import Club, Race, RaceDistance, RaceEdition, RaceResultDB, Runner
 from .models import RaceDistanceResults, RaceEditionData, RaceResult, RaceStats
 from .name_utils import normalize_name
 from .stats import calculate_stats
@@ -93,6 +95,9 @@ class RaceRepository:
                     birth_year=r.birth_year,
                     nationality=r.nationality,
                     over_time_limit=r.over_time_limit or False,
+                    status=r.status or "finished",
+                    name_normalized=r.name_normalized,
+                    runner_id=r.runner_id,
                 )
                 for r in db_results
             ]
@@ -124,12 +129,19 @@ class RaceRepository:
 
         Uses name_normalized for consistent matching regardless of
         name order or case in CLAX data.
+        Supports partial match: "Baikashev" finds "baikashev shyngys".
 
         Returns: {year: RaceResult | None}
         """
         norm = normalize_name(name)
         years = self.get_years_with_results(race_id)
         results_by_year: dict[int, RaceResult | None] = {}
+
+        # Build filter: all words in the query must appear in name_normalized
+        norm_words = norm.split()
+        name_filters = [
+            RaceResultDB.name_normalized.contains(word) for word in norm_words
+        ]
 
         for year in years:
             query = (
@@ -139,7 +151,7 @@ class RaceRepository:
                 .where(
                     RaceEdition.race_id == race_id,
                     RaceEdition.year == year,
-                    RaceResultDB.name_normalized == norm,
+                    *name_filters,
                 )
             )
             if distance_name:
@@ -162,6 +174,9 @@ class RaceRepository:
                     birth_year=r.birth_year,
                     nationality=r.nationality,
                     over_time_limit=r.over_time_limit or False,
+                    status=r.status or "finished",
+                    name_normalized=r.name_normalized,
+                    runner_id=r.runner_id,
                 )
             else:
                 results_by_year[year] = None
@@ -185,3 +200,161 @@ class RaceRepository:
                 return stats, dist.results
 
         return None
+
+    def count_finishers(self, race_id: str, year: int) -> int:
+        """Count total finishers (finished + over_time_limit) across all distances."""
+        return self.db.execute(
+            select(func.count(RaceResultDB.id))
+            .join(RaceDistance, RaceResultDB.distance_id == RaceDistance.id)
+            .join(RaceEdition, RaceDistance.edition_id == RaceEdition.id)
+            .where(
+                RaceEdition.race_id == race_id,
+                RaceEdition.year == year,
+                RaceResultDB.status.in_(("finished", "over_time_limit")),
+            )
+        ).scalar() or 0
+
+    # --- Runner management ---
+
+    def get_or_create_runner(
+        self,
+        name_normalized: str,
+        name: str,
+        club: str | None = None,
+        gender: str | None = None,
+        category: str | None = None,
+        birth_year: int | None = None,
+    ) -> Runner:
+        """Find or create a runner by normalized name.
+
+        If found, updates mutable fields (club, category, gender) from latest data.
+        """
+        runner = self.db.execute(
+            select(Runner).where(Runner.name_normalized == name_normalized)
+        ).scalar_one_or_none()
+
+        if runner:
+            # Update with latest known data
+            if club:
+                runner.club = club
+            if gender:
+                runner.gender = gender
+            if category:
+                runner.category = category
+            if birth_year:
+                runner.birth_year = birth_year
+            runner.name = name
+            runner.updated_at = datetime.utcnow()
+        else:
+            runner = Runner(
+                name=name,
+                name_normalized=name_normalized,
+                club=club,
+                gender=gender,
+                category=category,
+                birth_year=birth_year,
+                races_count=0,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            self.db.add(runner)
+            self.db.flush()  # get the id
+
+        return runner
+
+    def get_runner_by_id(self, runner_id: int) -> Runner | None:
+        """Get runner by ID."""
+        return self.db.get(Runner, runner_id)
+
+    def get_runner_results(self, runner_id: int) -> list[tuple]:
+        """Get all results for a runner across all races.
+
+        Returns list of (RaceResultDB, RaceDistance, RaceEdition, Race) tuples,
+        ordered by year DESC, race name ASC.
+        """
+        rows = self.db.execute(
+            select(RaceResultDB, RaceDistance, RaceEdition, Race)
+            .join(RaceDistance, RaceResultDB.distance_id == RaceDistance.id)
+            .join(RaceEdition, RaceDistance.edition_id == RaceEdition.id)
+            .join(Race, RaceEdition.race_id == Race.id)
+            .where(RaceResultDB.runner_id == runner_id)
+            .order_by(RaceEdition.year.desc(), Race.name)
+        ).all()
+        return rows
+
+    def count_finishers_for_distance(self, distance_id: int) -> int:
+        """Count finishers (finished + over_time_limit) for a specific distance."""
+        return self.db.execute(
+            select(func.count(RaceResultDB.id))
+            .where(
+                RaceResultDB.distance_id == distance_id,
+                RaceResultDB.status.in_(("finished", "over_time_limit")),
+            )
+        ).scalar() or 0
+
+    def get_finisher_times_for_distance(self, distance_id: int) -> list[int]:
+        """Get sorted list of finish times for a distance (only finishers)."""
+        rows = self.db.execute(
+            select(RaceResultDB.time_seconds)
+            .where(
+                RaceResultDB.distance_id == distance_id,
+                RaceResultDB.status.in_(("finished", "over_time_limit")),
+            )
+            .order_by(RaceResultDB.time_seconds)
+        ).scalars().all()
+        return list(rows)
+
+    def search_runners(self, name: str, limit: int = 10) -> list[Runner]:
+        """Search runners by normalized name (partial match).
+
+        Returns runners sorted by races_count DESC.
+        """
+        norm = normalize_name(name)
+        norm_words = norm.split()
+        filters = [Runner.name_normalized.contains(word) for word in norm_words]
+
+        return self.db.execute(
+            select(Runner)
+            .where(*filters)
+            .order_by(Runner.races_count.desc())
+            .limit(limit)
+        ).scalars().all()
+
+    def get_runner_last_race(self, runner_id: int) -> tuple[str, int] | None:
+        """Get the last race name and year for a runner."""
+        row = self.db.execute(
+            select(Race.name, RaceEdition.year)
+            .join(RaceEdition, Race.id == RaceEdition.race_id)
+            .join(RaceDistance, RaceDistance.edition_id == RaceEdition.id)
+            .join(RaceResultDB, RaceResultDB.distance_id == RaceDistance.id)
+            .where(RaceResultDB.runner_id == runner_id)
+            .order_by(RaceEdition.year.desc())
+            .limit(1)
+        ).first()
+        return row if row else None
+
+    # --- Club management ---
+
+    def get_or_create_club(self, club_name: str) -> Club:
+        """Find or create a club by name."""
+        normalized = club_name.strip().lower()
+        club = self.db.execute(
+            select(Club).where(Club.name_normalized == normalized)
+        ).scalar_one_or_none()
+
+        if not club:
+            club = Club(
+                name=club_name.strip(),
+                name_normalized=normalized,
+                runners_count=0,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            self.db.add(club)
+            self.db.flush()
+
+        return club
+
+    def get_club_by_id(self, club_id: int) -> Club | None:
+        """Get club by ID."""
+        return self.db.get(Club, club_id)

@@ -180,7 +180,8 @@ races:
   editions:
   - year: 2026
     date: '2026-03-01'
-    status: upcoming
+    url: https://live.myrace.info/?f=bases/kz/2026/alpinerace2026/alpinrace2026.clax
+    status: parsed
   - year: 2025
     url: https://live.myrace.info/?f=bases/kz/2025/alpinrace2025/alpinrace2025.clax
     status: parsed
@@ -233,7 +234,7 @@ races:
   editions:
   - year: 2025
     url: https://almaty-marathon.kz/ru/results/summer_relay_2025
-    status: new
+    status: parsed
 - id: tau_jarys_am_kz
   name: Tau Jarys
   source: almaty-marathon
@@ -247,7 +248,7 @@ races:
   editions:
   - year: 2025
     url: https://almaty-marathon.kz/ru/results/almaty_half_marathon_2025
-    status: new
+    status: parsed
 - id: almaty_copa_run_am_kz
   name: Almaty Copa Run
   source: almaty-marathon

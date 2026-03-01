@@ -18,7 +18,7 @@ from app.db.session import get_async_db, get_db
 from app.features.races.catalog import RaceCatalog
 from app.features.races.repository import RaceRepository
 from app.features.races.service import RaceService
-from app.features.races.stats import calculate_stats, format_time
+from app.features.races.stats import calculate_stats, format_time, get_percentile
 from app.features.trail_run.repository import TrailRunProfileRepository
 from app.features.users.repository import UserRepository
 
@@ -57,6 +57,7 @@ class RaceSchema(BaseModel):
     distances: list[RaceDistanceSchema] = []
     editions: list[RaceEditionSchema] = []
     next_date: Optional[str] = None
+    total_finishers: Optional[int] = None  # latest year, all distances
 
 
 class RaceStatsSchema(BaseModel):
@@ -67,6 +68,13 @@ class RaceStatsSchema(BaseModel):
     p25_time: str
     p75_time: str
     time_buckets: list[dict] = []
+    gender_distribution: list[dict] = []
+    category_distribution: list[dict] = []
+    club_stats: list[dict] = []
+    total_participants: int = 0
+    dnf_count: int = 0
+    dns_count: int = 0
+    dnf_rate: Optional[float] = None
 
 
 class RaceResultSchema(BaseModel):
@@ -79,6 +87,9 @@ class RaceResultSchema(BaseModel):
     gender: Optional[str] = None
     club: Optional[str] = None
     pace: Optional[str] = None
+    name_normalized: Optional[str] = None
+    runner_id: Optional[int] = None
+    status: str = "finished"
 
 
 class DistanceResultsSchema(BaseModel):
@@ -92,6 +103,11 @@ class DistanceResultsSchema(BaseModel):
 class SearchResultSchema(BaseModel):
     year: int
     result: Optional[RaceResultSchema] = None
+    percentile: Optional[float] = None
+    total_finishers: Optional[int] = None
+    gender_percentile: Optional[float] = None
+    category_rank: Optional[int] = None
+    category_total: Optional[int] = None
 
 
 class PredictRequest(BaseModel):
@@ -127,6 +143,47 @@ class PredictResponse(BaseModel):
     comparison_year: Optional[int] = None
     total_finishers: Optional[int] = None
     stats: Optional[RaceStatsSchema] = None
+
+
+# === Helpers ===
+
+
+def _stats_to_schema(stats, dnf_rate=None) -> RaceStatsSchema:
+    """Convert RaceStats dataclass to Pydantic schema."""
+    return RaceStatsSchema(
+        finishers=stats.finishers,
+        best_time=format_time(stats.best_time_s),
+        worst_time=format_time(stats.worst_time_s),
+        median_time=format_time(stats.median_time_s),
+        p25_time=format_time(stats.p25_time_s),
+        p75_time=format_time(stats.p75_time_s),
+        time_buckets=[
+            {"label": b.label, "count": b.count, "percent": b.percent}
+            for b in stats.time_buckets
+        ],
+        gender_distribution=[
+            {"gender": g.gender, "count": g.count, "percent": g.percent}
+            for g in stats.gender_distribution
+        ],
+        category_distribution=[
+            {"category": c.category, "count": c.count, "percent": c.percent}
+            for c in stats.category_distribution
+        ],
+        club_stats=[
+            {
+                "club": c.club,
+                "count": c.count,
+                "best_time_s": c.best_time_s,
+                "best_time": c.best_time,
+                "avg_percentile": c.avg_percentile,
+            }
+            for c in stats.club_stats
+        ],
+        total_participants=stats.total_participants,
+        dnf_count=stats.dnf_count,
+        dns_count=stats.dns_count,
+        dnf_rate=dnf_rate,
+    )
 
 
 # === Endpoints ===
@@ -168,6 +225,12 @@ async def list_races(db: Session = Depends(get_db)):
                     )
                 )
 
+        # Total finishers from latest edition
+        total_finishers = None
+        if race.editions:
+            latest_year = max(ed.year for ed in race.editions)
+            total_finishers = repo.count_finishers(race.id, latest_year)
+
         result.append(
             RaceSchema(
                 id=race.id,
@@ -176,6 +239,7 @@ async def list_races(db: Session = Depends(get_db)):
                 location=race.location,
                 distances=distances,
                 editions=editions,
+                total_finishers=total_finishers,
             )
         )
 
@@ -200,8 +264,10 @@ async def get_race(race_id: str, db: Session = Depends(get_db)):
     ]
 
     distances = []
+    total_finishers = None
     if race.editions:
         latest_ed = max(race.editions, key=lambda e: e.year)
+        total_finishers = repo.count_finishers(race_id, latest_ed.year)
         for dist in latest_ed.distances:
             has_gpx = _catalog.get_gpx_path(race_id, dist.name) is not None
             distances.append(
@@ -221,6 +287,7 @@ async def get_race(race_id: str, db: Session = Depends(get_db)):
         location=race.location,
         distances=distances,
         editions=editions,
+        total_finishers=total_finishers,
     )
 
 
@@ -248,30 +315,25 @@ async def get_results(race_id: str, year: int, db: Session = Depends(get_db)):
                 gender=r.gender,
                 club=r.club,
                 pace=r.pace,
+                name_normalized=r.name_normalized,
+                runner_id=r.runner_id,
+                status=r.status,
             )
             for r in dist.results
         ]
+
+        # DNF rate: dnf / (total - dns)
+        starters = stats.total_participants - stats.dns_count
+        dnf_rate = (
+            round(stats.dnf_count / starters * 100, 1) if starters > 0 else None
+        )
+
         result.append(
             DistanceResultsSchema(
                 distance_name=dist.distance_name,
                 distance_km=dist.distance_km,
                 year=year,
-                stats=RaceStatsSchema(
-                    finishers=stats.finishers,
-                    best_time=format_time(stats.best_time_s),
-                    worst_time=format_time(stats.worst_time_s),
-                    median_time=format_time(stats.median_time_s),
-                    p25_time=format_time(stats.p25_time_s),
-                    p75_time=format_time(stats.p75_time_s),
-                    time_buckets=[
-                        {
-                            "label": b.label,
-                            "count": b.count,
-                            "percent": b.percent,
-                        }
-                        for b in stats.time_buckets
-                    ],
-                ),
+                stats=_stats_to_schema(stats, dnf_rate),
                 results=results_out,
             )
         )
@@ -301,22 +363,88 @@ async def search_results(
     output = []
     for year in sorted(results_by_year.keys(), reverse=True):
         r = results_by_year[year]
+        if not r:
+            output.append(SearchResultSchema(year=year))
+            continue
+
+        result_schema = RaceResultSchema(
+            name=r.name,
+            name_local=r.name_local,
+            time_s=r.time_seconds,
+            time_formatted=format_time(r.time_seconds),
+            place=r.place,
+            category=r.category,
+            gender=r.gender,
+            club=r.club,
+            pace=r.pace,
+            name_normalized=r.name_normalized,
+            runner_id=r.runner_id,
+            status=r.status,
+        )
+
+        # Compute percentiles for finishers
+        percentile = None
+        total_finishers = None
+        gender_percentile = None
+        category_rank = None
+        category_total = None
+
+        if r.status in ("finished", "over_time_limit"):
+            edition_data = repo.load_results(race_id, year)
+            if edition_data:
+                for d in edition_data.distances:
+                    # Match: either explicit distance_id, or find by name_normalized
+                    if distance_id and d.distance_name != distance_id:
+                        continue
+                    if not distance_id and not any(
+                        res.name_normalized == r.name_normalized
+                        for res in d.results
+                    ):
+                        continue
+
+                    finishers = [
+                        res for res in d.results
+                        if res.status in ("finished", "over_time_limit")
+                    ]
+                    total_finishers = len(finishers)
+                    percentile = get_percentile(finishers, r.time_seconds)
+
+                    # Gender percentile
+                    if r.gender:
+                        same_gender = [
+                            res for res in finishers if res.gender == r.gender
+                        ]
+                        if same_gender:
+                            gender_percentile = get_percentile(
+                                same_gender, r.time_seconds
+                            )
+
+                    # Category rank
+                    if r.category:
+                        same_cat = [
+                            res for res in finishers
+                            if res.category == r.category
+                        ]
+                        if same_cat:
+                            category_total = len(same_cat)
+                            category_rank = (
+                                sum(
+                                    1 for res in same_cat
+                                    if res.time_seconds < r.time_seconds
+                                )
+                                + 1
+                            )
+                    break
+
         output.append(
             SearchResultSchema(
                 year=year,
-                result=RaceResultSchema(
-                    name=r.name,
-                    name_local=r.name_local,
-                    time_s=r.time_seconds,
-                    time_formatted=format_time(r.time_seconds),
-                    place=r.place,
-                    category=r.category,
-                    gender=r.gender,
-                    club=r.club,
-                    pace=r.pace,
-                )
-                if r
-                else None,
+                result=result_schema,
+                percentile=percentile,
+                total_finishers=total_finishers,
+                gender_percentile=gender_percentile,
+                category_rank=category_rank,
+                category_total=category_total,
             )
         )
 
@@ -366,18 +494,7 @@ async def predict_race(
     if prediction.stats:
         s = prediction.stats
         total_finishers = s.finishers
-        stats_schema = RaceStatsSchema(
-            finishers=s.finishers,
-            best_time=format_time(s.best_time_s),
-            worst_time=format_time(s.worst_time_s),
-            median_time=format_time(s.median_time_s),
-            p25_time=format_time(s.p25_time_s),
-            p75_time=format_time(s.p75_time_s),
-            time_buckets=[
-                {"label": b.label, "count": b.count, "percent": b.percent}
-                for b in s.time_buckets
-            ],
-        )
+        stats_schema = _stats_to_schema(s)
 
     return PredictResponse(
         race_name=prediction.race_name,

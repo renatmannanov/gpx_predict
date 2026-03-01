@@ -3,21 +3,39 @@
 from __future__ import annotations
 
 import math
+from collections import Counter
 from typing import Sequence
 
-from .models import RaceResult, RaceStats, TimeBucket
+from .models import (
+    CategoryDistribution,
+    ClubStats,
+    GenderDistribution,
+    RaceResult,
+    RaceStats,
+    TimeBucket,
+)
+
+_FINISHED_STATUSES = ("finished", "over_time_limit")
 
 
 def calculate_stats(results: Sequence[RaceResult]) -> RaceStats:
     """Calculate aggregate statistics for a list of race results.
 
     Args:
-        results: Sorted by time (place order).
+        results: All results including DNF/DNS. Finishers should be sorted by place.
 
     Returns:
-        RaceStats with percentiles and time distribution buckets.
+        RaceStats with percentiles, time distribution, and demographic breakdowns.
     """
-    if not results:
+    all_results = list(results)
+    total_participants = len(all_results)
+    dns_count = sum(1 for r in all_results if r.status == "dns")
+    dnf_count = sum(1 for r in all_results if r.status == "dnf")
+
+    # Only finishers for time-based stats
+    finishers = [r for r in all_results if r.status in _FINISHED_STATUSES]
+
+    if not finishers:
         return RaceStats(
             finishers=0,
             best_time_s=0,
@@ -25,9 +43,12 @@ def calculate_stats(results: Sequence[RaceResult]) -> RaceStats:
             median_time_s=0,
             p25_time_s=0,
             p75_time_s=0,
+            total_participants=total_participants,
+            dnf_count=dnf_count,
+            dns_count=dns_count,
         )
 
-    times = [r.time_seconds for r in results]
+    times = [r.time_seconds for r in finishers]
     n = len(times)
 
     return RaceStats(
@@ -38,6 +59,12 @@ def calculate_stats(results: Sequence[RaceResult]) -> RaceStats:
         p25_time_s=_percentile(times, 25),
         p75_time_s=_percentile(times, 75),
         time_buckets=_build_buckets(times),
+        gender_distribution=_gender_distribution(finishers),
+        category_distribution=_category_distribution(finishers),
+        club_stats=_club_stats(finishers),
+        total_participants=total_participants,
+        dnf_count=dnf_count,
+        dns_count=dns_count,
     )
 
 
@@ -158,3 +185,75 @@ def _build_buckets(times: list[int]) -> list[TimeBucket]:
         )
 
     return buckets
+
+
+def _gender_distribution(finishers: list[RaceResult]) -> list[GenderDistribution]:
+    """Gender breakdown of finishers."""
+    counts = Counter(r.gender for r in finishers if r.gender)
+    total = sum(counts.values())
+    if not total:
+        return []
+    return sorted(
+        [
+            GenderDistribution(
+                gender=g, count=c, percent=round(c / total * 100, 1)
+            )
+            for g, c in counts.items()
+        ],
+        key=lambda x: x.count,
+        reverse=True,
+    )
+
+
+def _category_distribution(finishers: list[RaceResult]) -> list[CategoryDistribution]:
+    """Category breakdown of finishers."""
+    counts = Counter(r.category for r in finishers if r.category)
+    total = sum(counts.values())
+    if not total:
+        return []
+    return sorted(
+        [
+            CategoryDistribution(
+                category=cat, count=c, percent=round(c / total * 100, 1)
+            )
+            for cat, c in counts.items()
+        ],
+        key=lambda x: x.count,
+        reverse=True,
+    )
+
+
+def _club_stats(finishers: list[RaceResult]) -> list[ClubStats]:
+    """Club performance stats. Minimum 2 finishers per club."""
+    by_club: dict[str, list[RaceResult]] = {}
+    for r in finishers:
+        if r.club:
+            by_club.setdefault(r.club, []).append(r)
+
+    n_total = len(finishers)
+    result = []
+    for club, members in by_club.items():
+        if len(members) < 2:
+            continue
+        best = min(m.time_seconds for m in members)
+        avg_pct = sum(
+            _rank_percentile(m.place, n_total) for m in members
+        ) / len(members)
+        result.append(
+            ClubStats(
+                club=club,
+                count=len(members),
+                best_time_s=best,
+                best_time=format_time(best),
+                avg_percentile=round(avg_pct, 1),
+            )
+        )
+
+    return sorted(result, key=lambda x: x.avg_percentile)
+
+
+def _rank_percentile(place: int, total: int) -> float:
+    """Convert place to percentile (0=best, 100=worst)."""
+    if total <= 1:
+        return 0.0
+    return round((place - 1) / (total - 1) * 100, 1)

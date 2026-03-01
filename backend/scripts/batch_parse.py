@@ -38,6 +38,7 @@ import yaml
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import sqlalchemy as sa
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -45,10 +46,12 @@ from app.db.session import SessionLocal, init_db
 from app.features.races.am_parser import AlmatyMarathonParser
 from app.features.races.clax_parser import ClaxParser
 from app.features.races.db_models import (
+    Club,
     Race,
     RaceDistance,
     RaceEdition,
     RaceResultDB,
+    Runner,
 )
 from app.features.races.models import RaceEditionData
 from app.features.races.name_utils import normalize_name
@@ -127,10 +130,75 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData)
         db.flush()
 
         for r in dist_data.results:
+            name_norm = normalize_name(r.name)
+
+            # Get or create runner
+            runner_id = None
+            if name_norm:
+                runner = db.execute(
+                    select(Runner).where(Runner.name_normalized == name_norm)
+                ).scalar_one_or_none()
+
+                if not runner:
+                    # Resolve club_id
+                    club_id = None
+                    if r.club and r.club.strip():
+                        club_norm = r.club.strip().lower()
+                        club = db.execute(
+                            select(Club).where(Club.name_normalized == club_norm)
+                        ).scalar_one_or_none()
+                        if not club:
+                            club = Club(
+                                name=r.club.strip(),
+                                name_normalized=club_norm,
+                                runners_count=0,
+                                created_at=datetime.now(timezone.utc),
+                                updated_at=datetime.now(timezone.utc),
+                            )
+                            db.add(club)
+                            db.flush()
+                        club_id = club.id
+
+                    runner = Runner(
+                        name=r.name,
+                        name_normalized=name_norm,
+                        club=r.club,
+                        club_id=club_id,
+                        gender=r.gender,
+                        category=r.category,
+                        birth_year=r.birth_year,
+                        races_count=0,
+                        created_at=datetime.now(timezone.utc),
+                        updated_at=datetime.now(timezone.utc),
+                    )
+                    db.add(runner)
+                    db.flush()
+                else:
+                    # Update runner with latest data
+                    runner.name = r.name
+                    if r.club:
+                        runner.club = r.club
+                        club_norm = r.club.strip().lower()
+                        club = db.execute(
+                            select(Club).where(Club.name_normalized == club_norm)
+                        ).scalar_one_or_none()
+                        if club:
+                            runner.club_id = club.id
+                    if r.gender:
+                        runner.gender = r.gender
+                    if r.category:
+                        runner.category = r.category
+                    if r.birth_year:
+                        runner.birth_year = r.birth_year
+                    runner.updated_at = datetime.now(timezone.utc)
+
+                runner_id = runner.id
+
             result = RaceResultDB(
                 distance_id=distance.id,
+                runner_id=runner_id,
                 name=r.name,
-                name_normalized=normalize_name(r.name),
+                name_normalized=name_norm,
                 time_seconds=r.time_seconds,
                 place=r.place,
                 category=r.category,
@@ -140,12 +208,45 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData)
                 birth_year=r.birth_year,
                 nationality=r.nationality,
                 over_time_limit=r.over_time_limit,
+                status=r.status,
             )
             db.add(result)
             total_results += 1
 
     db.commit()
+
+    # Update runners_count for runners and clubs after commit
+    _update_runner_counts(db)
+    _update_club_counts(db)
+
     return total_results
+
+
+def _update_runner_counts(db: Session) -> None:
+    """Update races_count cache for all runners."""
+    db.execute(sa.text("""
+        UPDATE runners r
+        SET races_count = (
+            SELECT COUNT(DISTINCT rd.edition_id)
+            FROM race_results rr
+            JOIN race_distances rd ON rr.distance_id = rd.id
+            WHERE rr.runner_id = r.id
+        )
+    """))
+    db.commit()
+
+
+def _update_club_counts(db: Session) -> None:
+    """Update runners_count cache for all clubs."""
+    db.execute(sa.text("""
+        UPDATE clubs c
+        SET runners_count = (
+            SELECT COUNT(*)
+            FROM runners r
+            WHERE r.club_id = c.id
+        )
+    """))
+    db.commit()
 
 
 def parse_race(db: Session, race: dict, force: bool = False, dry_run: bool = False) -> dict:
