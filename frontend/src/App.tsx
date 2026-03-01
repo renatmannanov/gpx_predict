@@ -1,16 +1,16 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import HomePage from './pages/HomePage'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import PageLayout from './components/layout/PageLayout'
 import PredictPage from './pages/PredictPage'
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
+      <PageLayout>
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<Navigate to="/races" replace />} />
           <Route path="/predict" element={<PredictPage />} />
         </Routes>
-      </div>
+      </PageLayout>
     </BrowserRouter>
   )
 }
