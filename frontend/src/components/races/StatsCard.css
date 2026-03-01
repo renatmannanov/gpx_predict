@@ -1,0 +1,11 @@
+@media (max-width: 600px) {
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+  }
+
+  .stats-row .stat-n {
+    font-size: 22px;
+  }
+}

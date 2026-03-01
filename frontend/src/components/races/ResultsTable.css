@@ -1,0 +1,91 @@
+.results-table-wrap {
+  overflow-x: auto;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.results-table thead th {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.result-row {
+  transition: background 0.1s;
+}
+
+.result-row:hover {
+  background: var(--card);
+}
+
+.result-row td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.col-place {
+  width: 44px;
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.col-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.col-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.col-cat,
+.col-gender,
+.col-club {
+  color: var(--dim);
+}
+
+.results-show-all {
+  display: block;
+  margin: 24px auto 0;
+}
+
+/* Hide less important columns on mobile */
+@media (max-width: 600px) {
+  .col-cat,
+  .col-gender,
+  .col-club {
+    display: none;
+  }
+
+  .results-table thead .col-cat,
+  .results-table thead .col-gender,
+  .results-table thead .col-club {
+    display: none;
+  }
+
+  .col-name .avatar {
+    display: none;
+  }
+
+  .results-table {
+    font-size: 13px;
+  }
+
+  .result-row td {
+    padding: 10px 10px;
+  }
+}

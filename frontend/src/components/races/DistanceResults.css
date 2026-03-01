@@ -1,0 +1,16 @@
+.distance-section {
+  margin-bottom: 48px;
+}
+
+.distance-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 24px;
+}
+
+.distance-subtitle {
+  font-weight: 500;
+  color: var(--dim);
+  font-size: 15px;
+}
