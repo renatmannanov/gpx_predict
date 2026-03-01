@@ -42,6 +42,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal, init_db
+from app.features.races.am_parser import AlmatyMarathonParser
 from app.features.races.clax_parser import ClaxParser
 from app.features.races.db_models import (
     Race,
@@ -151,6 +152,7 @@ def parse_race(db: Session, race: dict, force: bool = False, dry_run: bool = Fal
     """Parse all new editions of a race into DB."""
     race_id = race["id"]
     race_name = race["name"]
+    source = race.get("source", "clax")  # "clax" or "almaty-marathon"
     editions = race.get("editions", [])
 
     stats = {"parsed": 0, "skipped": 0, "errors": 0, "error_details": []}
@@ -174,21 +176,26 @@ def parse_race(db: Session, race: dict, force: bool = False, dry_run: bool = Fal
         print(f"  {race_name}: nothing to parse")
         return stats
 
-    parser = ClaxParser(filter_distances=False)
-
     for edition in to_parse:
         year = edition["year"]
         url = edition["url"]
 
         if dry_run:
-            print(f"  [DRY RUN] Would parse {race_name} {year}")
+            print(f"  [DRY RUN] Would parse {race_name} {year} (source: {source})")
             print(f"            URL: {url}")
             stats["parsed"] += 1
             continue
 
         try:
-            print(f"  Parsing {race_name} {year}...", end=" ", flush=True)
-            data = parser.parse_url(url)
+            print(f"  Parsing {race_name} {year} ({source})...", end=" ", flush=True)
+
+            if source == "almaty-marathon":
+                with AlmatyMarathonParser(delay=0.3) as am_parser:
+                    data = am_parser.parse_race(url)
+            else:
+                clax_parser = ClaxParser(filter_distances=False)
+                data = clax_parser.parse_url(url)
+
             total_results = sum(len(d.results) for d in data.distances)
             total_distances = len(data.distances)
 

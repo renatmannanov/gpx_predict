@@ -213,3 +213,45 @@ races:
   - year: 2023
     url: https://live.myrace.info/?f=bases/kz/2023/kosmosuphill2023/kosmosuphill2023.clax
     status: parsed
+- id: winter_run_am_kz
+  name: Winter Run
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/winter_run_2025
+    status: parsed
+- id: almaty_marathon_am_kz
+  name: Almaty Marathon
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/almaty_marathon_2025
+    status: parsed
+- id: summer_relay_am_kz
+  name: Summer Relay
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/summer_relay_2025
+    status: new
+- id: tau_jarys_am_kz
+  name: Tau Jarys
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/tau_jarys_2025
+    status: parsed
+- id: almaty_half_marathon_am_kz
+  name: Almaty Half Marathon
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/almaty_half_marathon_2025
+    status: new
+- id: almaty_copa_run_am_kz
+  name: Almaty Copa Run
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/almaty_copa_run_2025
+    status: parsed
