@@ -14,7 +14,7 @@
 }
 
 .logo {
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 900;
   letter-spacing: -0.5px;
   color: var(--text);
@@ -33,11 +33,11 @@
 }
 
 .nav-links a {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--dim);
   text-decoration: none;
-  padding: 6px 13px;
+  padding: 8px 16px;
   border-radius: 6px;
   transition: color 0.15s;
 }

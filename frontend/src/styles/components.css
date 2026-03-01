@@ -36,12 +36,12 @@
 
 .btn-nav {
   font-family: 'Manrope', sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   background: var(--accent);
   color: #fff;
-  padding: 7px 18px;
-  border-radius: 7px;
+  padding: 9px 22px;
+  border-radius: 8px;
   border: none;
   cursor: pointer;
   text-decoration: none;
