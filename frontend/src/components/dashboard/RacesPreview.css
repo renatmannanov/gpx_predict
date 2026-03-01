@@ -1,0 +1,27 @@
+.races-preview {
+  padding: 0 40px 64px;
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.races-preview .sec-title {
+  font-size: 14px;
+  letter-spacing: 1.2px;
+}
+
+.races-preview .sec-link {
+  font-size: 14px;
+}
+
+.races-preview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 860px) {
+  .races-preview {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}

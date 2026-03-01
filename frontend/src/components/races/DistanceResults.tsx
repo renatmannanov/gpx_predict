@@ -9,7 +9,7 @@ interface DistanceResultsProps {
 
 export default function DistanceResults({ data }: DistanceResultsProps) {
   const subtitle = [
-    data.distance_km && `${data.distance_km} км`,
+    data.distance_km != null && data.distance_km > 0 && `${data.distance_km} км`,
   ].filter(Boolean).join(' · ');
 
   return (

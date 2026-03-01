@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import PageLayout from './components/layout/PageLayout'
 import ErrorBoundary from './components/ErrorBoundary'
+import DashboardPage from './pages/DashboardPage'
 import PredictPage from './pages/PredictPage'
 import RacesPage from './pages/RacesPage'
 import RaceDetailPage from './pages/RaceDetailPage'
@@ -12,7 +13,7 @@ function App() {
       <PageLayout>
         <ErrorBoundary>
           <Routes>
-            <Route path="/" element={<Navigate to="/races" replace />} />
+            <Route path="/" element={<DashboardPage />} />
             <Route path="/races" element={<RacesPage />} />
             <Route path="/races/:raceId" element={<RaceDetailPage />} />
             <Route path="/predict" element={<PredictPage />} />

@@ -1,0 +1,51 @@
+.predict-cta {
+  margin: 0 auto 72px;
+  max-width: 1020px;
+  padding: 36px 44px;
+  background: var(--card);
+  border: 1px solid rgba(232, 98, 42, 0.2);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.pc-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.pc-title {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.pc-sub {
+  font-size: 13px;
+  color: var(--dim);
+  line-height: 1.55;
+  max-width: 400px;
+}
+
+.pc-btn {
+  font-size: 14px;
+  padding: 13px 28px;
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .predict-cta {
+    margin-left: 20px;
+    margin-right: 20px;
+    margin-bottom: 56px;
+    padding: 24px 20px;
+  }
+}

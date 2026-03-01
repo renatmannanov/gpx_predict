@@ -129,7 +129,7 @@ export default function RaceDetailPage() {
               onClick={() => setSelectedDistance(dr.distance_name)}
             >
               <span className="distance-tab-name">{dr.distance_name}</span>
-              {dr.distance_km && (
+              {dr.distance_km != null && dr.distance_km > 0 && (
                 <span className="distance-tab-info">{dr.distance_km} км</span>
               )}
             </button>
@@ -144,11 +144,6 @@ export default function RaceDetailPage() {
 
       {activeResult && (
         <DistanceResults data={activeResult} />
-      )}
-
-      {/* Single distance — no tabs needed, show directly */}
-      {results && results.length === 1 && (
-        <DistanceResults data={results[0]} />
       )}
 
       {results && results.length === 0 && (
