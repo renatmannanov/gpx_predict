@@ -98,9 +98,9 @@ class ClaxParser:
         # Parse courses (Parcours) for distance metadata
         courses = self._parse_courses(root)
 
-        # Parse participants (Engages)
-        etape = root.find(".//Etape")
-        if etape is None:
+        # Parse participants and results from ALL stages (Etape elements)
+        etapes = root.findall(".//Etape")
+        if not etapes:
             return RaceEditionData(
                 race_name=race_name,
                 year=year,
@@ -108,8 +108,11 @@ class ClaxParser:
                 source_url=source_url,
             )
 
-        participants = self._parse_participants(etape)
-        results_map = self._parse_results(etape)
+        participants: dict[str, dict] = {}
+        results_map: dict[str, dict] = {}
+        for etape in etapes:
+            participants.update(self._parse_participants(etape))
+            results_map.update(self._parse_results(etape))
 
         # Group by distance, compute places, build RaceDistanceResults
         distances = self._build_distances(participants, results_map, courses)
