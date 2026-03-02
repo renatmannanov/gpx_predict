@@ -324,7 +324,8 @@ class AlmatyMarathonParser:
                     place=place,
                     category=None,  # not available on this site
                     gender=None,  # not in main table
-                    club=city,  # use city as club (closest equivalent)
+                    club=None,
+                    city=city,  # город — не клуб
                     bib=bib,
                     pace=None,
                     birth_year=None,

@@ -362,7 +362,7 @@ async def get_results(race_id: str, year: int, db: Session = Depends(get_db)):
                 r.place = i
             race_results = finishers + non_finishers
 
-        stats = calculate_stats(race_results)
+        stats = calculate_stats(race_results, is_backyard=is_backyard)
         results_out = [
             RaceResultSchema(
                 name=r.name,

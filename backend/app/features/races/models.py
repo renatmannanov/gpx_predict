@@ -21,6 +21,7 @@ class RaceResult:
     birth_year: int | None  # 1988
     nationality: str | None  # "KAZ"
     over_time_limit: bool = False  # hd="1" in CLAX
+    city: str | None = None  # "Алматы" (from AM parser, NOT a club)
     status: str = "finished"  # "finished" | "dnf" | "dns" | "dsq" | "over_time_limit"
     name_normalized: str | None = None  # "arman kenzhin" (sorted, lowercase)
     runner_id: int | None = None  # FK to runners table
