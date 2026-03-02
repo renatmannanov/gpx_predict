@@ -28,13 +28,26 @@ export default function RunnerSummary({
     ? getPercentileClass(medianPercentile)
     : '';
 
+  // Build inline meta items for mobile
+  const leftItems: string[] = [];
+  if (profile.club) leftItems.push(profile.club);
+  if (profile.category) leftItems.push(profile.category);
+  leftItems.push(`${yearsActive} ${pluralYears(yearsActive, true)}`);
+
+  const rightItems: string[] = [];
+  rightItems.push(`${totalRaces} гонок`);
+  rightItems.push(`${racesThisYear} в ${currentYear}`);
+  if (bestPlace != null) rightItems.push(`#${bestPlace} лучшее`);
+
   return (
     <div className="runner-head">
       <div className="rh-top">
         <div className="rh-name">{profile.name}</div>
         <div className={`rh-pct ${pctColorClass}`}>{pctLabel}</div>
       </div>
-      <div className="rh-strip">
+
+      {/* Desktop: two-row grid with labels */}
+      <div className="rh-strip rh-desktop">
         <div className="rh-left-meta">
           {profile.club && (
             <div className="rm">
@@ -70,15 +83,22 @@ export default function RunnerSummary({
           )}
         </div>
       </div>
+
+      {/* Mobile: compact dot-separated lines */}
+      <div className="rh-strip rh-mobile">
+        <div className="rh-inline">{leftItems.join(' · ')}</div>
+        <div className="rh-inline dim">{rightItems.join(' · ')}</div>
+      </div>
     </div>
   );
 }
 
-function pluralYears(n: number): string {
+function pluralYears(n: number, short = false): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
-  if (mod100 >= 11 && mod100 <= 14) return 'лет на сцене';
-  if (mod10 === 1) return 'год на сцене';
-  if (mod10 >= 2 && mod10 <= 4) return 'года на сцене';
-  return 'лет на сцене';
+  const suffix = short ? '' : ' на сцене';
+  if (mod100 >= 11 && mod100 <= 14) return 'лет' + suffix;
+  if (mod10 === 1) return 'год' + suffix;
+  if (mod10 >= 2 && mod10 <= 4) return 'года' + suffix;
+  return 'лет' + suffix;
 }

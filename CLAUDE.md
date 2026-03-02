@@ -324,6 +324,42 @@ docs/
 
 ---
 
+## Деплой и миграция данных
+
+### Railway
+- **Сервис:** `gpxpredict-production.up.railway.app`
+- **Кастомный домен:** `ayda.run`
+- **Автодеплой:** push в `main` → Railway билдит из Dockerfile
+- **DATABASE_PUBLIC_URL** хранится в `backend/.env`
+
+### Миграция данных local → prod
+
+**ВСЕГДА используй COPY формат (CSV), НИКОГДА `--inserts`.**
+`--inserts` = 1 запрос на строку по сети = часы. COPY = потоком = секунды.
+
+```bash
+# 1. Экспорт из локальной БД (с фильтрацией если нужно)
+PGPASSWORD=secret psql -h localhost -U gpx_predictor -d gpx_predictor -c "\copy (SELECT * FROM races WHERE id NOT LIKE '%_am_kz') TO '/tmp/races.csv' CSV HEADER"
+
+# 2. Импорт на прод
+PGPASSWORD=<prod_password> psql -h <prod_host> -p <prod_port> -U postgres -d railway -c "\copy races FROM '/tmp/races.csv' CSV HEADER"
+```
+
+Порядок загрузки (FK зависимости):
+1. `clubs`, `runners` (независимые)
+2. `races`
+3. `race_editions` (→ races)
+4. `race_distances` (→ race_editions)
+5. `race_results` (→ race_distances, runners)
+
+Перед повторной загрузкой: `TRUNCATE race_results, race_distances, race_editions, races, runners, clubs CASCADE`
+
+### Гонки Алматы Марафон
+- ID с суффиксом `_am_kz` — **НЕ загружать на прод** (данные грязные)
+- На фронте отфильтрованы в API, но лучше не засорять продовую БД
+
+---
+
 ## Известные проблемы (TODO)
 
 1. **Персонализация требует рефакторинга** (отдельная задача)
