@@ -77,6 +77,7 @@ export default function ResultsTable({ results, externalFilter, selectedForCompa
           <tr>
             {compareMode && <th className="rt-col-cmp" />}
             <th className="dt-col-rank">#</th>
+            <th className="rt-col-bib">Bib</th>
             <th>Имя</th>
             <th className="rt-col-time">Время</th>
             <th className="rt-col-cat">Кат.</th>
@@ -103,6 +104,7 @@ export default function ResultsTable({ results, externalFilter, selectedForCompa
               <td className={`dt-col-rank ${getMedalClass(r.place)}`}>
                 {r.place}
               </td>
+              <td className="rt-col-bib dt-col-dim">{r.bib || ''}</td>
               <td className="dt-col-name">
                 <div className="dt-col-name-inner">
                   <span className="avatar">{getInitials(r.name)}</span>
@@ -128,7 +130,7 @@ export default function ResultsTable({ results, externalFilter, selectedForCompa
           {filteredDnf.length > 0 && (expanded || !hasMore) && (
             <>
               <tr className="dnf-separator-row">
-                <td colSpan={compareMode ? 7 : 6} className="dnf-separator">
+                <td colSpan={compareMode ? 8 : 7} className="dnf-separator">
                   DNF / DNS ({filteredDnf.length})
                 </td>
               </tr>
@@ -136,15 +138,18 @@ export default function ResultsTable({ results, externalFilter, selectedForCompa
                 <tr key={`dnf-${i}`} className="row-dnf">
                   {compareMode && <td className="rt-col-cmp" />}
                   <td className="dt-col-rank">—</td>
+                  <td className="rt-col-bib dt-col-dim">{r.bib || ''}</td>
                   <td className="dt-col-name">
-                    <span className="avatar">{getInitials(r.name)}</span>
-                    {r.runner_id ? (
-                      <Link to={`/runners/${r.runner_id}`} className="rt-name-link">
-                        {highlightMatch(r.name, queryLower)}
-                      </Link>
-                    ) : (
-                      <span>{highlightMatch(r.name, queryLower)}</span>
-                    )}
+                    <div className="dt-col-name-inner">
+                      <span className="avatar">{getInitials(r.name)}</span>
+                      {r.runner_id ? (
+                        <Link to={`/runners/${r.runner_id}`} className="rt-name-link">
+                          {highlightMatch(r.name, queryLower)}
+                        </Link>
+                      ) : (
+                        <span>{highlightMatch(r.name, queryLower)}</span>
+                      )}
+                    </div>
                   </td>
                   <td className="dt-col-num rt-col-status">{getStatusLabel(r.status)}</td>
                   <td className="dt-col-dim">{r.category || '—'}</td>

@@ -63,6 +63,13 @@
   color: var(--dim);
 }
 
+.club-member-row .pct-green,
+.club-member-row .pct-yellow,
+.club-member-row .pct-dim {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
 /* Mobile */
 @media (max-width: 600px) {
   .club-table .ct-col-best,

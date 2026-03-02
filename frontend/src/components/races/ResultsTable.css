@@ -4,6 +4,9 @@
 .results-table .rt-col-gender { width: 60px; }
 .results-table .rt-col-club { width: 160px; }
 
+/* Bib number */
+.results-table .rt-col-bib { width: 50px; }
+
 /* Name link */
 .rt-name-link {
   color: var(--text);
@@ -87,9 +90,11 @@
 
 /* Mobile: hide secondary columns */
 @media (max-width: 600px) {
+  .results-table .rt-col-bib,
   .results-table .rt-col-cat,
   .results-table .rt-col-gender,
   .results-table .rt-col-club,
+  .results-table thead .rt-col-bib,
   .results-table thead .rt-col-cat,
   .results-table thead .rt-col-gender,
   .results-table thead .rt-col-club {

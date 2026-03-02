@@ -72,9 +72,10 @@ export default function RaceDetailPage() {
   }, [sortedResults, distanceFromUrl]);
 
   const handleYearChange = useCallback((year: number) => {
+    if (year === selectedYear) return;
     setSelectedYear(year);
     setSelectedDistance(null);
-  }, []);
+  }, [selectedYear]);
 
   // Document title
   useEffect(() => {

@@ -89,6 +89,7 @@ class RaceResultSchema(BaseModel):
     pace: Optional[str] = None
     name_normalized: Optional[str] = None
     runner_id: Optional[int] = None
+    bib: Optional[str] = None
     status: str = "finished"
 
 
@@ -317,6 +318,7 @@ async def get_results(race_id: str, year: int, db: Session = Depends(get_db)):
                 pace=r.pace,
                 name_normalized=r.name_normalized,
                 runner_id=r.runner_id,
+                bib=r.bib,
                 status=r.status,
             )
             for r in dist.results
@@ -379,6 +381,7 @@ async def search_results(
             pace=r.pace,
             name_normalized=r.name_normalized,
             runner_id=r.runner_id,
+            bib=r.bib,
             status=r.status,
         )
 

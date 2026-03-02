@@ -111,6 +111,7 @@ export interface RaceResult {
   pace: string | null;
   name_normalized?: string;
   runner_id?: number;
+  bib?: string | null;
   status: string; // "finished" | "dnf" | "dns" | "dsq" | "over_time_limit"
 }
 

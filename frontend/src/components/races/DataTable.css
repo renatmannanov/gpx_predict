@@ -48,6 +48,9 @@ td.dt-col-rank {
 /* Column: name (with avatar) — use inner wrapper for flex to avoid border misalignment */
 .dt-col-name {
   font-weight: 600;
+  white-space: normal;
+  word-break: break-word;
+  max-width: 300px;
 }
 
 .dt-col-name-inner {

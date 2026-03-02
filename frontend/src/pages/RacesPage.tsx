@@ -66,7 +66,7 @@ export default function RacesPage() {
       <div className="page-eyebrow">Athletex · MyRace</div>
       <h1>Гонки</h1>
       <p className="page-sub">
-        Все горные и шоссейные гонки Алматы — результаты, статистика, аналитика
+        Беговые гонки Алматы — результаты, статистика, аналитика
       </p>
 
       <div className="races-toolbar">
