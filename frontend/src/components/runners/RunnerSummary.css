@@ -20,10 +20,17 @@
   font-size: 32px;
   font-weight: 900;
   letter-spacing: -1.5px;
-  color: var(--accent);
+  color: var(--dim);
   line-height: 1;
   white-space: nowrap;
+  background: none;
 }
+
+.rh-pct.pct-elite { color: #3CC77A; }
+.rh-pct.pct-good { color: #4adec8; }
+.rh-pct.pct-mid { color: #d6bc48; }
+.rh-pct.pct-below { color: var(--accent); }
+.rh-pct.pct-low { color: var(--dim); }
 
 .rh-strip {
   display: flex;

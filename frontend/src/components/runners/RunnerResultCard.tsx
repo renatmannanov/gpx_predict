@@ -13,39 +13,48 @@ const FINISHED_STATUSES = ['finished', 'over_time_limit'];
 export default function RunnerResultCard({ result, previousResult }: RunnerResultCardProps) {
   const isFinished = FINISHED_STATUSES.includes(result.status);
   const diff = getDiff(result, previousResult);
+  const pct = Math.round(result.percentile);
+  const highlight = isFinished && pct <= 1;
 
   return (
-    <div className="rrc">
-      <div className="rrc-top">
-        <Link
-          to={`/races/${result.race_id}?distance=${encodeURIComponent(result.distance_name)}`}
-          className="rrc-race"
-        >
-          {result.race_name}
-          <span className="rrc-dist"> · {result.distance_name}</span>
-        </Link>
+    <Link
+      to={`/races/${result.race_id}?distance=${encodeURIComponent(result.distance_name)}`}
+      className={`result-row${highlight ? ' hi' : ''}`}
+    >
+      {/* col 1: race + distance */}
+      <div>
+        <div className="rr-race">{result.race_name}</div>
+        <div className="rr-dist">{result.distance_name}</div>
       </div>
 
-      <div className="rrc-mid">
-        {isFinished ? (
-          <>
-            <span className="rrc-time">{result.time_formatted}</span>
-            <span className="rrc-sep">·</span>
-            <span className="rrc-place">#{result.place} из {result.total_finishers}</span>
-            <span className="rrc-sep">·</span>
-            <PercentileBadge percentile={result.percentile} />
-          </>
-        ) : (
-          <span className="rrc-dnf">{getStatusLabel(result.status)}</span>
-        )}
-      </div>
-
-      {diff && (
-        <div className={`rrc-diff ${diff.improved ? 'rrc-diff-up' : 'rrc-diff-down'}`}>
+      {/* col 2: trend (left-aligned, before time) */}
+      {diff ? (
+        <div className={`rr-trend ${diff.improved ? 'tup' : 'tdn'}`}>
           {diff.improved ? '▲' : '▼'} {diff.label} vs {diff.vsYear}
         </div>
+      ) : (
+        <div />
       )}
-    </div>
+
+      {/* col 3: time + place */}
+      {isFinished ? (
+        <div>
+          <div className="rr-time">{result.time_formatted}</div>
+          <div className="rr-place">#{result.place} из {result.total_finishers}</div>
+        </div>
+      ) : (
+        <div>
+          <div className="rr-time rr-dnf">{getStatusLabel(result.status)}</div>
+        </div>
+      )}
+
+      {/* col 4: percentile badge */}
+      {isFinished ? (
+        <PercentileBadge percentile={result.percentile} />
+      ) : (
+        <div />
+      )}
+    </Link>
   );
 }
 

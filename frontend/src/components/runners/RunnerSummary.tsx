@@ -1,4 +1,5 @@
 import type { RunnerProfile } from '../../types/races';
+import { getPercentileClass } from '../shared/PercentileBadge';
 import './RunnerSummary.css';
 
 interface RunnerSummaryProps {
@@ -6,6 +7,9 @@ interface RunnerSummaryProps {
   totalRaces: number;
   medianPercentile: number | null;
   yearsActive: number;
+  racesThisYear: number;
+  currentYear: number;
+  bestPlace: number | null;
 }
 
 export default function RunnerSummary({
@@ -13,41 +17,61 @@ export default function RunnerSummary({
   totalRaces,
   medianPercentile,
   yearsActive,
+  racesThisYear,
+  currentYear,
+  bestPlace,
 }: RunnerSummaryProps) {
-  const subtitle = [profile.club, profile.category].filter(Boolean).join(' · ');
+  const pctLabel = medianPercentile != null
+    ? `top-${Math.round(medianPercentile)}%`
+    : '—';
+  const pctColorClass = medianPercentile != null
+    ? getPercentileClass(medianPercentile)
+    : '';
 
   return (
-    <div className="runner-header">
-      <h1>{profile.name}</h1>
-      {subtitle && <p className="runner-subtitle">{subtitle}</p>}
-
-      <div className="stats-row runner-stats">
-        <div className="stat-item">
-          <div className="stat-n"><em>{totalRaces}</em></div>
-          <div className="stat-l">{pluralRaces(totalRaces)}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-n">
-            {medianPercentile != null ? `top-${Math.round(medianPercentile)}%` : '—'}
+    <div className="runner-head">
+      <div className="rh-top">
+        <div className="rh-name">{profile.name}</div>
+        <div className={`rh-pct ${pctColorClass}`}>{pctLabel}</div>
+      </div>
+      <div className="rh-strip">
+        <div className="rh-left-meta">
+          {profile.club && (
+            <div className="rm">
+              <div className="rm-n">{profile.club}</div>
+              <div className="rm-l">клуб</div>
+            </div>
+          )}
+          {profile.category && (
+            <div className="rm">
+              <div className="rm-n">{profile.category}</div>
+              <div className="rm-l">категория</div>
+            </div>
+          )}
+          <div className="rm">
+            <div className="rm-n">{yearsActive}</div>
+            <div className="rm-l">{pluralYears(yearsActive)}</div>
           </div>
-          <div className="stat-l">средний</div>
         </div>
-        <div className="stat-item">
-          <div className="stat-n">{yearsActive}</div>
-          <div className="stat-l">{pluralYears(yearsActive)}</div>
+        <div className="rh-right-meta">
+          <div className="rm-r">
+            <div className="rm-n">{totalRaces}</div>
+            <div className="rm-l">гонок всего</div>
+          </div>
+          <div className="rm-r">
+            <div className="rm-n">{racesThisYear}</div>
+            <div className="rm-l">в {currentYear}</div>
+          </div>
+          {bestPlace != null && (
+            <div className="rm-r">
+              <div className="rm-n acc">#{bestPlace}</div>
+              <div className="rm-l">лучшее место</div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-}
-
-function pluralRaces(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod100 >= 11 && mod100 <= 14) return 'гонок';
-  if (mod10 === 1) return 'гонка';
-  if (mod10 >= 2 && mod10 <= 4) return 'гонки';
-  return 'гонок';
 }
 
 function pluralYears(n: number): string {

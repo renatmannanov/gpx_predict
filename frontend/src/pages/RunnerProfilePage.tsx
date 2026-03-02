@@ -91,6 +91,12 @@ export default function RunnerProfilePage() {
   // Override profile category with the freshest one
   const profileWithLatestCategory = { ...data.profile, category: latestCategory };
 
+  // Compute extra stats for header
+  const currentYear = new Date().getFullYear();
+  const finishedResults = data.results.filter((r) => r.status === 'finished' || r.status === 'over_time_limit');
+  const racesThisYear = finishedResults.filter((r) => r.year === currentYear).length;
+  const bestPlace = finishedResults.length > 0 ? Math.min(...finishedResults.map((r) => r.place)) : null;
+
   return (
     <div className="page runner-page">
       <button onClick={() => navigate(-1)} className="back-link">&larr; Назад</button>
@@ -100,6 +106,9 @@ export default function RunnerProfilePage() {
         totalRaces={data.total_races}
         medianPercentile={data.median_percentile}
         yearsActive={data.years_active}
+        racesThisYear={racesThisYear}
+        currentYear={currentYear}
+        bestPlace={bestPlace}
       />
 
       <div className="runner-results">

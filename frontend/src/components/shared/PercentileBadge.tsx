@@ -5,7 +5,7 @@ interface PercentileBadgeProps {
   compact?: boolean;  // true = "15%", false = "top-15%"
 }
 
-function getPercentileClass(p: number): string {
+export function getPercentileClass(p: number): string {
   if (p <= 10) return 'pct-elite';
   if (p <= 25) return 'pct-good';
   if (p <= 50) return 'pct-mid';
