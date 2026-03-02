@@ -85,7 +85,7 @@ export default function DistanceResults({ data, raceId, elevationGain }: Distanc
         stats={stats}
       />
 
-      <TimeHistogram buckets={stats.time_buckets} />
+      <TimeHistogram buckets={stats.time_buckets} isBackyard={raceId === 'backyard_ultra_kz'} />
 
       {(hasGender || hasCategory) && (
         <div className="insights-grid">

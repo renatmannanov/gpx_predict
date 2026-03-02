@@ -204,6 +204,7 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData)
                 category=r.category,
                 gender=r.gender,
                 club=r.club,
+                city=r.city,
                 bib=r.bib,
                 birth_year=r.birth_year,
                 nationality=r.nationality,

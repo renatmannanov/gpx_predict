@@ -23,6 +23,17 @@ _FINISHED_STATUSES = ("finished", "over_time_limit")
 # Backyard Ultra: winner = longest time. Invert percentiles & recalculate place.
 _BACKYARD_RACE_IDS = {"backyard_ultra_kz"}
 
+# Non-running distance keywords — same list as in races.py
+_NON_RUNNING_KEYWORDS = [
+    "ski ", "ski-", "ски-альп", "splitboard", "skitour",
+    "bike", "mtb", "velo", "gravel",
+]
+
+
+def _is_running_distance(name: str) -> bool:
+    lower = name.lower()
+    return not any(kw in lower for kw in _NON_RUNNING_KEYWORDS)
+
 
 # === Pydantic schemas ===
 
@@ -141,6 +152,10 @@ async def get_runner_profile(
     years_set = set()
 
     for result_db, distance, edition, race in rows:
+        # Skip non-running disciplines (ski, bike, etc.) — same filter as race results page
+        if not _is_running_distance(distance.name):
+            continue
+
         total_finishers = repo.count_finishers_for_distance(distance.id)
         times = repo.get_finisher_times_for_distance(distance.id)
         is_backyard = race.id in _BACKYARD_RACE_IDS

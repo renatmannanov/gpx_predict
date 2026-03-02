@@ -157,6 +157,7 @@ class RaceResultDB(Base):
     category = Column(String(32), nullable=True)  # "M_30-39"
     gender = Column(String(4), nullable=True)  # "M" / "F"
     club = Column(String(255), nullable=True)
+    city = Column(String(255), nullable=True)
     bib = Column(String(16), nullable=True)
     birth_year = Column(Integer, nullable=True)
     nationality = Column(String(32), nullable=True)  # "KAZ", "Кыргызстан"

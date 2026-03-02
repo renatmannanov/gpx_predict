@@ -18,11 +18,12 @@ from .models import (
 _FINISHED_STATUSES = ("finished", "over_time_limit")
 
 
-def calculate_stats(results: Sequence[RaceResult]) -> RaceStats:
+def calculate_stats(results: Sequence[RaceResult], is_backyard: bool = False) -> RaceStats:
     """Calculate aggregate statistics for a list of race results.
 
     Args:
         results: All results including DNF/DNS. Finishers should be sorted by place.
+        is_backyard: If True, longest time = best (Backyard Ultra format).
 
     Returns:
         RaceStats with percentiles, time distribution, and demographic breakdowns.
@@ -48,6 +49,8 @@ def calculate_stats(results: Sequence[RaceResult]) -> RaceStats:
             dns_count=dns_count,
         )
 
+    # For Backyard: finishers are already sorted longest→shortest (place 1 = longest)
+    # times[0] = longest (best), times[-1] = shortest (worst)
     times = [r.time_seconds for r in finishers]
     n = len(times)
 
@@ -58,12 +61,12 @@ def calculate_stats(results: Sequence[RaceResult]) -> RaceStats:
         median_time_s=_percentile(times, 50),
         p25_time_s=_percentile(times, 25),
         p75_time_s=_percentile(times, 75),
-        time_buckets=_build_buckets(times),
+        time_buckets=_build_buckets(times, reverse=is_backyard),
         # NOTE: percentile_buckets disabled — see _build_percentile_buckets comment below
         # percentile_buckets=_build_percentile_buckets(times),
         gender_distribution=_gender_distribution(finishers),
         category_distribution=_category_distribution(finishers),
-        club_stats=_club_stats(finishers),
+        club_stats=_club_stats(finishers, is_backyard=is_backyard),
         total_participants=total_participants,
         dnf_count=dnf_count,
         dns_count=dns_count,
@@ -134,16 +137,20 @@ def _percentile(sorted_values: list[int], pct: int) -> int:
     return int(sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight)
 
 
-def _build_buckets(times: list[int]) -> list[TimeBucket]:
+def _build_buckets(times: list[int], reverse: bool = False) -> list[TimeBucket]:
     """Build ~5 time distribution buckets automatically.
 
     Strategy: divide into 5 equal-width buckets between best and worst time.
+    For Backyard Ultra (reverse=True), times are sorted longest→shortest,
+    so we sort ascending for bucket math then reverse bucket order for display.
     """
     if not times:
         return []
 
-    best = times[0]
-    worst = times[-1]
+    # Always work with ascending times for bucket math
+    asc = sorted(times)
+    best = asc[0]
+    worst = asc[-1]
     span = worst - best
 
     if span == 0:
@@ -165,10 +172,10 @@ def _build_buckets(times: list[int]) -> list[TimeBucket]:
     for i in range(n_buckets):
         b_min = best + int(i * bucket_width)
         b_max = best + int((i + 1) * bucket_width) if i < n_buckets - 1 else worst + 1
-        count = sum(1 for t in times if b_min <= t < b_max)
+        count = sum(1 for t in asc if b_min <= t < b_max)
         # Last bucket includes the worst time
         if i == n_buckets - 1:
-            count = sum(1 for t in times if t >= b_min)
+            count = sum(1 for t in asc if t >= b_min)
 
         label = f"{format_time(b_min)} - {format_time(b_max - 1)}"
         if i == 0:
@@ -185,6 +192,10 @@ def _build_buckets(times: list[int]) -> list[TimeBucket]:
                 percent=round(count / n_total * 100, 1) if n_total else 0,
             )
         )
+
+    # For Backyard Ultra: reverse bucket order so "longest time" buckets come first
+    if reverse:
+        buckets = list(reversed(buckets))
 
     return buckets
 
@@ -252,7 +263,7 @@ def _category_distribution(finishers: list[RaceResult]) -> list[CategoryDistribu
     )
 
 
-def _club_stats(finishers: list[RaceResult]) -> list[ClubStats]:
+def _club_stats(finishers: list[RaceResult], is_backyard: bool = False) -> list[ClubStats]:
     """Club performance stats. Minimum 2 finishers per club."""
     by_club: dict[str, list[RaceResult]] = {}
     for r in finishers:
@@ -264,7 +275,8 @@ def _club_stats(finishers: list[RaceResult]) -> list[ClubStats]:
     for club, members in by_club.items():
         if len(members) < 2:
             continue
-        best = min(m.time_seconds for m in members)
+        # Backyard: best = longest time (max), standard: best = shortest time (min)
+        best = max(m.time_seconds for m in members) if is_backyard else min(m.time_seconds for m in members)
         avg_pct = sum(
             _rank_percentile(m.place, n_total) for m in members
         ) / len(members)
