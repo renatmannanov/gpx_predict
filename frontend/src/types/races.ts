@@ -108,6 +108,18 @@ export interface SearchResult {
   category_total?: number | null;
 }
 
+// === Global runner search ===
+
+export interface RunnerSearchResult {
+  id: number;
+  name: string;
+  name_normalized: string;
+  club: string | null;
+  races_count: number;
+  last_race: string | null;
+  last_year: number | null;
+}
+
 // === Runner profile ===
 
 export interface RunnerProfile {
