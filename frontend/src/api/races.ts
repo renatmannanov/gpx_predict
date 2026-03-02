@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { Race, DistanceResults, SearchResult, RunnerProfileResponse, RunnerSearchResult } from '../types/races';
+import type { Race, DistanceResults, SearchResult, RunnerProfileResponse, RunnerSearchResult, SeasonStats } from '../types/races';
 
 export function fetchRaces(): Promise<Race[]> {
   return api.get<Race[]>('/races');
@@ -23,4 +23,8 @@ export function fetchRunnerProfile(runnerId: number): Promise<RunnerProfileRespo
 
 export function searchRunners(name: string): Promise<RunnerSearchResult[]> {
   return api.get<RunnerSearchResult[]>(`/runners/search?name=${encodeURIComponent(name)}`);
+}
+
+export function fetchSeasonStats(year: number): Promise<SeasonStats> {
+  return api.get<SeasonStats>(`/stats/season/${year}`);
 }

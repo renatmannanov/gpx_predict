@@ -30,6 +30,9 @@ export default function RaceCard({ race }: RaceCardProps) {
       )}
       <div className="race-card-footer">
         <span>
+          {race.total_finishers != null && race.total_finishers > 0 && (
+            <>{race.total_finishers} {pluralize(race.total_finishers, 'финишёр', 'финишёра', 'финишёров')} · </>
+          )}
           {distanceCount} {pluralize(distanceCount, 'дистанция', 'дистанции', 'дистанций')}
           {' · '}
           {editionCount} {pluralize(editionCount, 'год', 'года', 'лет')}

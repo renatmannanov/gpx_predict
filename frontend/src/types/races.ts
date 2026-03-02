@@ -26,6 +26,32 @@ export interface Race {
   distances: RaceDistance[];
   editions: RaceEdition[];
   next_date: string | null;
+  total_finishers: number | null;
+}
+
+// === Season stats ===
+
+export interface SeasonTopRunner {
+  runner_id: number;
+  name: string;
+  club: string | null;
+  races_count: number;
+  avg_percentile: number | null;
+}
+
+export interface SeasonTopClub {
+  club: string;
+  runners_count: number;
+  avg_percentile: number | null;
+}
+
+export interface SeasonStats {
+  year: number;
+  total_races: number;
+  total_finishers: number;
+  total_clubs: number;
+  top_runners: SeasonTopRunner[];
+  top_clubs: SeasonTopClub[];
 }
 
 // === Результаты ===
