@@ -63,7 +63,12 @@ export default function RacesPage() {
 
   return (
     <div className="page">
-      <div className="page-eyebrow">Athletex · MyRace</div>
+      <div className="page-eyebrow">
+        <a href="https://athletex.kz/" target="_blank" rel="noopener noreferrer">Athletex</a>
+        {/* TODO: раскомментировать когда вернём гонки АМ */}
+        {/* {' · '}
+        <a href="https://almaty-marathon.kz/ru/" target="_blank" rel="noopener noreferrer" className="eyebrow-road">Алматы Марафон</a> */}
+      </div>
       <h1>Гонки</h1>
       <p className="page-sub">
         Беговые гонки Алматы — результаты, статистика, аналитика

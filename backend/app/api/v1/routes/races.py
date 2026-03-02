@@ -27,6 +27,18 @@ router = APIRouter()
 # RaceCatalog — only for GPX file paths
 _catalog = RaceCatalog(CONTENT_DIR)
 
+# Non-running distance keywords — hide from results until discipline field in DB
+_NON_RUNNING_KEYWORDS = [
+    "ski ", "ski-", "ски-альп", "splitboard", "skitour",
+    "bike", "mtb", "velo", "gravel",
+]
+
+
+def _is_running_distance(name: str) -> bool:
+    """Return False for non-running disciplines (bike, ski, etc.)."""
+    lower = name.lower()
+    return not any(kw in lower for kw in _NON_RUNNING_KEYWORDS)
+
 
 # === Pydantic schemas ===
 
@@ -197,6 +209,10 @@ async def list_races(db: Session = Depends(get_db)):
     races = repo.list_races()
     result = []
 
+    # Hide Almaty Marathon races for now (dirty data — cities instead of clubs)
+    HIDDEN_SOURCES = {"_am_kz"}
+    races = [r for r in races if not any(r.id.endswith(s) for s in HIDDEN_SOURCES)]
+
     for race in races:
         # Build editions from DB
         editions = []
@@ -214,6 +230,8 @@ async def list_races(db: Session = Depends(get_db)):
         if race.editions:
             latest_ed = max(race.editions, key=lambda e: e.year)
             for dist in latest_ed.distances:
+                if not _is_running_distance(dist.name):
+                    continue
                 # Check if GPX exists via catalog
                 has_gpx = _catalog.get_gpx_path(race.id, dist.name) is not None
                 distances.append(
@@ -270,6 +288,8 @@ async def get_race(race_id: str, db: Session = Depends(get_db)):
         latest_ed = max(race.editions, key=lambda e: e.year)
         total_finishers = repo.count_finishers(race_id, latest_ed.year)
         for dist in latest_ed.distances:
+            if not _is_running_distance(dist.name):
+                continue
             has_gpx = _catalog.get_gpx_path(race_id, dist.name) is not None
             distances.append(
                 RaceDistanceSchema(
@@ -304,6 +324,8 @@ async def get_results(race_id: str, year: int, db: Session = Depends(get_db)):
 
     result = []
     for dist in data.distances:
+        if not _is_running_distance(dist.distance_name):
+            continue
         stats = calculate_stats(dist.results)
         results_out = [
             RaceResultSchema(

@@ -58,20 +58,26 @@ class SeasonStatsResponse(BaseModel):
 async def get_season_stats(year: int, db: Session = Depends(get_db)):
     """Aggregate stats for a season: total runners, total clubs, top runners/clubs."""
 
-    # Base filter: results for this year, only finishers
+    # Hide Almaty Marathon races (dirty data — cities instead of clubs)
+    HIDDEN_SUFFIX = "_am_kz"
+
+    # Base filter: results for this year, only finishers, excluding hidden races
     base_filter = [
         RaceEdition.year == year,
         RaceResultDB.status.in_(_FINISHED_STATUSES),
+        ~Race.id.endswith(HIDDEN_SUFFIX),
     ]
     base_join = (
         select(RaceResultDB)
         .join(RaceDistance, RaceResultDB.distance_id == RaceDistance.id)
         .join(RaceEdition, RaceDistance.edition_id == RaceEdition.id)
+        .join(Race, RaceEdition.race_id == Race.id)
     )
 
     # Total unique races (editions) with results
     total_races = db.execute(
         select(func.count(distinct(RaceEdition.id)))
+        .join(Race, RaceEdition.race_id == Race.id)
         .join(RaceDistance, RaceDistance.edition_id == RaceEdition.id)
         .join(RaceResultDB, RaceResultDB.distance_id == RaceDistance.id)
         .where(*base_filter)
@@ -87,6 +93,7 @@ async def get_season_stats(year: int, db: Session = Depends(get_db)):
         select(func.count(distinct(RaceResultDB.runner_id)))
         .join(RaceDistance, RaceResultDB.distance_id == RaceDistance.id)
         .join(RaceEdition, RaceDistance.edition_id == RaceEdition.id)
+        .join(Race, RaceEdition.race_id == Race.id)
         .where(*base_filter, RaceResultDB.runner_id.isnot(None))
     ).scalar() or 0
 
@@ -95,6 +102,7 @@ async def get_season_stats(year: int, db: Session = Depends(get_db)):
         select(func.count(distinct(RaceResultDB.club)))
         .join(RaceDistance, RaceResultDB.distance_id == RaceDistance.id)
         .join(RaceEdition, RaceDistance.edition_id == RaceEdition.id)
+        .join(Race, RaceEdition.race_id == Race.id)
         .where(*base_filter, RaceResultDB.club.isnot(None), RaceResultDB.club != "")
     ).scalar() or 0
 
@@ -108,6 +116,7 @@ async def get_season_stats(year: int, db: Session = Depends(get_db)):
         )
         .join(RaceDistance, RaceResultDB.distance_id == RaceDistance.id)
         .join(RaceEdition, RaceDistance.edition_id == RaceEdition.id)
+        .join(Race, RaceEdition.race_id == Race.id)
         .join(Runner, RaceResultDB.runner_id == Runner.id)
         .where(*base_filter, RaceResultDB.runner_id.isnot(None))
         .group_by(RaceResultDB.runner_id, Runner.name, Runner.club)
@@ -133,6 +142,7 @@ async def get_season_stats(year: int, db: Session = Depends(get_db)):
         )
         .join(RaceDistance, RaceResultDB.distance_id == RaceDistance.id)
         .join(RaceEdition, RaceDistance.edition_id == RaceEdition.id)
+        .join(Race, RaceEdition.race_id == Race.id)
         .where(
             *base_filter,
             RaceResultDB.club.isnot(None),

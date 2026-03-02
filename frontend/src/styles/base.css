@@ -79,6 +79,19 @@ img {
   margin-bottom: 10px;
 }
 
+.page-eyebrow a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.page-eyebrow a:hover {
+  text-decoration: underline;
+}
+
+.page-eyebrow .eyebrow-road {
+  color: var(--accent-road);
+}
+
 h1 {
   font-size: clamp(28px, 4vw, 42px);
   font-weight: 900;
