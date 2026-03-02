@@ -9,8 +9,9 @@ import logging
 from pathlib import Path
 import sys
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings, PROJECT_ROOT
@@ -161,5 +162,15 @@ async def health_check():
 # === Static Files (Frontend SPA) ===
 _frontend_dist = PROJECT_ROOT / "frontend" / "dist"
 if _frontend_dist.is_dir():
-    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
-    logger.info(f"Serving frontend from {_frontend_dist}")
+    # Serve actual static files (JS, CSS, images, etc.)
+    app.mount("/assets", StaticFiles(directory=str(_frontend_dist / "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def spa_fallback(request: Request, full_path: str):
+        """SPA fallback: serve index.html for all non-API, non-file routes."""
+        file_path = _frontend_dist / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(_frontend_dist / "index.html")
+
+    logger.info(f"Serving frontend SPA from {_frontend_dist}")
