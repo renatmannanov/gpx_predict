@@ -16,14 +16,7 @@ from app.config import settings
 # Synchronous Engine (for existing code)
 # =============================================================================
 
-# Create engine based on database URL
-if settings.database_url.startswith("sqlite"):
-    engine = create_engine(
-        settings.database_url,
-        connect_args={"check_same_thread": False}
-    )
-else:
-    engine = create_engine(settings.database_url)
+engine = create_engine(settings.database_url)
 
 
 # Session factory
@@ -44,33 +37,21 @@ def get_db() -> Generator[Session, None, None]:
 # =============================================================================
 
 def _get_async_url(url: str) -> str:
-    """Convert sync database URL to async version."""
-    if url.startswith("sqlite:///"):
-        return url.replace("sqlite:///", "sqlite+aiosqlite:///")
-    elif url.startswith("postgresql://"):
+    """Convert sync PostgreSQL URL to async (asyncpg) version."""
+    if url.startswith("postgresql://"):
         return url.replace("postgresql://", "postgresql+asyncpg://")
     return url
 
 
-# Create async engine
 _async_url = _get_async_url(settings.database_url)
 
-if _async_url.startswith("sqlite"):
-    async_engine = create_async_engine(
-        _async_url,
-        connect_args={"check_same_thread": False}
-    )
-elif _async_url.startswith("postgresql"):
-    # PostgreSQL with connection pool settings
-    async_engine = create_async_engine(
-        _async_url,
-        pool_size=5,
-        max_overflow=10,
-        pool_timeout=30,
-        pool_recycle=1800,  # 30 minutes
-    )
-else:
-    async_engine = create_async_engine(_async_url)
+async_engine = create_async_engine(
+    _async_url,
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=1800,  # 30 minutes
+)
 
 # Async session factory
 AsyncSessionLocal = async_sessionmaker(

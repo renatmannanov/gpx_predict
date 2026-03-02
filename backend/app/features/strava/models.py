@@ -100,7 +100,7 @@ class StravaActivity(Base):
     suffer_score = Column(Integer, nullable=True)  # Relative effort
 
     # Splits sync flag
-    splits_synced = Column(Integer, default=0)  # Boolean as int for SQLite
+    splits_synced = Column(Integer, default=0)
 
     # Sync metadata
     synced_at = Column(DateTime, default=datetime.utcnow)
@@ -211,7 +211,7 @@ class StravaSyncStatus(Base):
     activities_with_splits = Column(Integer, default=0)  # Activities with splits synced
 
     # Status
-    sync_in_progress = Column(Integer, default=0)  # Boolean as int for SQLite
+    sync_in_progress = Column(Integer, default=0)
     initial_sync_complete = Column(Integer, default=0)  # Boolean: first full sync done
     last_error = Column(String(500), nullable=True)
 

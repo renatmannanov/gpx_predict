@@ -23,10 +23,9 @@ class Settings(BaseSettings):
     debug: bool = Field(default=False, description="Enable debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
 
-    # === Database ===
+    # === Database (PostgreSQL required) ===
     database_url: str = Field(
-        default="sqlite:///./app.db",
-        description="Database connection URL"
+        description="PostgreSQL connection URL. Must be set via DATABASE_URL env var."
     )
 
     # === CORS ===
