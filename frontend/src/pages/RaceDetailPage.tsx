@@ -160,7 +160,7 @@ export default function RaceDetailPage() {
       )}
 
       {activeResult && (
-        <DistanceResults data={activeResult} />
+        <DistanceResults data={activeResult} raceId={raceId} />
       )}
 
       {sortedResults && sortedResults.length === 0 && (

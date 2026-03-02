@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { DistanceResults as DistanceResultsType } from '../../types/races';
 import StatsCard from './StatsCard';
 import TimeHistogram from './TimeHistogram';
@@ -6,17 +6,21 @@ import GenderChart from './GenderChart';
 import CategoryBars from './CategoryBars';
 import ClubRanking from './ClubRanking';
 import ResultsTable from './ResultsTable';
+import ComparePanel from './ComparePanel';
 import './DistanceResults.css';
 
 interface DistanceResultsProps {
   data: DistanceResultsType;
+  raceId?: string;
 }
 
 type TabId = 'results' | 'clubs';
 
-export default function DistanceResults({ data }: DistanceResultsProps) {
+export default function DistanceResults({ data, raceId }: DistanceResultsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('results');
   const [filterQuery, setFilterQuery] = useState('');
+  const [selectedForCompare, setSelectedForCompare] = useState<Set<number>>(new Set());
+  const [showCompare, setShowCompare] = useState(false);
 
   const subtitle = [
     data.distance_km != null && data.distance_km > 0 && `${data.distance_km} км`,
@@ -29,6 +33,49 @@ export default function DistanceResults({ data }: DistanceResultsProps) {
 
   const finisherCount = stats.finishers;
   const clubCount = stats.club_stats?.length ?? 0;
+
+  const handleToggleCompare = useCallback((runnerId: number) => {
+    setSelectedForCompare((prev) => {
+      const next = new Set(prev);
+      if (next.has(runnerId)) {
+        next.delete(runnerId);
+      } else {
+        next.add(runnerId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleRemoveFromCompare = useCallback((runnerId: number) => {
+    setSelectedForCompare((prev) => {
+      const next = new Set(prev);
+      next.delete(runnerId);
+      if (next.size < 2) setShowCompare(false);
+      return next;
+    });
+  }, []);
+
+  const handleClearCompare = useCallback(() => {
+    setSelectedForCompare(new Set());
+    setShowCompare(false);
+  }, []);
+
+  // Reset compare when distance changes
+  useEffect(() => {
+    setSelectedForCompare(new Set());
+    setShowCompare(false);
+  }, [data.distance_name]);
+
+  // Build name map for selected runners
+  const selectedNames = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const r of data.results) {
+      if (r.runner_id && selectedForCompare.has(r.runner_id)) {
+        map.set(r.runner_id, r.name);
+      }
+    }
+    return map;
+  }, [data.results, selectedForCompare]);
 
   return (
     <section className="distance-section">
@@ -101,7 +148,12 @@ export default function DistanceResults({ data }: DistanceResultsProps) {
       </div>
 
       {activeTab === 'results' && (
-        <ResultsTable results={data.results} externalFilter={filterQuery} />
+        <ResultsTable
+          results={data.results}
+          externalFilter={filterQuery}
+          selectedForCompare={selectedForCompare}
+          onToggleCompare={handleToggleCompare}
+        />
       )}
       {activeTab === 'clubs' && hasClubs && (
         <ClubRanking
@@ -109,6 +161,39 @@ export default function DistanceResults({ data }: DistanceResultsProps) {
           results={data.results}
           totalFinishers={finisherCount}
           filterQuery={filterQuery}
+        />
+      )}
+
+      {/* Compare sticky bar */}
+      {selectedForCompare.size >= 2 && !showCompare && (
+        <div className="compare-bar">
+          <span className="compare-bar-text">
+            Выбрано <span className="compare-bar-count">{selectedForCompare.size}</span> участника
+          </span>
+          <button
+            className="btn btn-fill"
+            onClick={() => setShowCompare(true)}
+          >
+            Сравнить
+          </button>
+          <button
+            className="btn btn-ghost compare-bar-reset"
+            onClick={handleClearCompare}
+          >
+            Сбросить
+          </button>
+        </div>
+      )}
+
+      {/* Compare panel */}
+      {showCompare && raceId && (
+        <ComparePanel
+          raceId={raceId}
+          distanceName={data.distance_name}
+          selectedRunnerIds={[...selectedForCompare]}
+          selectedNames={selectedNames}
+          onClose={() => setShowCompare(false)}
+          onRemove={handleRemoveFromCompare}
         />
       )}
     </section>

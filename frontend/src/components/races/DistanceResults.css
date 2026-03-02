@@ -132,6 +132,53 @@
   color: var(--text);
 }
 
+/* Compare sticky bar */
+.compare-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 20px;
+  margin: 0 -40px;
+  background: rgba(37, 38, 40, 0.92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  animation: compare-bar-in 0.2s ease;
+}
+
+.compare-bar-text {
+  font-size: 13px;
+  color: var(--dim);
+}
+
+.compare-bar-count {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.compare-bar .btn {
+  padding: 8px 24px;
+  font-size: 13px;
+}
+
+.compare-bar-reset {
+  padding: 8px 16px !important;
+  font-size: 12px !important;
+  opacity: 0.7;
+}
+
+.compare-bar-reset:hover {
+  opacity: 1;
+}
+
+@keyframes compare-bar-in {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (max-width: 600px) {
   .distance-toolbar {
     flex-direction: column;
@@ -141,5 +188,10 @@
 
   .toolbar-filter-wrap {
     max-width: 100%;
+  }
+
+  .compare-bar {
+    margin: 0 -20px;
+    padding: 12px 16px;
   }
 }

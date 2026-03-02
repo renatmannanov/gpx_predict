@@ -15,6 +15,44 @@
   color: var(--accent);
 }
 
+/* Compare checkbox — custom styled */
+.rt-col-cmp {
+  width: 32px;
+  text-align: center;
+}
+
+.rt-cmp-check {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--dim);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.15s, background 0.15s;
+  vertical-align: middle;
+}
+
+.rt-cmp-check:hover {
+  border-color: var(--accent);
+}
+
+.rt-cmp-check:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.rt-cmp-check:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.row-selected {
+  background: rgba(232, 98, 42, 0.06);
+}
+
 /* DNF/DNS */
 .dnf-separator-row td {
   border-bottom: none;

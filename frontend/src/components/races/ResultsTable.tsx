@@ -7,9 +7,13 @@ import './ResultsTable.css';
 const INITIAL_LIMIT = 50;
 const FINISHED_STATUSES = ['finished', 'over_time_limit'];
 
+const MAX_COMPARE = 4;
+
 interface ResultsTableProps {
   results: RaceResult[];
   externalFilter?: string;
+  selectedForCompare?: Set<number>;
+  onToggleCompare?: (runnerId: number) => void;
 }
 
 function isDnfDns(r: RaceResult): boolean {
@@ -25,7 +29,8 @@ function getStatusLabel(status: string): string {
   }
 }
 
-export default function ResultsTable({ results, externalFilter }: ResultsTableProps) {
+export default function ResultsTable({ results, externalFilter, selectedForCompare, onToggleCompare }: ResultsTableProps) {
+  const compareMode = !!(selectedForCompare && onToggleCompare);
   const [expanded, setExpanded] = useState(false);
 
   const queryLower = (externalFilter || '').toLowerCase().trim();
@@ -70,6 +75,7 @@ export default function ResultsTable({ results, externalFilter }: ResultsTablePr
       <table className="data-table results-table">
         <thead>
           <tr>
+            {compareMode && <th className="rt-col-cmp" />}
             <th className="dt-col-rank">#</th>
             <th>Имя</th>
             <th className="rt-col-time">Время</th>
@@ -80,7 +86,20 @@ export default function ResultsTable({ results, externalFilter }: ResultsTablePr
         </thead>
         <tbody>
           {visibleFinishers.map((r, i) => (
-            <tr key={i}>
+            <tr key={i} className={compareMode && r.runner_id && selectedForCompare!.has(r.runner_id) ? 'row-selected' : ''}>
+              {compareMode && (
+                <td className="rt-col-cmp">
+                  {r.runner_id && (
+                    <input
+                      type="checkbox"
+                      className="rt-cmp-check"
+                      checked={selectedForCompare!.has(r.runner_id)}
+                      disabled={!selectedForCompare!.has(r.runner_id) && selectedForCompare!.size >= MAX_COMPARE}
+                      onChange={() => onToggleCompare!(r.runner_id!)}
+                    />
+                  )}
+                </td>
+              )}
               <td className={`dt-col-rank ${getMedalClass(r.place)}`}>
                 {r.place}
               </td>
@@ -109,12 +128,13 @@ export default function ResultsTable({ results, externalFilter }: ResultsTablePr
           {filteredDnf.length > 0 && (expanded || !hasMore) && (
             <>
               <tr className="dnf-separator-row">
-                <td colSpan={6} className="dnf-separator">
+                <td colSpan={compareMode ? 7 : 6} className="dnf-separator">
                   DNF / DNS ({filteredDnf.length})
                 </td>
               </tr>
               {filteredDnf.map((r, i) => (
                 <tr key={`dnf-${i}`} className="row-dnf">
+                  {compareMode && <td className="rt-col-cmp" />}
                   <td className="dt-col-rank">—</td>
                   <td className="dt-col-name">
                     <span className="avatar">{getInitials(r.name)}</span>
