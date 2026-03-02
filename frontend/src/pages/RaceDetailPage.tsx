@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchRace, fetchResults } from '../api/races';
 import { getRaceCategory, getRaceCategoryLabel } from '../types/races';
@@ -9,6 +9,8 @@ import './RaceDetailPage.css';
 
 export default function RaceDetailPage() {
   const { raceId } = useParams<{ raceId: string }>();
+  const [searchParams] = useSearchParams();
+  const distanceFromUrl = searchParams.get('distance');
 
   const {
     data: race,
@@ -53,14 +55,21 @@ export default function RaceDetailPage() {
     return [...results].sort((a, b) => (b.distance_km ?? 0) - (a.distance_km ?? 0));
   }, [results]);
 
-  // Auto-select first distance when results load or year changes
+  // Auto-select distance: prefer URL param, then first
   useEffect(() => {
     if (sortedResults && sortedResults.length > 0) {
+      if (distanceFromUrl) {
+        const match = sortedResults.find((r) => r.distance_name === distanceFromUrl);
+        if (match) {
+          setSelectedDistance(match.distance_name);
+          return;
+        }
+      }
       setSelectedDistance(sortedResults[0].distance_name);
     } else {
       setSelectedDistance(null);
     }
-  }, [sortedResults]);
+  }, [sortedResults, distanceFromUrl]);
 
   const handleYearChange = useCallback((year: number) => {
     setSelectedYear(year);

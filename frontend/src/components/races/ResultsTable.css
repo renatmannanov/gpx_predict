@@ -4,6 +4,17 @@
 .results-table .rt-col-gender { width: 60px; }
 .results-table .rt-col-club { width: 160px; }
 
+/* Name link */
+.rt-name-link {
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.rt-name-link:hover {
+  color: var(--accent);
+}
+
 /* DNF/DNS */
 .dnf-separator-row td {
   border-bottom: none;

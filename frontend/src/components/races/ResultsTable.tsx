@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import type { RaceResult } from '../../types/races';
 import './DataTable.css';
 import './ResultsTable.css';
@@ -86,7 +87,13 @@ export default function ResultsTable({ results, externalFilter }: ResultsTablePr
               <td className="dt-col-name">
                 <div className="dt-col-name-inner">
                   <span className="avatar">{getInitials(r.name)}</span>
-                  <span>{highlightMatch(r.name, queryLower)}</span>
+                  {r.runner_id ? (
+                    <Link to={`/runners/${r.runner_id}`} className="rt-name-link">
+                      {highlightMatch(r.name, queryLower)}
+                    </Link>
+                  ) : (
+                    <span>{highlightMatch(r.name, queryLower)}</span>
+                  )}
                 </div>
               </td>
               <td className="dt-col-num">{r.time_formatted}</td>
@@ -111,7 +118,13 @@ export default function ResultsTable({ results, externalFilter }: ResultsTablePr
                   <td className="dt-col-rank">—</td>
                   <td className="dt-col-name">
                     <span className="avatar">{getInitials(r.name)}</span>
-                    <span>{highlightMatch(r.name, queryLower)}</span>
+                    {r.runner_id ? (
+                      <Link to={`/runners/${r.runner_id}`} className="rt-name-link">
+                        {highlightMatch(r.name, queryLower)}
+                      </Link>
+                    ) : (
+                      <span>{highlightMatch(r.name, queryLower)}</span>
+                    )}
                   </td>
                   <td className="dt-col-num rt-col-status">{getStatusLabel(r.status)}</td>
                   <td className="dt-col-dim">{r.category || '—'}</td>

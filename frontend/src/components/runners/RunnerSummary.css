@@ -1,0 +1,17 @@
+.runner-header {
+  margin-bottom: 40px;
+}
+
+.runner-header h1 {
+  margin-bottom: 4px;
+}
+
+.runner-subtitle {
+  font-size: 14px;
+  color: var(--dim);
+  margin-bottom: 24px;
+}
+
+.runner-stats {
+  margin-bottom: 0;
+}

@@ -1,0 +1,30 @@
+.runner-page .back-link {
+  margin-bottom: 24px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.runner-results {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.runner-year-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--dim);
+  letter-spacing: 0.5px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.runner-year-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

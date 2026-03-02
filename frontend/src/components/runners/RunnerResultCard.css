@@ -1,0 +1,73 @@
+.rrc {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  transition: background 0.15s;
+}
+
+.rrc:hover {
+  background: var(--card-hover);
+}
+
+.rrc-top {
+  margin-bottom: 6px;
+}
+
+.rrc-race {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.rrc-race:hover {
+  color: var(--accent);
+}
+
+.rrc-dist {
+  font-weight: 400;
+  color: var(--dim);
+}
+
+.rrc-mid {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.rrc-time {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.rrc-sep {
+  color: var(--dim);
+}
+
+.rrc-place {
+  color: var(--dim);
+}
+
+.rrc-dnf {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--dim);
+}
+
+.rrc-diff {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rrc-diff-up {
+  color: var(--success);
+}
+
+.rrc-diff-down {
+  color: var(--danger);
+}

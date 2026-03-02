@@ -108,6 +108,41 @@ export interface SearchResult {
   category_total?: number | null;
 }
 
+// === Runner profile ===
+
+export interface RunnerProfile {
+  id: number;
+  name: string;
+  name_normalized: string;
+  club: string | null;
+  category: string | null;
+  gender: string | null;
+}
+
+export interface RunnerRaceResult {
+  race_id: string;
+  race_name: string;
+  distance_name: string;
+  distance_km: number | null;
+  year: number;
+  time_s: number;
+  time_formatted: string;
+  place: number;
+  total_finishers: number;
+  percentile: number;
+  category: string | null;
+  club: string | null;
+  status: string;
+}
+
+export interface RunnerProfileResponse {
+  profile: RunnerProfile;
+  results: RunnerRaceResult[];
+  total_races: number;
+  years_active: number;
+  median_percentile: number | null;
+}
+
 // === Хелперы ===
 
 export type RaceCategory = 'trail' | 'road' | 'other';
