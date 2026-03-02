@@ -1,0 +1,43 @@
+.races-preview {
+  padding: 0 40px 64px;
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.races-preview .sec-title {
+  font-size: 14px;
+  letter-spacing: 1.2px;
+}
+
+/* Two-col: races left, clubs right */
+.rp-layout {
+  display: block;
+}
+
+.rp-layout.rp-has-sidebar {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  align-items: start;
+}
+
+.races-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 860px) {
+  .races-preview {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .rp-layout.rp-has-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .races-preview-grid {
+    grid-template-columns: 1fr;
+  }
+}

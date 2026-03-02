@@ -1,0 +1,258 @@
+races:
+- id: ak_bulak_night_race_kz
+  name: Ak Bulak Night Race
+  file: races/ak_bulak_night_race_kz.yaml
+  editions:
+  - year: 2026
+    url: https://live.myrace.info/?f=bases/kz/2026/akbulaknr2026/akbulaknight2026.clax
+    status: parsed
+- id: burabay_ice_kz
+  name: Burabay Ice
+  file: races/burabay_ice_kz.yaml
+  editions:
+  - year: 2026
+    url: https://live.myrace.info/?f=bases/kz/2026/burabayice2026/burabayice2026.clax
+    status: parsed
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/burabayice2025/burabayice2025.clax
+    status: parsed
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/burabayice2024/burabayice2024.clax
+    status: parsed
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/burabayice2023/burabayice2023.clax
+    status: parsed
+- id: amangeldy_race_kz
+  name: Amangeldy Race
+  file: races/amangeldy_race_kz.yaml
+  editions:
+  - year: 2026
+    url: https://live.myrace.info/?f=bases/kz/2026/amangeldyrace2026/amrace2026.clax
+    status: parsed
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/amangeldy2025/amrace2025.clax
+    status: parsed
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/amangeldyrace2024/amrace2024.clax
+    status: parsed
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/amangeldyrace2023/amangeldy2023.clax
+    status: parsed
+  - year: 2022
+    url: https://live.myrace.info/?f=bases/kz/2022/AR2022/AmangeldyRace2022.clax
+    status: parsed
+  - year: 2021
+    status: no_results
+- id: red_bull_400_kz
+  name: Red Bull 400
+  file: races/red_bull_400_kz.yaml
+  editions:
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/rb400alm2025/rb400alm2025.clax
+    status: parsed
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/redbull400/rb400.clax
+    status: parsed
+  - year: 2021
+    status: no_results
+- id: salomon_trail_kz
+  name: Salomon Trail
+  file: races/salomon_trail_kz.yaml
+  editions:
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/salomontrail2025/salomontrail2025.clax
+    status: parsed
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/salomontrail2024/salomontrail2024.clax
+    status: parsed
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/solomontrail2023/solomontrail2023.clax
+    status: parsed
+  - year: 2022
+    url: https://live.myrace.info/?f=bases/kz/2022/Yaktrail2022/SYT2022.clax
+    status: parsed
+- id: zerenda_half_marathon_kz
+  name: Zerenda Half Marathon
+  file: races/zerenda_half_marathon_kz.yaml
+  editions:
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/zerendahm2025/zerendahm2025.clax
+    status: parsed
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/zerendahm2024/zerendahm2024.clax
+    status: parsed
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/zerenda2023/zerenda2023.clax
+    status: parsed
+  - year: 2022
+    url: https://live.myrace.info/?f=bases/kz/2022/Zerendahm2022/ZerendaHM.clax
+    status: parsed
+- id: monster_of_shymbulak_kz
+  name: Monster of Shymbulak
+  file: races/monster_of_shymbulak_kz.yaml
+  editions:
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/monsterchimbulak2025/monsterchimbulak2025.clax
+    status: parsed
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/monofshym2024/monofshy2024.clax
+    status: parsed
+- id: irbis_race_kz
+  name: Irbis Race
+  file: races/irbis_race_kz.yaml
+  editions:
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/irbis2025/air2025.clax
+    status: parsed
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/cir2024/cir2024.clax
+    status: parsed
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/irbisrace2023/irbisrace2023.clax
+    status: parsed
+  - year: 2022
+    url: https://live.myrace.info/?f=bases/kz/2022/Irbisrace2022/irbisrace2022.clax
+    status: parsed
+  - year: 2021
+    url: https://live.myrace.info/?f=bases/kz/2021/irbisrace2021/ir2021.clax
+    status: parsed
+- id: aqbura_bay_trail_kz
+  name: Aqbura Bay Trail
+  file: races/aqbura_bay_trail_kz.yaml
+  editions:
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/aqburabay2025/aqburabay2025.clax
+    status: parsed
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/aqburabay2024/aqburabay2024.clax
+    status: parsed
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/aqburabaytrail2023/aqburabaytrail2023.clax
+    status: parsed
+  - year: 2022
+    url: https://live.myrace.info/?f=bases/kz/2022/aqburabay2/Aqburabaytrail2.clax
+    status: parsed
+- id: karkyra_ultra_kz
+  name: Karkyra Ultra
+  file: races/karkyra_ultra_kz.yaml
+  editions:
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/karkyraultra2025/karkyraultra2025.clax
+    status: parsed
+- id: tengri_ultra_kz
+  name: Tengri Ultra
+  file: races/tengri_ultra_kz.yaml
+  editions:
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/tengriultra2025/tu2025.clax
+    status: parsed
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/tengriultra2024/tu2024.clax
+    status: parsed
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/adrtengriultra2023/atu2023.clax
+    status: parsed
+  - year: 2022
+    url: https://live.myrace.info/?f=bases/kz/2022/TU2022/TengriUltra2022.clax
+    status: parsed
+  - year: 2021
+    url: https://live.myrace.info/?f=bases/kz/2021/tu2021/tu2021.clax
+    status: parsed
+- id: backyard_ultra_kz
+  name: Backyard Ultra
+  file: races/backyard_ultra_kz.yaml
+  editions:
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/backyard2025/backyard2025.clax
+    status: parsed
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/backyard2024/backyard2024.clax
+    status: parsed
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/byu2023/backyard20203.clax
+    status: parsed
+  - year: 2022
+    url: https://live.myrace.info/?f=bases/kz/2022/BYUltra2022/BackYardUltra2022.clax
+    status: parsed
+- id: alpine_race_kz
+  name: Alpine Race
+  file: races/alpine_race_kz.yaml
+  editions:
+  - year: 2026
+    date: '2026-03-01'
+    url: https://live.myrace.info/?f=bases/kz/2026/alpinerace2026/alpinrace2026.clax
+    status: parsed
+  - year: 2025
+    url: https://live.myrace.info/?f=bases/kz/2025/alpinrace2025/alpinrace2025.clax
+    status: parsed
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/alpinrace2024/alpra2024.clax
+    status: parsed
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/alpinerace2023/alpinerace2023.clax
+    status: parsed
+  - year: 2021
+    status: no_results
+- id: tun_run_kz
+  name: Tun Run
+  file: races/tun_run_kz.yaml
+  editions:
+  - year: 2024
+    url: https://live.myrace.info/?f=bases/kz/2024/tunrun2024jr/tunrun2024jr.clax
+    status: parsed
+- id: mount_fest_skyrunning_kz
+  name: Mount Fest Skyrunning
+  file: races/mount_fest_skyrunning_kz.yaml
+  editions:
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/skyrunning2023/skyrunning2023.clax
+    status: parsed
+- id: kosmos_uphill_kz
+  name: Kosmos UpHill
+  file: races/kosmos_uphill_kz.yaml
+  editions:
+  - year: 2023
+    url: https://live.myrace.info/?f=bases/kz/2023/kosmosuphill2023/kosmosuphill2023.clax
+    status: parsed
+- id: winter_run_am_kz
+  name: Winter Run
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/winter_run_2025
+    status: parsed
+- id: almaty_marathon_am_kz
+  name: Almaty Marathon
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/almaty_marathon_2025
+    status: parsed
+- id: summer_relay_am_kz
+  name: Summer Relay
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/summer_relay_2025
+    status: parsed
+- id: tau_jarys_am_kz
+  name: Tau Jarys
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/tau_jarys_2025
+    status: parsed
+- id: almaty_half_marathon_am_kz
+  name: Almaty Half Marathon
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/almaty_half_marathon_2025
+    status: parsed
+- id: almaty_copa_run_am_kz
+  name: Almaty Copa Run
+  source: almaty-marathon
+  editions:
+  - year: 2025
+    url: https://almaty-marathon.kz/ru/results/almaty_copa_run_2025
+    status: parsed

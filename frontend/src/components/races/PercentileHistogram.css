@@ -1,0 +1,14 @@
+.pct-histogram {
+  margin-bottom: 32px;
+}
+
+.pct-histogram .histogram-label {
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .pct-histogram .histogram-label {
+    flex: 0 0 90px;
+    font-size: 12px;
+  }
+}

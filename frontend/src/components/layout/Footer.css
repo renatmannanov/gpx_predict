@@ -1,0 +1,31 @@
+.site-footer {
+  border-top: 1px solid var(--border);
+  padding: 24px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.footer-logo {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--dim);
+}
+
+.footer-logo em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.footer-copy {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+@media (max-width: 860px) {
+  .site-footer {
+    padding: 20px;
+  }
+}

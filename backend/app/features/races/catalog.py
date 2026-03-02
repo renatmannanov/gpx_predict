@@ -114,7 +114,11 @@ class RaceCatalog:
         race = self.get_race(race_id)
         if not race:
             return None
-        return next((d for d in race.distances if d.id == distance_id), None)
+        target = distance_id.lower()
+        return next(
+            (d for d in race.distances if d.id.lower() == target or d.name.lower() == target),
+            None,
+        )
 
     def get_gpx_path(self, race_id: str, distance_id: str) -> Path | None:
         """Full path to distance GPX file."""

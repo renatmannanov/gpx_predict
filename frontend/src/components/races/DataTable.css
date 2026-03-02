@@ -1,0 +1,111 @@
+/* Shared table styles for ResultsTable and ClubRanking */
+
+.data-table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table thead th {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.data-table tbody tr {
+  transition: background 0.1s;
+}
+
+.data-table tbody tr:hover {
+  background: var(--card);
+}
+
+.data-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Column: # (rank/place) */
+td.dt-col-rank {
+  width: 1%;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+/* Column: name (with avatar) — use inner wrapper for flex to avoid border misalignment */
+.dt-col-name {
+  font-weight: 600;
+  white-space: normal;
+  word-break: break-word;
+  max-width: 300px;
+}
+
+.dt-col-name-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+}
+
+/* Column: numeric values (time, count) */
+.dt-col-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* Column: secondary info (dim text) */
+.dt-col-dim {
+  color: var(--dim);
+}
+
+/* Right-aligned columns */
+.rt-col-right {
+  text-align: right !important;
+}
+
+/* Filter empty state */
+.data-table-empty {
+  padding: 24px 14px;
+  text-align: center;
+  color: var(--dim);
+  font-size: 14px;
+}
+
+/* Filter highlight */
+.filter-highlight {
+  background: rgba(232, 98, 42, 0.25);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+@media (max-width: 600px) {
+  .data-table {
+    font-size: 13px;
+  }
+
+  .data-table tbody td {
+    padding: 10px 10px;
+  }
+
+  .data-table thead th {
+    padding: 10px 10px;
+  }
+
+  .dt-col-name .avatar {
+    display: none;
+  }
+}

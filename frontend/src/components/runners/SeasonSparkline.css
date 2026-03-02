@@ -1,0 +1,101 @@
+.section {
+  margin-bottom: 28px;
+}
+
+.sh {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.sh-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.sh-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.sh-badge-up {
+  background: rgba(60, 199, 122, 0.1);
+  color: #3CC77A;
+}
+
+.sh-badge-dn {
+  background: rgba(232, 98, 42, 0.1);
+  color: var(--accent);
+}
+
+.spark-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  position: relative;
+}
+
+.spark-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 85% 50%, rgba(232, 98, 42, 0.06), transparent 60%);
+  pointer-events: none;
+}
+
+.spark-wrap {
+  position: relative;
+  width: 100%;
+  height: 80px;
+}
+
+.spark-years {
+  position: relative;
+  height: 18px;
+  margin-top: 6px;
+  padding: 0 16px;
+}
+
+.spark-year {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(122, 131, 148, 0.6);
+}
+
+.spark-tip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(18, 20, 22, 0.98);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 7px 11px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.spark-tip b {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.spark-tip span {
+  color: var(--dim);
+}
+
+.spark-delta-up {
+  color: #3CC77A;
+}
+
+.spark-delta-dn {
+  color: var(--accent);
+}

@@ -1,0 +1,94 @@
+.gender-chart {
+  margin-bottom: 32px;
+}
+
+.gender-chart-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+  margin-bottom: 16px;
+}
+
+.gender-chart-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.gender-donut {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.gender-donut-hole {
+  position: absolute;
+  inset: 40px;
+  background: var(--bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gender-donut-total {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.gender-legend {
+  display: flex;
+  gap: 20px;
+}
+
+.gender-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.gender-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.gender-legend-label {
+  font-weight: 600;
+}
+
+.gender-legend-value {
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 600px) {
+  .gender-donut {
+    width: 140px;
+    height: 140px;
+  }
+
+  .gender-donut-hole {
+    inset: 28px;
+  }
+
+  .gender-donut-total {
+    font-size: 18px;
+  }
+
+  .gender-legend {
+    gap: 16px;
+  }
+
+  .gender-legend-item {
+    font-size: 13px;
+  }
+}

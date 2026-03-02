@@ -21,6 +21,9 @@ class RaceResult:
     birth_year: int | None  # 1988
     nationality: str | None  # "KAZ"
     over_time_limit: bool = False  # hd="1" in CLAX
+    status: str = "finished"  # "finished" | "dnf" | "dns" | "dsq" | "over_time_limit"
+    name_normalized: str | None = None  # "arman kenzhin" (sorted, lowercase)
+    runner_id: int | None = None  # FK to runners table
 
 
 @dataclass
@@ -35,6 +38,45 @@ class TimeBucket:
 
 
 @dataclass
+class PercentileBucket:
+    """Percentile distribution bucket (matches PercentileBadge levels)."""
+
+    label: str  # "top-10%"
+    level: str  # "elite" | "good" | "mid" | "below" | "low"
+    min_pct: int  # 0
+    max_pct: int  # 10
+    count: int
+    percent: float  # share of total finishers
+    time_range: str = ""  # "< 45:30" or "1:02:00 – 1:25:00"
+
+
+@dataclass
+class GenderDistribution:
+    """Gender breakdown."""
+    gender: str
+    count: int
+    percent: float
+
+
+@dataclass
+class CategoryDistribution:
+    """Category breakdown."""
+    category: str
+    count: int
+    percent: float
+
+
+@dataclass
+class ClubStats:
+    """Club performance in a distance."""
+    club: str
+    count: int
+    best_time_s: int
+    best_time: str
+    avg_percentile: float
+
+
+@dataclass
 class RaceStats:
     """Aggregate statistics for a distance."""
 
@@ -45,6 +87,13 @@ class RaceStats:
     p25_time_s: int  # top-25% (fast)
     p75_time_s: int  # top-75% (slow)
     time_buckets: list[TimeBucket] = field(default_factory=list)
+    percentile_buckets: list[PercentileBucket] = field(default_factory=list)
+    gender_distribution: list[GenderDistribution] = field(default_factory=list)
+    category_distribution: list[CategoryDistribution] = field(default_factory=list)
+    club_stats: list[ClubStats] = field(default_factory=list)
+    total_participants: int = 0
+    dnf_count: int = 0
+    dns_count: int = 0
 
 
 @dataclass

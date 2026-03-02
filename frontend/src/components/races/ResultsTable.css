@@ -1,0 +1,125 @@
+/* ResultsTable-specific column widths */
+.results-table .rt-col-cat { width: 70px; }
+.results-table .rt-col-gender { width: 60px; }
+.results-table .rt-col-club { width: 140px; }
+.results-table .rt-col-time { width: 90px; }
+.results-table .rt-col-pct { width: 1%; }
+
+/* Bib number */
+.results-table .rt-col-bib { width: 50px; }
+
+/* Club cell — truncate long names */
+.rt-col-club-cell {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Percentile colors (5 levels matching PercentileBadge) */
+.pct-green { color: #3CC77A; }
+.pct-teal { color: #4adec8; }
+.pct-yellow { color: #fbbf24; }
+.pct-orange { color: var(--accent); }
+/* .pct-dim already in ClubRanking.css */
+
+/* Name link */
+.rt-name-link {
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.rt-name-link:hover {
+  color: var(--accent);
+}
+
+/* Compare checkbox — custom styled */
+.rt-col-cmp {
+  width: 32px;
+  text-align: center;
+}
+
+.rt-cmp-check {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--dim);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.15s, background 0.15s;
+  vertical-align: middle;
+}
+
+.rt-cmp-check:hover {
+  border-color: var(--accent);
+}
+
+.rt-cmp-check:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.rt-cmp-check:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.row-selected {
+  background: rgba(232, 98, 42, 0.06);
+}
+
+/* DNF/DNS */
+.dnf-separator-row td {
+  border-bottom: none;
+}
+
+.dnf-separator {
+  padding: 16px 14px 8px !important;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+  border-top: 1px solid var(--border);
+}
+
+.row-dnf td {
+  color: var(--dim);
+}
+
+.row-dnf .dt-col-name {
+  color: var(--dim);
+}
+
+.rt-col-status {
+  font-weight: 700;
+}
+
+.results-show-all {
+  display: block;
+  margin: 24px auto 0;
+}
+
+/* Mobile: hide secondary columns */
+@media (max-width: 600px) {
+  .results-table .rt-col-bib,
+  .results-table .rt-col-cat,
+  .results-table .rt-col-gender,
+  .results-table .rt-col-club,
+  .results-table .rt-col-pct,
+  .results-table thead .rt-col-bib,
+  .results-table thead .rt-col-cat,
+  .results-table thead .rt-col-gender,
+  .results-table thead .rt-col-club,
+  .results-table thead .rt-col-pct {
+    display: none;
+  }
+
+  .rt-col-club-cell {
+    display: none;
+  }
+}

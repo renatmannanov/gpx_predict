@@ -1,0 +1,32 @@
+.pct-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.pct-elite {
+  background: rgba(60, 199, 122, 0.18);
+  color: #3CC77A;
+}
+
+.pct-good {
+  background: rgba(74, 222, 200, 0.12);
+  color: #4adec8;
+}
+
+.pct-mid {
+  background: rgba(214, 188, 72, 0.12);
+  color: #d6bc48;
+}
+
+.pct-below {
+  background: rgba(232, 98, 42, 0.12);
+  color: var(--accent);
+}
+
+.pct-low {
+  background: rgba(122, 131, 148, 0.12);
+  color: var(--dim);
+}

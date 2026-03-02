@@ -1,0 +1,133 @@
+.season-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.season-box-head {
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sbox-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.sbox-year {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* Year selector — flex layout: [arrow] [scrollable years] [arrow] */
+.season-years-wrap {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Arrow buttons — accent style like sec-link arrows */
+.syear-arrow {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 14px 10px;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+.syear-arrow:hover {
+  opacity: 1;
+}
+
+.season-years {
+  display: flex;
+  gap: 4px;
+  padding: 14px 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  min-width: 0;
+}
+
+.season-years::-webkit-scrollbar {
+  display: none;
+}
+
+.season-year-btn {
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.season-year-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.season-year-btn.active {
+  background: rgba(232, 98, 42, 0.15);
+  color: var(--accent);
+}
+
+.season-nums {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+
+.snum {
+  padding: 28px;
+  border-right: 1px solid var(--border);
+}
+
+.snum:last-child {
+  border-right: none;
+}
+
+.snum-val {
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.snum-val.accent {
+  color: var(--accent);
+}
+
+.snum-label {
+  font-size: 14px;
+  color: var(--dim);
+}
+
+.season-box-footer {
+  padding: 18px 28px;
+  text-align: right;
+}
+
+.season-box-footer .sec-link {
+  font-size: 15px;
+  font-weight: 600;
+}

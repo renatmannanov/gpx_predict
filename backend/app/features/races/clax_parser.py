@@ -153,9 +153,7 @@ class ClaxParser:
             bib = e.get("d")
             if not bib:
                 continue
-            # Skip DNS (np="1" = non-partant)
-            if e.get("np") == "1":
-                continue
+            is_dns = e.get("np") == "1"  # non-partant = DNS
             participants[bib] = {
                 "name": e.get("n", ""),
                 "gender": e.get("x"),
@@ -164,6 +162,7 @@ class ClaxParser:
                 "club": e.get("c"),
                 "birth_year": _safe_int(e.get("a")),
                 "nationality": e.get("na"),
+                "is_dns": is_dns,
             }
         return participants
 
@@ -190,13 +189,18 @@ class ClaxParser:
         results_map: dict[str, dict],
         courses: dict[str, float | None],
     ) -> list[RaceDistanceResults]:
-        """Group participants by distance, merge with results, compute places."""
-        # Group by distance name
-        by_distance: dict[str, list[tuple[str, dict, dict]]] = {}
+        """Group participants by distance, merge with results, compute places.
+
+        Handles DNS/DNF participants:
+        - DNS (is_dns=True): saved with status="dns", time=0, place=0
+        - DNF (registered but no result time): saved with status="dnf", time=0, place=0
+        - Over time limit (hd="1"): saved with status="over_time_limit"
+        - Normal finish: status="finished"
+        """
+        # Group by distance name — include ALL participants (with or without results)
+        by_distance: dict[str, list[tuple[str, dict, dict | None]]] = {}
         for bib, pdata in participants.items():
-            rdata = results_map.get(bib)
-            if rdata is None:
-                continue  # no result for this participant
+            rdata = results_map.get(bib)  # None for DNS/DNF
             dist_name = pdata["distance"]
             if dist_name not in by_distance:
                 by_distance[dist_name] = []
@@ -212,15 +216,23 @@ class ClaxParser:
 
         distances: list[RaceDistanceResults] = []
         for dist_name, entries in sorted(by_distance.items()):
-            # Sort by time to compute places
-            entries.sort(key=lambda x: x[2]["time_seconds"])
+            # Separate finishers from DNS/DNF
+            finishers = [(b, p, r) for b, p, r in entries if r is not None and not p.get("is_dns")]
+            non_finishers = [(b, p, r) for b, p, r in entries if r is None or p.get("is_dns")]
+
+            # Sort finishers by time to compute places
+            finishers.sort(key=lambda x: x[2]["time_seconds"])
 
             results: list[RaceResult] = []
-            for place, (bib, pdata, rdata) in enumerate(entries, start=1):
+
+            # Add finishers with places
+            for place, (bib, pdata, rdata) in enumerate(finishers, start=1):
+                otl = rdata["over_time_limit"]
+                status = "over_time_limit" if otl else "finished"
                 results.append(
                     RaceResult(
                         name=pdata["name"],
-                        name_local=None,  # CLAX has Latin only
+                        name_local=None,
                         time_seconds=rdata["time_seconds"],
                         place=place,
                         category=pdata["category"],
@@ -230,7 +242,30 @@ class ClaxParser:
                         pace=rdata["pace"],
                         birth_year=pdata["birth_year"],
                         nationality=pdata["nationality"],
-                        over_time_limit=rdata["over_time_limit"],
+                        over_time_limit=otl,
+                        status=status,
+                    )
+                )
+
+            # Add DNS/DNF at the end (no place, time=0)
+            for bib, pdata, rdata in non_finishers:
+                is_dns = pdata.get("is_dns", False)
+                status = "dns" if is_dns else "dnf"
+                results.append(
+                    RaceResult(
+                        name=pdata["name"],
+                        name_local=None,
+                        time_seconds=0,
+                        place=0,
+                        category=pdata["category"],
+                        gender=pdata["gender"],
+                        club=pdata["club"],
+                        bib=bib,
+                        pace=None,
+                        birth_year=pdata["birth_year"],
+                        nationality=pdata["nationality"],
+                        over_time_limit=False,
+                        status=status,
                     )
                 )
 
@@ -239,7 +274,7 @@ class ClaxParser:
                 RaceDistanceResults(
                     distance_name=dist_name,
                     distance_km=dist_km,
-                    elevation_gain_m=None,  # not in CLAX, add from catalog later
+                    elevation_gain_m=None,
                     results=results,
                 )
             )

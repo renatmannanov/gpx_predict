@@ -1,0 +1,93 @@
+/* ClubRanking-specific column widths */
+.club-table .ct-col-count { width: 1%; }
+.club-table .ct-col-best { width: 90px; }
+.club-table .ct-col-pct { width: 1%; }
+
+/* Clickable rows */
+.club-row {
+  cursor: pointer;
+}
+
+.club-expanded {
+  background: var(--card);
+}
+
+/* Top-3 accent rank */
+.rank-accent {
+  color: var(--accent);
+}
+
+/* Expand icon */
+.club-expand-icon {
+  display: inline-block;
+  color: var(--dim);
+  margin-right: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  transition: transform 0.15s;
+  transform: rotate(0deg);
+}
+
+.club-expand-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.club-row:hover .club-expand-icon {
+  color: var(--text);
+}
+
+/* Percentile colors (5 levels) */
+.pct-green {
+  color: #3CC77A;
+}
+
+.pct-teal {
+  color: #4adec8;
+}
+
+.pct-yellow {
+  color: #fbbf24;
+}
+
+.pct-orange {
+  color: var(--accent);
+}
+
+.pct-dim {
+  color: var(--dim);
+}
+
+/* Expanded member rows */
+.club-member-row td {
+  font-size: 13px;
+}
+
+.club-member-name {
+  font-weight: 500;
+  padding-left: 32px !important;
+}
+
+.club-member-dim {
+  color: var(--dim);
+}
+
+.club-member-row .pct-green,
+.club-member-row .pct-teal,
+.club-member-row .pct-yellow,
+.club-member-row .pct-orange,
+.club-member-row .pct-dim {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .club-table .ct-col-best,
+  .club-table thead .ct-col-best {
+    display: none;
+  }
+
+  .club-member-name {
+    padding-left: 24px !important;
+  }
+}

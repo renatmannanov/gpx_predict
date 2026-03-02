@@ -1,0 +1,106 @@
+.dist-stats {
+  margin-bottom: 32px;
+}
+
+.ds-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ds-name {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.8px;
+}
+
+.ds-name-meta {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dim);
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+
+.ds-main {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.8px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.ds-strip {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.ds-left {
+  display: flex;
+  gap: 24px;
+}
+
+.ds-right {
+  display: flex;
+  gap: 24px;
+}
+
+.dm {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dm-n {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.dm-l {
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.dm-r {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+
+.dm-r .dm-n {
+  color: var(--text);
+}
+
+.dm-r .dm-n.warn {
+  color: rgba(232, 98, 42, 0.7);
+}
+
+@media (max-width: 600px) {
+  .ds-name {
+    font-size: 18px;
+  }
+
+  .ds-name-meta {
+    font-size: 12px;
+  }
+
+  .ds-main {
+    font-size: 18px;
+  }
+
+  .ds-strip {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .ds-left,
+  .ds-right {
+    gap: 16px;
+  }
+}

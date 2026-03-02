@@ -105,5 +105,8 @@ def init_db() -> None:
     from app.models.prediction import Prediction  # noqa
     from app.models.user_profile import UserPerformanceProfile  # noqa
     from app.models.user_run_profile import UserRunProfile  # noqa
+    from app.features.races.db_models import (  # noqa
+        Race, RaceEdition, RaceDistance, RaceResultDB, UserRaceResult
+    )
 
     Base.metadata.create_all(bind=engine)

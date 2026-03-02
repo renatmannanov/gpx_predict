@@ -1,0 +1,21 @@
+:root {
+  --bg: #252628;
+  --bg-nav: rgba(37, 38, 40, 0.95);
+  --accent: #E8622A;
+  --accent-trail: #E8622A;
+  --accent-road: #5B8DEF;
+  --text: #EDEEF0;
+  --dim: #7A8394;
+  --card: rgba(255, 255, 255, 0.04);
+  --card-hover: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.08);
+  --danger: #ef4444;
+  --success: #3CC77A;
+  --gold: #D4A742;
+  --silver: #A0AAB8;
+  --bronze: #A0724A;
+  --nav-height: 64px;
+  --radius-card: 14px;
+  --radius-btn: 8px;
+  --max-width: 1100px;
+}

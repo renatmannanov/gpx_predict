@@ -1,0 +1,204 @@
+/* ── Buttons ── */
+.btn {
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 11px 24px;
+  border-radius: var(--radius-btn);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-fill {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-fill:hover {
+  opacity: 0.87;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--dim);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.btn-nav {
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--accent);
+  color: #fff;
+  padding: 9px 22px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* ── Filter bar ── */
+.filter-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.filter-btn {
+  font-family: 'Manrope', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.filter-btn.active {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  transition: all 0.15s;
+}
+
+.card:hover {
+  background: var(--card-hover);
+  transform: translateY(-2px);
+}
+
+/* ── Stat items ── */
+.stats-row {
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 40px;
+}
+
+.stat-item {
+  flex: 1;
+  background: var(--bg);
+  padding: 18px 20px;
+}
+
+.stat-n {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.stat-n em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.stat-l {
+  font-size: 12px;
+  color: var(--dim);
+  margin-top: 3px;
+}
+
+/* ── Badge / Tag ── */
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.badge-trail {
+  color: var(--accent);
+  background: rgba(232, 98, 42, 0.12);
+}
+
+.badge-road {
+  color: var(--accent-road);
+  background: rgba(91, 141, 239, 0.12);
+}
+
+/* ── Avatar initials ── */
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--dim);
+  flex-shrink: 0;
+}
+
+/* ── Medal colors ── */
+.medal-gold { color: var(--gold); }
+.medal-silver { color: var(--silver); }
+.medal-bronze { color: var(--bronze); }
+
+/* ── Trend badges ── */
+.trend {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.trend-up {
+  background: rgba(60, 199, 122, 0.15);
+  color: var(--success);
+}
+
+.trend-down {
+  background: rgba(232, 98, 42, 0.15);
+  color: var(--accent);
+}
+
+/* ── Loading / Error states ── */
+.loading-text {
+  text-align: center;
+  padding: 64px 20px;
+  color: var(--dim);
+  font-size: 14px;
+}
+
+.error-text {
+  text-align: center;
+  padding: 64px 20px;
+  color: var(--danger);
+  font-size: 14px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .stats-row {
+    flex-wrap: wrap;
+  }
+}
