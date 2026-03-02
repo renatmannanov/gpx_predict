@@ -4,7 +4,7 @@ import './Navbar.css';
 
 const navLinks = [
   { to: '/races', label: 'Гонки' },
-  { to: '/predict', label: 'Предсказать время' },
+  // { to: '/predict', label: 'Предсказать время' },
 ];
 
 export default function Navbar() {
@@ -31,11 +31,11 @@ export default function Navbar() {
 
         <GlobalSearch />
 
-        <div className="nav-right">
+        {/* <div className="nav-right">
           <button className="btn-nav" disabled>
             Войти
           </button>
-        </div>
+        </div> */}
       </nav>
       {/* Spacer for mobile search bar below navbar */}
       <div className="navbar-search-spacer" />

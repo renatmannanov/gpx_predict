@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+// import { Link } from 'react-router-dom';
+// import { useQuery } from '@tanstack/react-query';
 import type { Race } from '../../types/races';
-import { fetchSeasonStats } from '../../api/races';
+// import { fetchSeasonStats } from '../../api/races';
 import RaceCard from '../races/RaceCard';
-import TopClubsPreview from './TopClubsPreview';
+// import TopClubsPreview from './TopClubsPreview';
 import './RacesPreview.css';
 
 interface RacesPreviewProps {
@@ -13,12 +13,6 @@ interface RacesPreviewProps {
 }
 
 export default function RacesPreview({ races, selectedYear }: RacesPreviewProps) {
-  const { data: seasonStats } = useQuery({
-    queryKey: ['seasonStats', selectedYear],
-    queryFn: () => fetchSeasonStats(selectedYear),
-    staleTime: 5 * 60 * 1000,
-  });
-
   const topRaces = useMemo(() => {
     const racesThisYear = races.filter(r =>
       r.editions.some(e => e.year === selectedYear)
@@ -33,15 +27,12 @@ export default function RacesPreview({ races, selectedYear }: RacesPreviewProps)
       .slice(0, 6);
   }, [races, selectedYear]);
 
-  // const hasClubs = (seasonStats?.top_clubs?.length ?? 0) > 0;
-
   return (
     <div className="section races-preview">
       <div className="rp-layout">
         <div className="rp-main">
           <div className="sec-head">
             <div className="sec-title">Гонки {selectedYear}</div>
-            <Link to="/races" className="sec-link">Все гонки &rarr;</Link>
           </div>
           <div className="races-preview-grid">
             {topRaces.map(race => (

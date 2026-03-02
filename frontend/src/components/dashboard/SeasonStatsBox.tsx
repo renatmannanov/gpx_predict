@@ -110,7 +110,7 @@ export default function SeasonStatsBox({ races, selectedYear, availableYears, on
       </div>
       <div className="season-box-footer">
         <Link to="/races" className="sec-link">
-          Смотреть все гонки &rarr;
+          Все гонки &rarr;
         </Link>
       </div>
     </div>

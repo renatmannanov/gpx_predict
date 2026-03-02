@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchRaces } from '../api/races';
 import HeroSection from '../components/dashboard/HeroSection';
 import RacesPreview from '../components/dashboard/RacesPreview';
-import PredictCTA from '../components/dashboard/PredictCTA';
+// import PredictCTA from '../components/dashboard/PredictCTA';
 
 export default function DashboardPage() {
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function DashboardPage() {
         races={races || []}
         selectedYear={selectedYear ?? new Date().getFullYear()}
       />
-      <PredictCTA />
+      {/* <PredictCTA /> */}
     </div>
   );
 }

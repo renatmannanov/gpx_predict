@@ -23,14 +23,12 @@ export default function HeroSection({ races, selectedYear, availableYears, onYea
             {' '}
             <em>гонок Алматы</em>
           </h1>
+          <div className="hero-btns">
+            <Link to="/races" className="btn btn-fill btn-wide">Смотреть все гонки</Link>
+          </div>
           <p className="hero-sub">
             Результаты всех беговых гонок Алматы в одном месте.
-            Плюс GPX маршруты и предсказание твоего финишного времени.
           </p>
-          <div className="hero-btns">
-            <Link to="/races" className="btn btn-fill">Все гонки</Link>
-            <Link to="/predict" className="btn btn-ghost">Предсказать моё время &rarr;</Link>
-          </div>
         </div>
 
         <SeasonStatsBox
