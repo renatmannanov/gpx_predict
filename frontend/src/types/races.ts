@@ -174,6 +174,7 @@ export interface RunnerRaceResult {
   distance_name: string;
   distance_km: number | null;
   year: number;
+  race_date: string | null;
   time_s: number;
   time_formatted: string;
   place: number;
@@ -184,12 +185,20 @@ export interface RunnerRaceResult {
   status: string;
 }
 
+export interface SeasonSummary {
+  year: number;
+  median_percentile: number;
+  races_count: number;
+  best_race: string | null;
+}
+
 export interface RunnerProfileResponse {
   profile: RunnerProfile;
   results: RunnerRaceResult[];
   total_races: number;
   years_active: number;
   median_percentile: number | null;
+  seasons: SeasonSummary[];
 }
 
 // === Хелперы ===

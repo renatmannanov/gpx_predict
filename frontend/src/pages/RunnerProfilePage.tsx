@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchRunnerProfile } from '../api/races';
 import type { RunnerRaceResult } from '../types/races';
 import RunnerSummary from '../components/runners/RunnerSummary';
+import SeasonSparkline from '../components/runners/SeasonSparkline';
 import RunnerResultCard from '../components/runners/RunnerResultCard';
 import './RunnerProfilePage.css';
 
@@ -110,6 +111,10 @@ export default function RunnerProfilePage() {
         currentYear={currentYear}
         bestPlace={bestPlace}
       />
+
+      {data.results.length >= 2 && (
+        <SeasonSparkline results={data.results} seasons={data.seasons} />
+      )}
 
       <div className="runner-results">
         {yearGroups.map(([year, results]) => (

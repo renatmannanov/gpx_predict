@@ -42,6 +42,7 @@ class RunnerRaceResultSchema(BaseModel):
     distance_name: str
     distance_km: Optional[float] = None
     year: int
+    race_date: Optional[str] = None
     time_s: int
     time_formatted: str
     place: int
@@ -52,12 +53,20 @@ class RunnerRaceResultSchema(BaseModel):
     status: str = "finished"
 
 
+class SeasonSummary(BaseModel):
+    year: int
+    median_percentile: float
+    races_count: int
+    best_race: Optional[str] = None
+
+
 class RunnerProfileResponse(BaseModel):
     profile: RunnerProfileSchema
     results: list[RunnerRaceResultSchema]
     total_races: int
     years_active: int
     median_percentile: Optional[float] = None
+    seasons: list[SeasonSummary] = []
 
 
 class RunnerSearchResult(BaseModel):
@@ -168,6 +177,7 @@ async def get_runner_profile(
                 distance_name=distance.name,
                 distance_km=distance.distance_km,
                 year=edition.year,
+                race_date=edition.date,
                 time_s=result_db.time_seconds,
                 time_formatted=format_time(result_db.time_seconds) if result_db.time_seconds else "0:00",
                 place=place,
@@ -183,10 +193,32 @@ async def get_runner_profile(
     if percentiles_for_median:
         median_percentile = round(median(percentiles_for_median), 1)
 
+    # Build season summaries from collected results
+    seasons_map: dict[int, list[tuple[float, str]]] = {}  # year → [(percentile, race_name)]
+    for r in results:
+        if r.status in _FINISHED_STATUSES:
+            seasons_map.setdefault(r.year, []).append((r.percentile, r.race_name))
+
+    seasons = []
+    for year in sorted(seasons_map):
+        entries = seasons_map[year]
+        pcts = [e[0] for e in entries]
+        # Best race = lowest percentile (best placement)
+        best_entry = min(entries, key=lambda e: e[0])
+        seasons.append(
+            SeasonSummary(
+                year=year,
+                median_percentile=round(median(pcts), 1),
+                races_count=len(entries),
+                best_race=best_entry[1],
+            )
+        )
+
     return RunnerProfileResponse(
         profile=profile,
         results=results,
         total_races=len(results),
         years_active=len(years_set),
         median_percentile=median_percentile,
+        seasons=seasons,
     )
