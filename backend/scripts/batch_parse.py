@@ -277,6 +277,9 @@ def parse_race(db: Session, race: dict, force: bool = False, dry_run: bool = Fal
         print(f"  {race_name}: nothing to parse")
         return stats
 
+    # Sort chronologically (oldest first) so runner.club ends up from latest race
+    to_parse.sort(key=lambda e: e["year"])
+
     for edition in to_parse:
         year = edition["year"]
         url = edition["url"]
