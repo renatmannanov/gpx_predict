@@ -2,10 +2,10 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--dim);
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   transition: color 0.15s;
 }
 
@@ -13,76 +13,28 @@
   color: var(--text);
 }
 
-.race-header {
-  margin-bottom: 32px;
-}
-
-.race-header .badge {
-  margin-bottom: 12px;
-}
-
-.race-location {
-  font-size: 16px;
-  color: var(--dim);
-  margin-top: 6px;
-}
-
-/* Year tabs */
-.year-tabs-wrap {
-  margin-bottom: 24px;
-}
-
-/* Distance tabs */
-.distance-tabs {
+/* Title row: name + year dropdown + badge */
+.race-title-row {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
   flex-wrap: wrap;
-  margin-bottom: 32px;
 }
 
-.distance-tab {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 18px;
-  cursor: pointer;
-  transition: all 0.15s;
-  font-family: 'Manrope', sans-serif;
+.race-title {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  line-height: 1;
 }
 
-.distance-tab:hover {
-  background: var(--card-hover);
-}
-
-.distance-tab.active {
-  border-color: var(--accent);
-  background: rgba(232, 98, 42, 0.08);
-}
-
-.distance-tab-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.distance-tab-info {
-  font-size: 14px;
-  color: var(--dim);
-}
-
-/* Mobile */
-@media (max-width: 600px) {
-  .distance-tabs {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .distance-tab {
-    flex-shrink: 0;
-  }
+.race-title-row .badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 5px;
+  letter-spacing: 0.4px;
+  align-self: center;
 }

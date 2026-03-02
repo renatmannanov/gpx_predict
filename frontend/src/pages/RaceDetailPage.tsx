@@ -3,7 +3,8 @@ import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchRace, fetchResults } from '../api/races';
 import { getRaceCategory, getRaceCategoryLabel } from '../types/races';
-import YearTabs from '../components/races/YearTabs';
+import YearDropdown from '../components/races/YearDropdown';
+import DistancePills from '../components/races/DistancePills';
 import DistanceResults from '../components/races/DistanceResults';
 import './RaceDetailPage.css';
 
@@ -113,46 +114,32 @@ export default function RaceDetailPage() {
     : getRaceCategoryLabel(category);
 
   const activeResult = sortedResults?.find((r) => r.distance_name === selectedDistance);
+  const activeDistMeta = race?.distances.find((d) => d.name === selectedDistance);
 
   return (
     <div className="page">
       <Link to="/races" className="back-link">&larr; Все гонки</Link>
 
-      <div className="race-header">
-        <span className={badgeClass}>{badgeText}</span>
-        <h1>{race.name}</h1>
-        {race.location && (
-          <p className="race-location">{race.location}</p>
-        )}
-      </div>
-
-      {/* Year tabs */}
-      {years.length > 0 && selectedYear !== null && (
-        <div className="year-tabs-wrap">
-          <YearTabs
+      {/* Title row: name + year dropdown + badge */}
+      <div className="race-title-row">
+        <h1 className="race-title">{race.name}</h1>
+        {years.length > 0 && selectedYear !== null && (
+          <YearDropdown
             years={years}
             selected={selectedYear}
             onChange={handleYearChange}
           />
-        </div>
-      )}
+        )}
+        <span className={badgeClass}>{badgeText}</span>
+      </div>
 
-      {/* Distance tabs */}
+      {/* Distance pills */}
       {sortedResults && sortedResults.length > 1 && (
-        <div className="distance-tabs">
-          {sortedResults.map((dr) => (
-            <button
-              key={dr.distance_name}
-              className={`distance-tab${dr.distance_name === selectedDistance ? ' active' : ''}`}
-              onClick={() => setSelectedDistance(dr.distance_name)}
-            >
-              <span className="distance-tab-name">{dr.distance_name}</span>
-              {dr.distance_km != null && dr.distance_km > 0 && (
-                <span className="distance-tab-info">{dr.distance_km} км</span>
-              )}
-            </button>
-          ))}
-        </div>
+        <DistancePills
+          distances={sortedResults}
+          selected={selectedDistance}
+          onSelect={setSelectedDistance}
+        />
       )}
 
       {/* Results for selected distance */}
@@ -161,7 +148,11 @@ export default function RaceDetailPage() {
       )}
 
       {activeResult && (
-        <DistanceResults data={activeResult} raceId={raceId} />
+        <DistanceResults
+          data={activeResult}
+          raceId={raceId}
+          elevationGain={activeDistMeta?.elevation_gain_m}
+        />
       )}
 
       {sortedResults && sortedResults.length === 0 && (

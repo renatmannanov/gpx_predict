@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { DistanceResults as DistanceResultsType } from '../../types/races';
-import StatsCard from './StatsCard';
+import DistStatsBlock from './DistStatsBlock';
 import TimeHistogram from './TimeHistogram';
 import GenderChart from './GenderChart';
 import CategoryBars from './CategoryBars';
@@ -12,19 +12,18 @@ import './DistanceResults.css';
 interface DistanceResultsProps {
   data: DistanceResultsType;
   raceId?: string;
+  elevationGain?: number | null;
 }
 
 type TabId = 'results' | 'clubs';
 
-export default function DistanceResults({ data, raceId }: DistanceResultsProps) {
+export default function DistanceResults({ data, raceId, elevationGain }: DistanceResultsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('results');
   const [filterQuery, setFilterQuery] = useState('');
   const [selectedForCompare, setSelectedForCompare] = useState<Set<number>>(new Set());
   const [showCompare, setShowCompare] = useState(false);
 
-  const subtitle = [
-    data.distance_km != null && data.distance_km > 0 && `${data.distance_km} км`,
-  ].filter(Boolean).join(' · ');
+  // subtitle removed — distance info now shown in DistStatsBlock
 
   const { stats } = data;
   const hasGender = stats.gender_distribution?.length > 0;
@@ -79,12 +78,12 @@ export default function DistanceResults({ data, raceId }: DistanceResultsProps) 
 
   return (
     <section className="distance-section">
-      <h2 className="distance-title">
-        {data.distance_name}
-        {subtitle && <span className="distance-subtitle"> · {subtitle}</span>}
-      </h2>
-
-      <StatsCard stats={stats} />
+      <DistStatsBlock
+        distanceName={data.distance_name}
+        distanceKm={data.distance_km}
+        elevationGain={elevationGain ?? null}
+        stats={stats}
+      />
 
       <TimeHistogram buckets={stats.time_buckets} />
 
