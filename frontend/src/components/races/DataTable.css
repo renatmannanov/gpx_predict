@@ -71,6 +71,11 @@ td.dt-col-rank {
   color: var(--dim);
 }
 
+/* Right-aligned columns */
+.rt-col-right {
+  text-align: right !important;
+}
+
 /* Filter empty state */
 .data-table-empty {
   padding: 24px 14px;

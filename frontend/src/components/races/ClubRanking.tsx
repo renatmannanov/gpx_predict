@@ -56,8 +56,8 @@ export default function ClubRanking({ clubs, results, totalFinishers, filterQuer
             <th className="dt-col-rank">#</th>
             <th>Клуб</th>
             <th className="ct-col-count">Бегунов</th>
-            <th className="ct-col-best">Лучший</th>
-            <th className="ct-col-pct">Ср. перс.</th>
+            <th className="ct-col-best rt-col-right">Лучший</th>
+            <th className="ct-col-pct rt-col-right">Ср. перс.</th>
           </tr>
         </thead>
         <tbody>
@@ -110,8 +110,8 @@ function ClubRow({ club, rank, isTop, isExpanded, members, totalFinishers, onTog
           </div>
         </td>
         <td className="dt-col-num">{club.count}</td>
-        <td className="dt-col-num">{club.best_time}</td>
-        <td className={`dt-col-num ${getPercentileClass(club.avg_percentile)}`}>
+        <td className="dt-col-num rt-col-right">{club.best_time}</td>
+        <td className={`dt-col-num rt-col-right ${getPercentileClass(club.avg_percentile)}`}>
           top-{Math.round(club.avg_percentile)}%
         </td>
       </tr>
@@ -125,8 +125,8 @@ function ClubRow({ club, rank, isTop, isExpanded, members, totalFinishers, onTog
               <td className="dt-col-rank"></td>
               <td className="club-member-name">{r.name}</td>
               <td className="dt-col-num club-member-dim">#{r.place}</td>
-              <td className="dt-col-num club-member-dim">{r.time_formatted}</td>
-              <td className={`dt-col-num ${getPercentileClass(pct)}`}>
+              <td className="dt-col-num rt-col-right club-member-dim">{r.time_formatted}</td>
+              <td className={`dt-col-num rt-col-right ${getPercentileClass(pct)}`}>
                 top-{pct}%
               </td>
             </tr>
@@ -138,7 +138,9 @@ function ClubRow({ club, rank, isTop, isExpanded, members, totalFinishers, onTog
 }
 
 function getPercentileClass(pct: number): string {
-  if (pct < 25) return 'pct-green';
-  if (pct < 50) return 'pct-yellow';
+  if (pct <= 10) return 'pct-green';
+  if (pct <= 25) return 'pct-teal';
+  if (pct <= 50) return 'pct-yellow';
+  if (pct <= 75) return 'pct-orange';
   return 'pct-dim';
 }

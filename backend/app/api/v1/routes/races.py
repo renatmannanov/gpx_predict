@@ -33,6 +33,9 @@ _NON_RUNNING_KEYWORDS = [
     "bike", "mtb", "velo", "gravel",
 ]
 
+# Backyard Ultra: winner = longest time. Reverse sort + recalculate places.
+_BACKYARD_RACE_IDS = {"backyard_ultra_kz"}
+
 
 def _is_running_distance(name: str) -> bool:
     """Return False for non-running disciplines (bike, ski, etc.)."""
@@ -72,6 +75,15 @@ class RaceSchema(BaseModel):
     total_finishers: Optional[int] = None  # latest year, all distances
 
 
+class PercentileBucketSchema(BaseModel):
+    label: str  # "top-10%"
+    level: str  # "elite" | "good" | "mid" | "below" | "low"
+    min_pct: int
+    max_pct: int
+    count: int
+    percent: float
+
+
 class RaceStatsSchema(BaseModel):
     finishers: int
     best_time: str
@@ -80,6 +92,7 @@ class RaceStatsSchema(BaseModel):
     p25_time: str
     p75_time: str
     time_buckets: list[dict] = []
+    percentile_buckets: list[PercentileBucketSchema] = []
     gender_distribution: list[dict] = []
     category_distribution: list[dict] = []
     club_stats: list[dict] = []
@@ -173,6 +186,14 @@ def _stats_to_schema(stats, dnf_rate=None) -> RaceStatsSchema:
         time_buckets=[
             {"label": b.label, "count": b.count, "percent": b.percent}
             for b in stats.time_buckets
+        ],
+        percentile_buckets=[
+            PercentileBucketSchema(
+                label=b.label, level=b.level,
+                min_pct=b.min_pct, max_pct=b.max_pct,
+                count=b.count, percent=b.percent,
+            )
+            for b in stats.percentile_buckets
         ],
         gender_distribution=[
             {"gender": g.gender, "count": g.count, "percent": g.percent}
@@ -322,11 +343,26 @@ async def get_results(race_id: str, year: int, db: Session = Depends(get_db)):
             status_code=404, detail=f"No results for {race_id} {year}"
         )
 
+    is_backyard = race_id in _BACKYARD_RACE_IDS
+
     result = []
     for dist in data.distances:
         if not _is_running_distance(dist.distance_name):
             continue
-        stats = calculate_stats(dist.results)
+
+        race_results = list(dist.results)
+
+        # Backyard Ultra: reverse finisher order (longest time = 1st place)
+        if is_backyard:
+            _FINISHED = ("finished", "over_time_limit")
+            finishers = [r for r in race_results if r.status in _FINISHED]
+            non_finishers = [r for r in race_results if r.status not in _FINISHED]
+            finishers.sort(key=lambda r: r.time_seconds, reverse=True)
+            for i, r in enumerate(finishers, 1):
+                r.place = i
+            race_results = finishers + non_finishers
+
+        stats = calculate_stats(race_results)
         results_out = [
             RaceResultSchema(
                 name=r.name,
@@ -343,7 +379,7 @@ async def get_results(race_id: str, year: int, db: Session = Depends(get_db)):
                 bib=r.bib,
                 status=r.status,
             )
-            for r in dist.results
+            for r in race_results
         ]
 
         # DNF rate: dnf / (total - dns)
@@ -383,6 +419,7 @@ async def search_results(
         raise HTTPException(status_code=404, detail=f"Race not found: {race_id}")
 
     results_by_year = repo.search_by_name(race_id, name, distance_name=distance_id)
+    is_backyard = race_id in _BACKYARD_RACE_IDS
 
     output = []
     for year in sorted(results_by_year.keys(), reverse=True):
@@ -433,6 +470,9 @@ async def search_results(
                     ]
                     total_finishers = len(finishers)
                     percentile = get_percentile(finishers, r.time_seconds)
+                    # Backyard Ultra: longer = better, invert percentile
+                    if is_backyard:
+                        percentile = round(100.0 - percentile, 1)
 
                     # Gender percentile
                     if r.gender:
@@ -443,6 +483,8 @@ async def search_results(
                             gender_percentile = get_percentile(
                                 same_gender, r.time_seconds
                             )
+                            if is_backyard:
+                                gender_percentile = round(100.0 - gender_percentile, 1)
 
                     # Category rank
                     if r.category:
@@ -452,13 +494,23 @@ async def search_results(
                         ]
                         if same_cat:
                             category_total = len(same_cat)
-                            category_rank = (
-                                sum(
-                                    1 for res in same_cat
-                                    if res.time_seconds < r.time_seconds
+                            if is_backyard:
+                                # Backyard: longer time = better rank
+                                category_rank = (
+                                    sum(
+                                        1 for res in same_cat
+                                        if res.time_seconds > r.time_seconds
+                                    )
+                                    + 1
                                 )
-                                + 1
-                            )
+                            else:
+                                category_rank = (
+                                    sum(
+                                        1 for res in same_cat
+                                        if res.time_seconds < r.time_seconds
+                                    )
+                                    + 1
+                                )
                     break
 
         output.append(

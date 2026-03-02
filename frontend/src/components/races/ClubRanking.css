@@ -1,6 +1,6 @@
 /* ClubRanking-specific column widths */
 .club-table .ct-col-count { width: 1%; }
-.club-table .ct-col-best { width: 1%; }
+.club-table .ct-col-best { width: 90px; }
 .club-table .ct-col-pct { width: 1%; }
 
 /* Clickable rows */
@@ -36,13 +36,21 @@
   color: var(--text);
 }
 
-/* Percentile colors */
+/* Percentile colors (5 levels) */
 .pct-green {
-  color: #4ade80;
+  color: #3CC77A;
+}
+
+.pct-teal {
+  color: #4adec8;
 }
 
 .pct-yellow {
   color: #fbbf24;
+}
+
+.pct-orange {
+  color: var(--accent);
 }
 
 .pct-dim {
@@ -64,7 +72,9 @@
 }
 
 .club-member-row .pct-green,
+.club-member-row .pct-teal,
 .club-member-row .pct-yellow,
+.club-member-row .pct-orange,
 .club-member-row .pct-dim {
   font-size: 12px;
   opacity: 0.7;

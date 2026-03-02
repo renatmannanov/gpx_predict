@@ -1,11 +1,27 @@
 /* ResultsTable-specific column widths */
-.results-table .rt-col-time { width: 90px; }
 .results-table .rt-col-cat { width: 70px; }
 .results-table .rt-col-gender { width: 60px; }
-.results-table .rt-col-club { width: 160px; }
+.results-table .rt-col-club { width: 140px; }
+.results-table .rt-col-time { width: 90px; }
+.results-table .rt-col-pct { width: 1%; }
 
 /* Bib number */
 .results-table .rt-col-bib { width: 50px; }
+
+/* Club cell — truncate long names */
+.rt-col-club-cell {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Percentile colors (5 levels matching PercentileBadge) */
+.pct-green { color: #3CC77A; }
+.pct-teal { color: #4adec8; }
+.pct-yellow { color: #fbbf24; }
+.pct-orange { color: var(--accent); }
+/* .pct-dim already in ClubRanking.css */
 
 /* Name link */
 .rt-name-link {
@@ -94,10 +110,16 @@
   .results-table .rt-col-cat,
   .results-table .rt-col-gender,
   .results-table .rt-col-club,
+  .results-table .rt-col-pct,
   .results-table thead .rt-col-bib,
   .results-table thead .rt-col-cat,
   .results-table thead .rt-col-gender,
-  .results-table thead .rt-col-club {
+  .results-table thead .rt-col-club,
+  .results-table thead .rt-col-pct {
+    display: none;
+  }
+
+  .rt-col-club-cell {
     display: none;
   }
 }

@@ -38,6 +38,19 @@ class TimeBucket:
 
 
 @dataclass
+class PercentileBucket:
+    """Percentile distribution bucket (matches PercentileBadge levels)."""
+
+    label: str  # "top-10%"
+    level: str  # "elite" | "good" | "mid" | "below" | "low"
+    min_pct: int  # 0
+    max_pct: int  # 10
+    count: int
+    percent: float  # share of total finishers
+    time_range: str = ""  # "< 45:30" or "1:02:00 – 1:25:00"
+
+
+@dataclass
 class GenderDistribution:
     """Gender breakdown."""
     gender: str
@@ -74,6 +87,7 @@ class RaceStats:
     p25_time_s: int  # top-25% (fast)
     p75_time_s: int  # top-75% (slow)
     time_buckets: list[TimeBucket] = field(default_factory=list)
+    percentile_buckets: list[PercentileBucket] = field(default_factory=list)
     gender_distribution: list[GenderDistribution] = field(default_factory=list)
     category_distribution: list[CategoryDistribution] = field(default_factory=list)
     club_stats: list[ClubStats] = field(default_factory=list)

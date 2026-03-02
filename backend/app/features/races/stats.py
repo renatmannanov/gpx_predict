@@ -59,6 +59,8 @@ def calculate_stats(results: Sequence[RaceResult]) -> RaceStats:
         p25_time_s=_percentile(times, 25),
         p75_time_s=_percentile(times, 75),
         time_buckets=_build_buckets(times),
+        # NOTE: percentile_buckets disabled — see _build_percentile_buckets comment below
+        # percentile_buckets=_build_percentile_buckets(times),
         gender_distribution=_gender_distribution(finishers),
         category_distribution=_category_distribution(finishers),
         club_stats=_club_stats(finishers),
@@ -185,6 +187,33 @@ def _build_buckets(times: list[int]) -> list[TimeBucket]:
         )
 
     return buckets
+
+
+# --- Percentile histogram: DISABLED ---
+# BUG: Percentile buckets are a tautology. Dividing N finishers into percentile
+# bands (0-10%, 10-25%, 25-50%, 50-75%, 75-100%) always produces the same
+# proportional distribution (~10/15/25/25/25%) regardless of the race, because
+# percentile IS defined by place, and place divides evenly by definition.
+# The histogram showed identical charts for every race — meaningless.
+#
+# Options for future:
+# 1. Time-based histogram (equal time bins) with percentile-colored bars
+# 2. Percentile scale/legend showing time thresholds per level (no bar chart)
+# 3. Remove entirely — percentiles already shown per-participant in the table
+#
+# See backlog #28 in step_5_6_bugs.md
+#
+# _PERCENTILE_LEVELS = [
+#     ("top-10%", "elite", 0, 10),
+#     ("top-25%", "good", 10, 25),
+#     ("top-50%", "mid", 25, 50),
+#     ("top-75%", "below", 50, 75),
+#     ("остальные", "low", 75, 100),
+# ]
+#
+# def _build_percentile_buckets(sorted_times: list[int]) -> list[PercentileBucket]:
+#     ...
+# --- End disabled block ---
 
 
 def _gender_distribution(finishers: list[RaceResult]) -> list[GenderDistribution]:

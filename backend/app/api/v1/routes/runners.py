@@ -20,6 +20,9 @@ router = APIRouter()
 
 _FINISHED_STATUSES = ("finished", "over_time_limit")
 
+# Backyard Ultra: winner = longest time. Invert percentiles & recalculate place.
+_BACKYARD_RACE_IDS = {"backyard_ultra_kz"}
+
 
 # === Pydantic schemas ===
 
@@ -131,6 +134,7 @@ async def get_runner_profile(
     for result_db, distance, edition, race in rows:
         total_finishers = repo.count_finishers_for_distance(distance.id)
         times = repo.get_finisher_times_for_distance(distance.id)
+        is_backyard = race.id in _BACKYARD_RACE_IDS
 
         # Compute percentile for finishers only
         percentile = 0.0
@@ -145,7 +149,15 @@ async def get_runner_profile(
                 for t in times
             ]
             percentile = get_percentile(fake_results, result_db.time_seconds)
+            # Backyard Ultra: longer time = better, invert percentile
+            if is_backyard:
+                percentile = round(100.0 - percentile, 1)
             percentiles_for_median.append(percentile)
+
+        # Backyard Ultra: recalculate place (longest time = 1st)
+        place = result_db.place
+        if is_backyard and result_db.status in _FINISHED_STATUSES and total_finishers > 0:
+            place = total_finishers - result_db.place + 1
 
         years_set.add(edition.year)
 
@@ -158,7 +170,7 @@ async def get_runner_profile(
                 year=edition.year,
                 time_s=result_db.time_seconds,
                 time_formatted=format_time(result_db.time_seconds) if result_db.time_seconds else "0:00",
-                place=result_db.place,
+                place=place,
                 total_finishers=total_finishers,
                 percentile=percentile,
                 category=result_db.category,

@@ -62,6 +62,15 @@ export interface TimeBucket {
   percent: number;
 }
 
+export interface PercentileBucket {
+  label: string;
+  level: 'elite' | 'good' | 'mid' | 'below' | 'low';
+  min_pct: number;
+  max_pct: number;
+  count: number;
+  percent: number;
+}
+
 export interface GenderDistribution {
   gender: string;
   count: number;
@@ -90,6 +99,7 @@ export interface RaceStats {
   p25_time: string;
   p75_time: string;
   time_buckets: TimeBucket[];
+  percentile_buckets: PercentileBucket[];
   gender_distribution: GenderDistribution[];
   category_distribution: CategoryDistribution[];
   club_stats: ClubStatsData[];

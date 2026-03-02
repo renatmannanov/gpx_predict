@@ -29,6 +29,14 @@ function getStatusLabel(status: string): string {
   }
 }
 
+function getPercentileClass(pct: number): string {
+  if (pct <= 10) return 'pct-green';
+  if (pct <= 25) return 'pct-teal';
+  if (pct <= 50) return 'pct-yellow';
+  if (pct <= 75) return 'pct-orange';
+  return 'pct-dim';
+}
+
 export default function ResultsTable({ results, externalFilter, selectedForCompare, onToggleCompare }: ResultsTableProps) {
   const compareMode = !!(selectedForCompare && onToggleCompare);
   const [expanded, setExpanded] = useState(false);
@@ -64,11 +72,16 @@ export default function ResultsTable({ results, externalFilter, selectedForCompa
     );
   }, [dnfDns, queryLower]);
 
+  const totalFinishers = finishers.length;
+
   const visibleFinishers = expanded
     ? filteredFinishers
     : filteredFinishers.slice(0, INITIAL_LIMIT);
   const hasMore = filteredFinishers.length > INITIAL_LIMIT;
   const totalFiltered = filteredFinishers.length + filteredDnf.length;
+
+  const baseCols = 9;
+  const colCount = compareMode ? baseCols + 1 : baseCols;
 
   return (
     <div className="data-table-wrap">
@@ -79,58 +92,67 @@ export default function ResultsTable({ results, externalFilter, selectedForCompa
             <th className="dt-col-rank">#</th>
             <th className="rt-col-bib">Bib</th>
             <th>Имя</th>
-            <th className="rt-col-time">Время</th>
             <th className="rt-col-cat">Кат.</th>
             <th className="rt-col-gender">Пол</th>
             <th className="rt-col-club">Клуб</th>
+            <th className="rt-col-time rt-col-right">Время</th>
+            <th className="rt-col-pct rt-col-right">Ср. перс.</th>
           </tr>
         </thead>
         <tbody>
-          {visibleFinishers.map((r, i) => (
-            <tr key={i} className={compareMode && r.runner_id && selectedForCompare!.has(r.runner_id) ? 'row-selected' : ''}>
-              {compareMode && (
-                <td className="rt-col-cmp">
-                  {r.runner_id && (
-                    <input
-                      type="checkbox"
-                      className="rt-cmp-check"
-                      checked={selectedForCompare!.has(r.runner_id)}
-                      disabled={!selectedForCompare!.has(r.runner_id) && selectedForCompare!.size >= MAX_COMPARE}
-                      onChange={() => onToggleCompare!(r.runner_id!)}
-                    />
-                  )}
+          {visibleFinishers.map((r, i) => {
+            const pct = totalFinishers > 1
+              ? Math.round(((r.place - 1) / (totalFinishers - 1)) * 100)
+              : 0;
+            return (
+              <tr key={i} className={compareMode && r.runner_id && selectedForCompare!.has(r.runner_id) ? 'row-selected' : ''}>
+                {compareMode && (
+                  <td className="rt-col-cmp">
+                    {r.runner_id && (
+                      <input
+                        type="checkbox"
+                        className="rt-cmp-check"
+                        checked={selectedForCompare!.has(r.runner_id)}
+                        disabled={!selectedForCompare!.has(r.runner_id) && selectedForCompare!.size >= MAX_COMPARE}
+                        onChange={() => onToggleCompare!(r.runner_id!)}
+                      />
+                    )}
+                  </td>
+                )}
+                <td className={`dt-col-rank ${getMedalClass(r.place)}`}>
+                  {r.place}
                 </td>
-              )}
-              <td className={`dt-col-rank ${getMedalClass(r.place)}`}>
-                {r.place}
-              </td>
-              <td className="rt-col-bib dt-col-dim">{r.bib || ''}</td>
-              <td className="dt-col-name">
-                <div className="dt-col-name-inner">
-                  <span className="avatar">{getInitials(r.name)}</span>
-                  {r.runner_id ? (
-                    <Link to={`/runners/${r.runner_id}`} className="rt-name-link">
-                      {highlightMatch(r.name, queryLower)}
-                    </Link>
-                  ) : (
-                    <span>{highlightMatch(r.name, queryLower)}</span>
-                  )}
-                </div>
-              </td>
-              <td className="dt-col-num">{r.time_formatted}</td>
-              <td className="dt-col-dim">{r.category || '—'}</td>
-              <td className="dt-col-dim">{r.gender || '—'}</td>
-              <td className="dt-col-dim">
-                {r.club ? highlightMatch(r.club, queryLower) : '—'}
-              </td>
-            </tr>
-          ))}
+                <td className="rt-col-bib dt-col-dim">{r.bib || ''}</td>
+                <td className="dt-col-name">
+                  <div className="dt-col-name-inner">
+                    <span className="avatar">{getInitials(r.name)}</span>
+                    {r.runner_id ? (
+                      <Link to={`/runners/${r.runner_id}`} className="rt-name-link">
+                        {highlightMatch(r.name, queryLower)}
+                      </Link>
+                    ) : (
+                      <span>{highlightMatch(r.name, queryLower)}</span>
+                    )}
+                  </div>
+                </td>
+                <td className="dt-col-dim">{r.category || '—'}</td>
+                <td className="dt-col-dim">{r.gender || '—'}</td>
+                <td className="dt-col-dim rt-col-club-cell">
+                  {r.club ? highlightMatch(r.club, queryLower) : '—'}
+                </td>
+                <td className="dt-col-num rt-col-right">{r.time_formatted}</td>
+                <td className={`dt-col-num rt-col-right ${getPercentileClass(pct)}`}>
+                  top-{pct}%
+                </td>
+              </tr>
+            );
+          })}
 
           {/* DNF/DNS section */}
           {filteredDnf.length > 0 && (expanded || !hasMore) && (
             <>
               <tr className="dnf-separator-row">
-                <td colSpan={compareMode ? 8 : 7} className="dnf-separator">
+                <td colSpan={colCount} className="dnf-separator">
                   DNF / DNS ({filteredDnf.length})
                 </td>
               </tr>
@@ -151,12 +173,13 @@ export default function ResultsTable({ results, externalFilter, selectedForCompa
                       )}
                     </div>
                   </td>
-                  <td className="dt-col-num rt-col-status">{getStatusLabel(r.status)}</td>
                   <td className="dt-col-dim">{r.category || '—'}</td>
                   <td className="dt-col-dim">{r.gender || '—'}</td>
-                  <td className="dt-col-dim">
+                  <td className="dt-col-dim rt-col-club-cell">
                     {r.club ? highlightMatch(r.club, queryLower) : '—'}
                   </td>
+                  <td className="dt-col-num rt-col-right rt-col-status">{getStatusLabel(r.status)}</td>
+                  <td className="rt-col-right"></td>
                 </tr>
               ))}
             </>
