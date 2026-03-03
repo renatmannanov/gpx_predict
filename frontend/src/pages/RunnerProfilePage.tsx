@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchRunnerProfile } from '../api/races';
@@ -8,14 +8,21 @@ import SeasonSparkline from '../components/runners/SeasonSparkline';
 import RunnerResultCard from '../components/runners/RunnerResultCard';
 import './RunnerProfilePage.css';
 
+export interface RaceDistOption {
+  key: string;
+  label: string;
+}
+
 export default function RunnerProfilePage() {
   const { runnerId } = useParams<{ runnerId: string }>();
   const navigate = useNavigate();
   const id = Number(runnerId);
+  const [raceDistFilter, setRaceDistFilter] = useState<string | null>(null);
 
-  // Fix 1: scroll to top on navigation
+  // Scroll to top + reset filter on navigation
   useEffect(() => {
     window.scrollTo(0, 0);
+    setRaceDistFilter(null);
   }, [id]);
 
   const { data, isLoading, error } = useQuery({
@@ -40,12 +47,36 @@ export default function RunnerProfilePage() {
     return sorted[0].category;
   }, [data]);
 
+  // Unique race+distance options for filter dropdown
+  const raceDistOptions = useMemo((): RaceDistOption[] => {
+    if (!data) return [];
+    const seen = new Map<string, { raceName: string; distanceName: string }>();
+    for (const r of data.results) {
+      const key = `${r.race_id}|${r.distance_name}`;
+      if (!seen.has(key)) {
+        seen.set(key, { raceName: r.race_name, distanceName: r.distance_name });
+      }
+    }
+    return [...seen.entries()].map(([key, { raceName, distanceName }]) => ({
+      key,
+      label: `${raceName} · ${distanceName}`,
+    }));
+  }, [data]);
+
+  // Filtered results by race+distance
+  const filteredResults = useMemo(() => {
+    if (!data || !raceDistFilter) return data?.results ?? [];
+    return data.results.filter((r) => `${r.race_id}|${r.distance_name}` === raceDistFilter);
+  }, [data, raceDistFilter]);
+
   // Group results by year (DESC) and build previous-result map
   const { yearGroups, previousMap } = useMemo(() => {
     if (!data) return { yearGroups: [] as [number, RunnerRaceResult[]][], previousMap: new Map() };
 
+    const source = filteredResults;
+
     const byYear = new Map<number, RunnerRaceResult[]>();
-    for (const r of data.results) {
+    for (const r of source) {
       const arr = byYear.get(r.year) || [];
       arr.push(r);
       byYear.set(r.year, arr);
@@ -55,7 +86,7 @@ export default function RunnerProfilePage() {
     // Build previous result map: key = "race_id|distance_name|year" → result from previous year
     const prevMap = new Map<string, RunnerRaceResult>();
     const byRaceDist = new Map<string, RunnerRaceResult[]>();
-    for (const r of data.results) {
+    for (const r of source) {
       const key = `${r.race_id}|${r.distance_name}`;
       const arr = byRaceDist.get(key) || [];
       arr.push(r);
@@ -70,7 +101,7 @@ export default function RunnerProfilePage() {
     }
 
     return { yearGroups: groups, previousMap: prevMap };
-  }, [data]);
+  }, [data, filteredResults]);
 
   if (isLoading) {
     return (
@@ -113,7 +144,13 @@ export default function RunnerProfilePage() {
       />
 
       {data.results.length >= 2 && (
-        <SeasonSparkline results={data.results} seasons={data.seasons} />
+        <SeasonSparkline
+          results={filteredResults}
+          seasons={data.seasons}
+          raceDistFilter={raceDistFilter}
+          raceDistOptions={raceDistOptions}
+          onRaceDistFilterChange={setRaceDistFilter}
+        />
       )}
 
       <div className="runner-results">

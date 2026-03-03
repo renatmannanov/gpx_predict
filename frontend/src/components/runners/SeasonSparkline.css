@@ -99,3 +99,105 @@
 .spark-delta-dn {
   color: var(--accent);
 }
+
+/* Race+Distance dropdown in header */
+.sh-with-dropdown .sh-title {
+  display: inline;
+}
+
+.rd-dd {
+  position: relative;
+  display: inline-block;
+}
+
+.rd-btn {
+  font-family: 'Manrope', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rd-label {
+  border-bottom: 2px solid var(--accent);
+}
+
+.rd-btn:hover {
+  opacity: 0.85;
+}
+
+.rd-chevron {
+  font-size: 18px;
+  color: var(--accent);
+  transition: transform 0.15s;
+  vertical-align: -1px;
+}
+
+.rd-btn.open .rd-chevron {
+  transform: rotate(180deg);
+}
+
+.rd-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: #1c1e20;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  z-index: 99;
+  min-width: 220px;
+  max-height: 280px;
+  scrollbar-width: thin;
+}
+
+.rd-opt {
+  font-family: 'Manrope', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 14px;
+  cursor: pointer;
+  color: var(--dim);
+  transition: background 0.1s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  white-space: nowrap;
+}
+
+.rd-opt:last-child {
+  border-bottom: none;
+}
+
+.rd-opt:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+.rd-opt.on {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .rd-btn {
+    font-size: 14px;
+  }
+
+  .rd-chevron {
+    font-size: 16px;
+  }
+
+  .rd-menu {
+    min-width: 200px;
+    max-height: 220px;
+  }
+}

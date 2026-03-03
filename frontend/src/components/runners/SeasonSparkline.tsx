@@ -1,10 +1,14 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import type { RunnerRaceResult, SeasonSummary } from '../../types/races';
+import type { RaceDistOption } from '../../pages/RunnerProfilePage';
 import './SeasonSparkline.css';
 
 interface SeasonSparklineProps {
   results: RunnerRaceResult[];
   seasons: SeasonSummary[];
+  raceDistFilter: string | null;
+  raceDistOptions: RaceDistOption[];
+  onRaceDistFilterChange: (value: string | null) => void;
 }
 
 interface RacePoint {
@@ -21,7 +25,13 @@ interface Dot {
 
 const FINISHED = new Set(['finished', 'over_time_limit']);
 
-export default function SeasonSparkline({ results, seasons }: SeasonSparklineProps) {
+export default function SeasonSparkline({
+  results,
+  seasons,
+  raceDistFilter,
+  raceDistOptions,
+  onRaceDistFilterChange,
+}: SeasonSparklineProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [dots, setDots] = useState<Dot[]>([]);
@@ -198,60 +208,127 @@ export default function SeasonSparkline({ results, seasons }: SeasonSparklinePro
 
   const handleMouseLeave = useCallback(() => setTipDot(null), []);
 
-  if (points.length < 1) return null;
-
   return (
     <div className="section">
-      <div className="sh">
-        <div className="sh-title">Прогресс</div>
-        {progressLabel && (
+      <div className="sh sh-with-dropdown">
+        <div className="sh-title">
+          Прогресс по{' '}
+          <RaceDistDropdown
+            options={raceDistOptions}
+            selected={raceDistFilter}
+            onChange={onRaceDistFilterChange}
+          />
+        </div>
+        {progressLabel && !raceDistFilter && (
           <div className={`sh-badge ${progressLabel.up ? 'sh-badge-up' : 'sh-badge-dn'}`}>
             {progressLabel.text}
           </div>
         )}
       </div>
-      <div className="spark-card">
-        <div className="spark-wrap" ref={wrapRef}>
-          <canvas
-            ref={canvasRef}
-            style={{ width: '100%', height: 80 }}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-          />
-          {tipDot && (
-            <div
-              className="spark-tip"
-              style={{
-                left: Math.min(tipDot.x + 12, (wrapRef.current?.clientWidth || 300) - 220),
-                top: tipDot.y < 50 ? tipDot.y + 16 : tipDot.y - 52,
-              }}
-            >
-              <b>
-                {tipDot.point.race.race_name} · top-{Math.round(tipDot.point.race.percentile)}%
-              </b>
-              <br />
-              <span>
-                {tipDot.point.race.time_formatted} · #{tipDot.point.race.place} из {tipDot.point.race.total_finishers}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="spark-years">
-          {yearTicks.map(yt => {
-            const pct = Math.max(0, Math.min(100, yt.t * 100));
-            return (
-              <span
-                key={yt.year}
-                className="spark-year"
-                style={{ left: `${pct}%` }}
+      {points.length >= 1 && (
+        <div className="spark-card">
+          <div className="spark-wrap" ref={wrapRef}>
+            <canvas
+              ref={canvasRef}
+              style={{ width: '100%', height: 80 }}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+            />
+            {tipDot && (
+              <div
+                className="spark-tip"
+                style={{
+                  left: Math.min(tipDot.x + 12, (wrapRef.current?.clientWidth || 300) - 220),
+                  top: tipDot.y < 50 ? tipDot.y + 16 : tipDot.y - 52,
+                }}
               >
-                {yt.year}
-              </span>
-            );
-          })}
+                <b>
+                  {tipDot.point.race.race_name} · top-{Math.round(tipDot.point.race.percentile)}%
+                </b>
+                <br />
+                <span>
+                  {tipDot.point.race.time_formatted} · #{tipDot.point.race.place} из {tipDot.point.race.total_finishers}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="spark-years">
+            {yearTicks.map(yt => {
+              const pct = Math.max(0, Math.min(100, yt.t * 100));
+              return (
+                <span
+                  key={yt.year}
+                  className="spark-year"
+                  style={{ left: `${pct}%` }}
+                >
+                  {yt.year}
+                </span>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
+  );
+}
+
+/* ── Race+Distance dropdown ── */
+
+function RaceDistDropdown({
+  options,
+  selected,
+  onChange,
+}: {
+  options: RaceDistOption[];
+  selected: string | null;
+  onChange: (value: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('click', handler, true);
+    return () => document.removeEventListener('click', handler, true);
+  }, [open]);
+
+  const selectedLabel = selected
+    ? options.find((o) => o.key === selected)?.label ?? 'всем гонкам'
+    : 'всем гонкам';
+
+  return (
+    <span className="rd-dd" ref={ref}>
+      <button
+        className={`rd-btn${open ? ' open' : ''}${selected ? ' has-value' : ''}`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="rd-label">{selectedLabel}</span> <span className="rd-chevron">&#9662;</span>
+      </button>
+      {open && (
+        <div className="rd-menu">
+          <button
+            className={`rd-opt${selected === null ? ' on' : ''}`}
+            onClick={() => { onChange(null); setOpen(false); }}
+          >
+            всем гонкам
+          </button>
+          {options.map((opt) => (
+            <button
+              key={opt.key}
+              className={`rd-opt${selected === opt.key ? ' on' : ''}`}
+              onClick={() => { onChange(opt.key); setOpen(false); }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
   );
 }
 
