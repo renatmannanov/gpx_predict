@@ -29,21 +29,33 @@
   }
 }
 
-/* Toolbar: tabs + filter in one row */
+/* Toolbar: single row on desktop */
 .distance-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   padding-bottom: 16px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.gender-chips {
+  display: flex;
+  gap: 4px;
 }
 
 .distance-nav {
   display: flex;
   align-items: baseline;
   gap: 24px;
+}
+
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 
 .distance-nav-item {
@@ -81,8 +93,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1;
-  max-width: 50%;
+  width: 220px;
+  flex-shrink: 0;
 }
 
 .toolbar-filter-icon {
@@ -130,6 +142,94 @@
 
 .toolbar-filter-clear:hover {
   color: var(--text);
+}
+
+/* Category dropdown */
+.cat-dd {
+  position: relative;
+}
+
+.cat-btn {
+  font-family: 'Manrope', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px 6px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.cat-btn:hover,
+.cat-btn.open {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.cat-btn.has-value {
+  color: var(--text);
+  border-color: rgba(232, 98, 42, 0.35);
+  background: rgba(232, 98, 42, 0.08);
+}
+
+.cat-chevron {
+  font-size: 10px;
+  color: var(--dim);
+  transition: transform 0.15s;
+}
+
+.cat-btn.open .cat-chevron {
+  transform: rotate(180deg);
+}
+
+.cat-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #1c1e20;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  z-index: 99;
+  min-width: 120px;
+  max-height: 240px;
+  scrollbar-width: thin;
+}
+
+.cat-opt {
+  font-family: 'Manrope', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  cursor: pointer;
+  color: var(--dim);
+  transition: background 0.1s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.cat-opt:last-child {
+  border-bottom: none;
+}
+
+.cat-opt:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+.cat-opt.on {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 /* Compare sticky bar */
@@ -181,13 +281,22 @@
 
 @media (max-width: 600px) {
   .distance-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    gap: 10px;
+  }
+
+  .distance-nav {
+    width: 100%;
+  }
+
+  .toolbar-controls {
+    width: 100%;
+    margin-left: 0;
   }
 
   .toolbar-filter-wrap {
-    max-width: 100%;
+    width: auto;
+    flex: 1;
+    min-width: 100px;
   }
 
   .compare-bar {

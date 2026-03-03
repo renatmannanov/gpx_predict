@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { DistanceResults as DistanceResultsType } from '../../types/races';
 import DistStatsBlock from './DistStatsBlock';
 import TimeHistogram from './TimeHistogram';
@@ -17,13 +17,15 @@ interface DistanceResultsProps {
 
 type TabId = 'results' | 'clubs';
 
+const FINISHED_STATUSES = ['finished', 'over_time_limit'];
+
 export default function DistanceResults({ data, raceId, elevationGain }: DistanceResultsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('results');
   const [filterQuery, setFilterQuery] = useState('');
+  const [genderFilter, setGenderFilter] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [selectedForCompare, setSelectedForCompare] = useState<Set<number>>(new Set());
   const [showCompare, setShowCompare] = useState(false);
-
-  // subtitle removed — distance info now shown in DistStatsBlock
 
   const { stats } = data;
   const hasGender = stats.gender_distribution?.length > 0;
@@ -32,6 +34,43 @@ export default function DistanceResults({ data, raceId, elevationGain }: Distanc
 
   const finisherCount = stats.finishers;
   const clubCount = stats.club_stats?.length ?? 0;
+
+  // Unique genders from results
+  const genders = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of data.results) {
+      if (r.gender) set.add(r.gender);
+    }
+    return [...set].sort();
+  }, [data.results]);
+
+  // Unique categories from results
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of data.results) {
+      if (r.category) set.add(r.category);
+    }
+    return [...set].sort();
+  }, [data.results]);
+
+  // Filtered results for "Участники" tab only
+  const filteredResults = useMemo(() => {
+    let res = data.results;
+    if (genderFilter) {
+      res = res.filter((r) => r.gender === genderFilter);
+    }
+    if (categoryFilter) {
+      res = res.filter((r) => r.category === categoryFilter);
+    }
+    return res;
+  }, [data.results, genderFilter, categoryFilter]);
+
+  const isFiltered = !!(genderFilter || categoryFilter);
+  const filteredFinisherCount = isFiltered
+    ? filteredResults.filter((r) => FINISHED_STATUSES.includes(r.status)).length
+    : finisherCount;
+
+  const hasFilters = genders.length > 1 || categories.length > 0;
 
   const handleToggleCompare = useCallback((runnerId: number) => {
     setSelectedForCompare((prev) => {
@@ -59,10 +98,13 @@ export default function DistanceResults({ data, raceId, elevationGain }: Distanc
     setShowCompare(false);
   }, []);
 
-  // Reset compare when distance changes
+  // Reset filters & compare when distance changes
   useEffect(() => {
     setSelectedForCompare(new Set());
     setShowCompare(false);
+    setGenderFilter(null);
+    setCategoryFilter(null);
+    setFilterQuery('');
   }, [data.distance_name]);
 
   // Build name map for selected runners
@@ -100,7 +142,8 @@ export default function DistanceResults({ data, raceId, elevationGain }: Distanc
             className={`distance-nav-item ${activeTab === 'results' ? 'active' : ''}`}
             onClick={() => setActiveTab('results')}
           >
-            Участники<span className="nav-dot">·</span><span className="nav-count">{finisherCount}</span>
+            Участники<span className="nav-dot">·</span>
+            <span className="nav-count">{activeTab === 'results' ? filteredFinisherCount : finisherCount}</span>
           </button>
           {hasClubs && (
             <button
@@ -112,7 +155,40 @@ export default function DistanceResults({ data, raceId, elevationGain }: Distanc
           )}
         </nav>
 
-        <div className="toolbar-filter-wrap">
+        <div className="toolbar-controls">
+          {hasFilters && activeTab === 'results' && (
+            <>
+              {genders.length > 1 && (
+                <div className="gender-chips">
+                  <button
+                    className={`filter-btn${genderFilter === null ? ' active' : ''}`}
+                    onClick={() => setGenderFilter(null)}
+                  >
+                    Все
+                  </button>
+                  {genders.map((g) => (
+                    <button
+                      key={g}
+                      className={`filter-btn${genderFilter === g ? ' active' : ''}`}
+                      onClick={() => setGenderFilter(genderFilter === g ? null : g)}
+                    >
+                      {g === 'M' ? 'М' : g === 'F' ? 'Ж' : g}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {categories.length > 0 && (
+                <CategoryDropdown
+                  categories={categories}
+                  selected={categoryFilter}
+                  onChange={setCategoryFilter}
+                />
+              )}
+            </>
+          )}
+
+          <div className="toolbar-filter-wrap">
           <svg
             className="toolbar-filter-icon"
             width="16"
@@ -144,11 +220,12 @@ export default function DistanceResults({ data, raceId, elevationGain }: Distanc
             </button>
           )}
         </div>
+        </div>
       </div>
 
       {activeTab === 'results' && (
         <ResultsTable
-          results={data.results}
+          results={filteredResults}
           externalFilter={filterQuery}
           selectedForCompare={selectedForCompare}
           onToggleCompare={handleToggleCompare}
@@ -196,5 +273,62 @@ export default function DistanceResults({ data, raceId, elevationGain }: Distanc
         />
       )}
     </section>
+  );
+}
+
+/* ── Category dropdown ── */
+
+function CategoryDropdown({
+  categories,
+  selected,
+  onChange,
+}: {
+  categories: string[];
+  selected: string | null;
+  onChange: (value: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('click', handler, true);
+    return () => document.removeEventListener('click', handler, true);
+  }, [open]);
+
+  return (
+    <div className="cat-dd" ref={ref}>
+      <button
+        className={`cat-btn${open ? ' open' : ''}${selected ? ' has-value' : ''}`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span>Кат: {selected || 'Все'}</span>
+        <span className="cat-chevron">&#9662;</span>
+      </button>
+      {open && (
+        <div className="cat-menu">
+          <button
+            className={`cat-opt${selected === null ? ' on' : ''}`}
+            onClick={() => { onChange(null); setOpen(false); }}
+          >
+            Все
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              className={`cat-opt${selected === cat ? ' on' : ''}`}
+              onClick={() => { onChange(cat); setOpen(false); }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
