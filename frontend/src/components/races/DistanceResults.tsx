@@ -227,6 +227,7 @@ export default function DistanceResults({ data, raceId, elevationGain }: Distanc
         <ResultsTable
           results={filteredResults}
           externalFilter={filterQuery}
+          totalFinishers={finisherCount}
           selectedForCompare={selectedForCompare}
           onToggleCompare={handleToggleCompare}
         />

@@ -12,6 +12,7 @@ const MAX_COMPARE = 4;
 interface ResultsTableProps {
   results: RaceResult[];
   externalFilter?: string;
+  totalFinishers?: number;
   selectedForCompare?: Set<number>;
   onToggleCompare?: (runnerId: number) => void;
 }
@@ -37,7 +38,7 @@ function getPercentileClass(pct: number): string {
   return 'pct-dim';
 }
 
-export default function ResultsTable({ results, externalFilter, selectedForCompare, onToggleCompare }: ResultsTableProps) {
+export default function ResultsTable({ results, externalFilter, totalFinishers: totalFinishersProp, selectedForCompare, onToggleCompare }: ResultsTableProps) {
   const compareMode = !!(selectedForCompare && onToggleCompare);
   const [expanded, setExpanded] = useState(false);
 
@@ -72,7 +73,7 @@ export default function ResultsTable({ results, externalFilter, selectedForCompa
     );
   }, [dnfDns, queryLower]);
 
-  const totalFinishers = finishers.length;
+  const totalFinishers = totalFinishersProp ?? finishers.length;
 
   const visibleFinishers = expanded
     ? filteredFinishers
