@@ -21,6 +21,7 @@ class UserInfoSchema(BaseModel):
     """User info response schema."""
     telegram_id: int
     name: Optional[str] = None
+    telegram_username: Optional[str] = None
     race_search_name: Optional[str] = None
     strava_connected: bool
     onboarding_complete: bool
@@ -28,6 +29,12 @@ class UserInfoSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CreateUserRequest(BaseModel):
+    """Request body for user creation."""
+    name: Optional[str] = None
+    telegram_username: Optional[str] = None
 
 
 class OnboardingCompleteRequest(BaseModel):
@@ -71,6 +78,7 @@ async def get_user_info(telegram_id: int, db: AsyncSession = Depends(get_async_d
     return UserInfoSchema(
         telegram_id=user.telegram_id,
         name=user.name,
+        telegram_username=user.telegram_username,
         race_search_name=user.race_search_name,
         strava_connected=user.strava_connected or False,
         onboarding_complete=user.onboarding_complete or False,
@@ -173,22 +181,43 @@ async def update_race_search_name(
 @router.post("/{telegram_id}/create", response_model=UserInfoSchema)
 async def create_user(
     telegram_id: int,
+    request: Optional[CreateUserRequest] = None,
     db: AsyncSession = Depends(get_async_db)
 ):
     """
     Create a new user or return existing one.
 
     Used by bot to ensure user exists before starting onboarding.
+    Optionally accepts name and telegram_username.
     """
     user_repo = UserRepository(db)
-    user, created = await user_repo.get_or_create(telegram_id)
 
-    if created:
+    extra = {}
+    if request:
+        if request.name:
+            extra["name"] = request.name
+        if request.telegram_username:
+            extra["telegram_username"] = request.telegram_username
+
+    user, created = await user_repo.get_or_create(telegram_id, **extra)
+
+    # Update name/username for existing users too (they may have changed)
+    if not created and request:
+        update_data = {}
+        if request.name and user.name != request.name:
+            update_data["name"] = request.name
+        if request.telegram_username and user.telegram_username != request.telegram_username:
+            update_data["telegram_username"] = request.telegram_username
+        if update_data:
+            await user_repo.update(user, **update_data)
+
+    if created or (not created and request):
         await db.commit()
 
     return UserInfoSchema(
         telegram_id=user.telegram_id,
         name=user.name,
+        telegram_username=user.telegram_username,
         race_search_name=user.race_search_name,
         strava_connected=user.strava_connected or False,
         onboarding_complete=user.onboarding_complete or False,

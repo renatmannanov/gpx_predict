@@ -80,8 +80,8 @@ class APIClient:
     async def get_user_info(self, telegram_id: int):
         return await self.users.get_info(telegram_id)
 
-    async def create_user(self, telegram_id: int):
-        return await self.users.create(telegram_id)
+    async def create_user(self, telegram_id: int, name: str = None, telegram_username: str = None):
+        return await self.users.create(telegram_id, name=name, telegram_username=telegram_username)
 
     async def complete_onboarding(self, telegram_id: int, activity_type: str) -> bool:
         return await self.users.complete_onboarding(telegram_id, activity_type)
