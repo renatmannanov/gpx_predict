@@ -6,6 +6,8 @@ Tables:
 - race_distances: Distance within an edition (Skyrunning, VK 1000, etc.)
 - race_results: Individual participant results
 - runners: Unique runners across all races
+- runner_name_aliases: Alternative name spellings for runners
+- club_name_aliases: Alternative name spellings for clubs
 - user_race_results: Links our users to their race results
 """
 
@@ -41,6 +43,7 @@ class Club(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     runners = relationship("Runner", back_populates="club_ref")
+    aliases = relationship("ClubNameAlias", back_populates="club", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Club {self.id} '{self.name}'>"
@@ -65,6 +68,7 @@ class Runner(Base):
 
     results = relationship("RaceResultDB", back_populates="runner")
     club_ref = relationship("Club", back_populates="runners")
+    aliases = relationship("RunnerNameAlias", back_populates="runner", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Runner {self.id} '{self.name}'>"
@@ -192,3 +196,45 @@ class UserRaceResult(Base):
 
     def __repr__(self):
         return f"<UserRaceResult user={self.user_id} result={self.race_result_id}>"
+
+
+class RunnerNameAlias(Base):
+    """Alternative name spelling for a runner (transliteration variants, typos, etc.)."""
+
+    __tablename__ = "runner_name_aliases"
+    __table_args__ = (
+        UniqueConstraint("runner_id", "name_normalized", name="uq_runner_alias_name"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    runner_id = Column(Integer, ForeignKey("runners.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)  # original spelling
+    name_normalized = Column(String(255), nullable=False, index=True)  # lowercase for lookup
+    source = Column(String(50), nullable=False)  # "clax", "am", "manual"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    runner = relationship("Runner", back_populates="aliases")
+
+    def __repr__(self):
+        return f"<RunnerNameAlias {self.id} runner={self.runner_id} '{self.name}'>"
+
+
+class ClubNameAlias(Base):
+    """Alternative name spelling for a club."""
+
+    __tablename__ = "club_name_aliases"
+    __table_args__ = (
+        UniqueConstraint("club_id", "name_normalized", name="uq_club_alias_name"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    club_id = Column(Integer, ForeignKey("clubs.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)  # original spelling
+    name_normalized = Column(String(255), nullable=False, index=True)  # lowercase for lookup
+    source = Column(String(50), nullable=False)  # "clax", "am", "manual"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    club = relationship("Club", back_populates="aliases")
+
+    def __repr__(self):
+        return f"<ClubNameAlias {self.id} club={self.club_id} '{self.name}'>"

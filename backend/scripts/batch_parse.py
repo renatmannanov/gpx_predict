@@ -52,6 +52,7 @@ from app.features.races.db_models import (
     RaceEdition,
     RaceResultDB,
     Runner,
+    RunnerNameAlias,
 )
 from app.features.races.models import RaceEditionData
 from app.features.races.name_utils import normalize_name
@@ -81,7 +82,7 @@ def save_catalog(catalog: dict) -> None:
         )
 
 
-def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData) -> int:
+def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData, source: str = "clax") -> int:
     """Save parsed race data to database.
 
     Creates Race (if not exists), RaceEdition, RaceDistances, RaceResults.
@@ -193,6 +194,23 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData)
                     runner.updated_at = datetime.now(timezone.utc)
 
                 runner_id = runner.id
+
+                # Save name alias
+                if runner and r.name:
+                    alias_norm = normalize_name(r.name)
+                    existing_alias = db.execute(
+                        select(RunnerNameAlias).where(
+                            RunnerNameAlias.runner_id == runner.id,
+                            RunnerNameAlias.name_normalized == alias_norm,
+                        )
+                    ).scalar_one_or_none()
+                    if not existing_alias:
+                        db.add(RunnerNameAlias(
+                            runner_id=runner.id,
+                            name=r.name,
+                            name_normalized=alias_norm,
+                            source=source,
+                        ))
 
             result = RaceResultDB(
                 distance_id=distance.id,
@@ -309,7 +327,7 @@ def parse_race(db: Session, race: dict, force: bool = False, dry_run: bool = Fal
             else:
                 print(f"{total_distances} distances, {total_results} results", end=" ", flush=True)
 
-            saved = save_to_db(db, race_id, race_name, data)
+            saved = save_to_db(db, race_id, race_name, data, source=source)
             print(f"-> DB ({saved} rows)")
             edition["status"] = "parsed"
             stats["parsed"] += 1
@@ -393,7 +411,8 @@ def import_json_to_db(db: Session, race: dict) -> dict:
             total = sum(len(d.results) for d in data.distances)
             print(f"  Importing {json_path.name} ({year}, {total} results)...", end=" ", flush=True)
 
-            saved = save_to_db(db, race_id, race_name, data)
+            source = race.get("source", "clax")
+            saved = save_to_db(db, race_id, race_name, data, source=source)
             print(f"-> DB ({saved} rows)")
             stats["imported"] += 1
 
