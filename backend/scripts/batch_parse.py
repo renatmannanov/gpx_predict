@@ -47,6 +47,7 @@ from app.features.races.am_parser import AlmatyMarathonParser
 from app.features.races.clax_parser import ClaxParser
 from app.features.races.db_models import (
     Club,
+    ClubNameAlias,
     Race,
     RaceDistance,
     RaceEdition,
@@ -80,6 +81,50 @@ def save_catalog(catalog: dict) -> None:
             sort_keys=False,
             width=120,
         )
+
+
+def _resolve_club(db: Session, club_text: str) -> tuple[int, str] | None:
+    """Resolve club text to (club_id, canonical_name).
+
+    Lookup order:
+    1. clubs.name_normalized (exact match)
+    2. club_name_aliases.name_normalized (alias → canonical club)
+    3. Create new club if not found
+
+    Returns (club_id, canonical_club_name) or None if club_text is empty.
+    """
+    if not club_text or not club_text.strip():
+        return None
+
+    club_norm = club_text.strip().lower()
+
+    # 1. Direct match in clubs
+    club = db.execute(
+        select(Club).where(Club.name_normalized == club_norm)
+    ).scalar_one_or_none()
+    if club:
+        return club.id, club.name
+
+    # 2. Match via alias → get canonical club
+    alias = db.execute(
+        select(ClubNameAlias).where(ClubNameAlias.name_normalized == club_norm)
+    ).scalar_one_or_none()
+    if alias:
+        club = db.get(Club, alias.club_id)
+        if club:
+            return club.id, club.name
+
+    # 3. Not found — create new club
+    club = Club(
+        name=club_text.strip(),
+        name_normalized=club_norm,
+        runners_count=0,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db.add(club)
+    db.flush()
+    return club.id, club.name
 
 
 def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData, source: str = "clax") -> int:
@@ -141,29 +186,17 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData,
                 ).scalar_one_or_none()
 
                 if not runner:
-                    # Resolve club_id
+                    # Resolve club via aliases
                     club_id = None
-                    if r.club and r.club.strip():
-                        club_norm = r.club.strip().lower()
-                        club = db.execute(
-                            select(Club).where(Club.name_normalized == club_norm)
-                        ).scalar_one_or_none()
-                        if not club:
-                            club = Club(
-                                name=r.club.strip(),
-                                name_normalized=club_norm,
-                                runners_count=0,
-                                created_at=datetime.now(timezone.utc),
-                                updated_at=datetime.now(timezone.utc),
-                            )
-                            db.add(club)
-                            db.flush()
-                        club_id = club.id
+                    club_canonical = r.club
+                    resolved = _resolve_club(db, r.club)
+                    if resolved:
+                        club_id, club_canonical = resolved
 
                     runner = Runner(
                         name=r.name,
                         name_normalized=name_norm,
-                        club=r.club,
+                        club=club_canonical,
                         club_id=club_id,
                         gender=r.gender,
                         category=r.category,
@@ -178,13 +211,10 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData,
                     # Update runner with latest data
                     runner.name = r.name
                     if r.club:
-                        runner.club = r.club
-                        club_norm = r.club.strip().lower()
-                        club = db.execute(
-                            select(Club).where(Club.name_normalized == club_norm)
-                        ).scalar_one_or_none()
-                        if club:
-                            runner.club_id = club.id
+                        resolved = _resolve_club(db, r.club)
+                        if resolved:
+                            runner.club_id = resolved[0]
+                            runner.club = resolved[1]  # canonical name
                     if r.gender:
                         runner.gender = r.gender
                     if r.category:
