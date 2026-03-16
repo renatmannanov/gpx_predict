@@ -127,12 +127,65 @@ def _resolve_club(db: Session, club_text: str) -> tuple[int, str] | None:
     return club.id, club.name
 
 
-def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData, source: str = "clax") -> int:
+def _fuzzy_match_runner(
+    db: Session, name_normalized: str, birth_year: int | None,
+) -> tuple[Runner | None, list[str]]:
+    """Find existing runner by fuzzy name match + birth_year.
+
+    Uses pg_trgm similarity to catch transliteration variants like
+    Baikashev/Bajkashev, Anastasiya/Anastassiya, Assel/Asel.
+
+    Returns (runner, warnings):
+    - similarity > 0.85 + same birth_year → auto-merge (runner returned)
+    - similarity 0.7-0.85 + same birth_year → warning for manual review
+    - Only matches when birth_year is available and identical — this prevents
+      false merges (e.g. Pavlenko Alexandr 1988 vs Pavlenko Alexandra 1987).
+    """
+    if not birth_year or not name_normalized:
+        return None, []
+
+    # Look for candidates with similarity > 0.7 and same birth_year
+    rows = db.execute(
+        select(
+            Runner,
+            sa.func.similarity(Runner.name_normalized, name_normalized).label("sim"),
+        ).where(
+            sa.func.similarity(Runner.name_normalized, name_normalized) > 0.7,
+            Runner.birth_year == birth_year,
+        ).order_by(
+            sa.literal_column("sim").desc()
+        ).limit(3)
+    ).all()
+
+    if not rows:
+        return None, []
+
+    best_runner, best_sim = rows[0]
+
+    # High confidence — auto-merge
+    if best_sim > 0.85:
+        return best_runner, []
+
+    # Suspect zone — warn for manual review
+    warnings = []
+    for runner, sim in rows:
+        warnings.append(
+            f"  [!] Possible dupe: \"{name_normalized}\" (new, by={birth_year}) "
+            f"~ \"{runner.name_normalized}\" (id={runner.id}, \"{runner.name}\", "
+            f"sim={sim:.2f})"
+        )
+    return None, warnings
+
+
+def save_to_db(
+    db: Session, race_id: str, race_name: str, data: RaceEditionData, source: str = "clax",
+) -> tuple[int, list[str]]:
     """Save parsed race data to database.
 
     Creates Race (if not exists), RaceEdition, RaceDistances, RaceResults.
-    Returns total number of results saved.
+    Returns (total_results_saved, suspect_dupe_warnings).
     """
+    suspect_warnings: list[str] = []
     # Upsert Race
     race = db.get(Race, race_id)
     if not race:
@@ -184,6 +237,11 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData,
                 runner = db.execute(
                     select(Runner).where(Runner.name_normalized == name_norm)
                 ).scalar_one_or_none()
+
+                if not runner:
+                    # Fuzzy match: catch transliteration variants
+                    runner, warnings = _fuzzy_match_runner(db, name_norm, r.birth_year)
+                    suspect_warnings.extend(warnings)
 
                 if not runner:
                     # Resolve club via aliases
@@ -268,7 +326,7 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData,
     _update_runner_counts(db)
     _update_club_counts(db)
 
-    return total_results
+    return total_results, suspect_warnings
 
 
 def _update_runner_counts(db: Session) -> None:
@@ -357,8 +415,11 @@ def parse_race(db: Session, race: dict, force: bool = False, dry_run: bool = Fal
             else:
                 print(f"{total_distances} distances, {total_results} results", end=" ", flush=True)
 
-            saved = save_to_db(db, race_id, race_name, data, source=source)
+            saved, warnings = save_to_db(db, race_id, race_name, data, source=source)
             print(f"-> DB ({saved} rows)")
+            if warnings:
+                for w in warnings:
+                    print(w)
             edition["status"] = "parsed"
             stats["parsed"] += 1
 
@@ -442,8 +503,11 @@ def import_json_to_db(db: Session, race: dict) -> dict:
             print(f"  Importing {json_path.name} ({year}, {total} results)...", end=" ", flush=True)
 
             source = race.get("source", "clax")
-            saved = save_to_db(db, race_id, race_name, data, source=source)
+            saved, warnings = save_to_db(db, race_id, race_name, data, source=source)
             print(f"-> DB ({saved} rows)")
+            if warnings:
+                for w in warnings:
+                    print(w)
             stats["imported"] += 1
 
         except Exception as e:
