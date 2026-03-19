@@ -93,13 +93,80 @@ def _has_cyrillic(text: str) -> bool:
     return any("\u0400" <= c <= "\u04ff" for c in text)
 
 
+def phonetic_normalize_word(word: str) -> str:
+    """Normalize a single word to collapse transliteration variants.
+
+    Applies deterministic regex rules that map common Cyrillic-to-Latin
+    transliteration variants to a single canonical form. Must be called
+    on a single lowercase word (no spaces).
+
+    Rules (applied in order):
+    1. Intervocalic j → y  (vowel-j-vowel, e.g. ojan → oyan)
+    2. Final j → y         (sergej → sergey)
+    3. Vowel + ev$ → yev   (baev → bayev)
+    4. Vowel + eva$ → yeva (baeva → bayeva)
+    5. ii$ → iy            (dmitrii → dmitriy)
+    6. ei$ → ey            (andrei → andrey)
+    7. x → ks              (alexandr → aleksandr)
+    8. ss → s              (CLAX doubles s: ussin → usin, tassin → tasin)
+    9. sch → shch           (щ variants: schavinskaya → shchavinskaya)
+       If input already has 'shch', the substitution is safe: shshch → shch
+    10. standalone h → kh   (х variants, but NOT sh/ch/zh/kh/th)
+    11. ye → e at word start (Е at start: yevgeniy → evgeniy)
+
+    >>> phonetic_normalize_word("sergej")
+    'sergey'
+    >>> phonetic_normalize_word("andrei")
+    'andrey'
+    >>> phonetic_normalize_word("dmitrii")
+    'dmitriy'
+    >>> phonetic_normalize_word("alexandr")
+    'aleksandr'
+    >>> phonetic_normalize_word("sergey")
+    'sergey'
+    >>> phonetic_normalize_word("ussin")
+    'usin'
+    >>> phonetic_normalize_word("suhorukov")
+    'sukhorukov'
+    >>> phonetic_normalize_word("yevgeniy")
+    'evgeniy'
+    >>> phonetic_normalize_word("schavinskaya")
+    'shchavinskaya'
+    """
+    # 1. Intervocalic j → y: vowel + j + vowel
+    word = re.sub(r"([aeiou])j(?=[aeiou])", r"\1y", word)
+    # 2. Final j → y
+    word = re.sub(r"j$", "y", word)
+    # 3. vowel + ev$ → vowel + yev
+    word = re.sub(r"([aeiou])ev$", r"\1yev", word)
+    # 4. vowel + eva$ → vowel + yeva
+    word = re.sub(r"([aeiou])eva$", r"\1yeva", word)
+    # 5. ii$ → iy
+    word = re.sub(r"ii$", "iy", word)
+    # 6. ei$ → ey
+    word = re.sub(r"ei$", "ey", word)
+    # 7. x → ks (simple replacement, not regex)
+    word = word.replace("x", "ks")
+    # 8. ss → s (CLAX doubles s: Ussin→Usin, Tassin→Tasin)
+    word = word.replace("ss", "s")
+    # 9. sch → shch (when not already shch; щ variants)
+    word = re.sub(r"sch", "shch", word)
+    # But if that created 'shshch' from existing 'shch', fix it:
+    word = word.replace("shshch", "shch")
+    # 10. standalone h → kh (х variants, but NOT sh/ch/zh/kh/th)
+    word = re.sub(r"(?<![sczkt])h", "kh", word)
+    # 11. ye → e at word start (Е at start: Yevgeniy→Evgeniy)
+    word = re.sub(r"^ye", "e", word)
+    return word
+
+
 def normalize_name(name: str) -> str:
     """Normalize a participant name for matching.
 
     Steps:
     1. If Cyrillic — transliterate to Latin
-    2. Strip whitespace, collapse multiple spaces
-    3. Lowercase
+    2. Strip whitespace, collapse multiple spaces, lowercase
+    3. Apply phonetic normalization per word (collapse transliteration variants)
     4. Sort words alphabetically (so "renat mannanov" == "mannanov renat")
 
     >>> normalize_name("Baikashev Shyngys")
@@ -114,9 +181,12 @@ def normalize_name(name: str) -> str:
     'bekeshov ruslan'
     >>> normalize_name("Шынгыс Байкашев")
     'baykashev shyngys'
+    >>> normalize_name("Sergej Tropin")
+    'sergey tropin'
     """
     if _has_cyrillic(name):
         name = transliterate_cyrillic(name)
     name = re.sub(r"\s+", " ", name.strip()).lower()
-    parts = sorted(name.split())
+    words = [phonetic_normalize_word(w) for w in name.split()]
+    parts = sorted(words)
     return " ".join(parts)
