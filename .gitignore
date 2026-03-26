@@ -52,8 +52,8 @@ nul
 # Claude
 .claude/
 
-# Docs (internal planning)
-docs/
+# Internal (AI context, insights, personal notes)
+internal/
 
 # Reports (script output)
 backend/reports/

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ayda.run — беговой портал Алматы</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #252628;
+  --border: rgba(255,255,255,0.08);
+  --accent: #E8622A;
+  --text: #EDEEF0;
+  --dim: #7A8394;
+  --card: rgba(255,255,255,0.04);
+  --card-hover: rgba(255,255,255,0.07);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Manrope', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 99;
+  height: 56px;
+  display: flex; align-items: center;
+  padding: 0 40px;
+  background: rgba(37,38,40,0.94);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  font-size: 17px; font-weight: 900; letter-spacing: -0.5px;
+  color: var(--text); text-decoration: none;
+}
+.logo em { color: var(--accent); font-style: normal; }
+.nav-links { display: flex; gap: 2px; margin-left: 32px; }
+.nav-links a {
+  font-size: 13px; font-weight: 500; color: var(--dim);
+  text-decoration: none; padding: 6px 13px; border-radius: 6px;
+  transition: color 0.15s;
+}
+.nav-links a:hover, .nav-links a.on { color: var(--text); }
+nav .right { margin-left: auto; }
+.btn-nav {
+  font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700;
+  background: var(--accent); color: #fff;
+  padding: 7px 18px; border-radius: 7px; border: none;
+  cursor: pointer; text-decoration: none;
+}
+
+/* ── HERO ── */
+.hero {
+  padding: 96px 40px 56px;
+  max-width: 1100px; margin: 0 auto;
+}
+.hero-top {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 48px; align-items: center;
+  margin-bottom: 52px;
+}
+.hero-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--accent);
+  margin-bottom: 18px;
+}
+h1 {
+  font-size: clamp(34px, 4.5vw, 52px);
+  font-weight: 900; letter-spacing: -2px; line-height: 1.06;
+  margin-bottom: 16px;
+}
+h1 em { font-style: normal; color: var(--accent); }
+.hero-sub {
+  font-size: 15px; color: var(--dim); line-height: 1.6;
+  margin-bottom: 28px; max-width: 380px;
+}
+.hero-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn {
+  font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700;
+  padding: 11px 24px; border-radius: 8px; border: none;
+  cursor: pointer; text-decoration: none; transition: all 0.15s;
+}
+.btn-fill { background: var(--accent); color: #fff; }
+.btn-fill:hover { opacity: 0.87; }
+.btn-ghost {
+  background: transparent; color: var(--dim);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+
+/* ── SEASON STATS (right side of hero) ── */
+.season-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.season-box-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.sbox-title { font-size: 13px; font-weight: 700; }
+.sbox-year {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+  text-transform: uppercase; color: var(--accent);
+}
+.season-nums {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+.snum {
+  padding: 18px 20px;
+  border-right: 1px solid var(--border);
+}
+.snum:last-child { border-right: none; }
+.snum-val {
+  font-size: 32px; font-weight: 900; letter-spacing: -1.5px; line-height: 1;
+  margin-bottom: 4px;
+}
+.snum-val.accent { color: var(--accent); }
+.snum-label { font-size: 11px; color: var(--dim); }
+
+/* TOP RUNNERS in season box */
+.top-runners { padding: 4px 0; }
+.runner-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer; transition: background 0.1s;
+}
+.runner-row:hover { background: var(--card-hover); }
+.runner-row:last-child { border-bottom: none; }
+.rr-place {
+  font-size: 12px; font-weight: 700; color: var(--dim);
+  width: 18px; flex-shrink: 0; text-align: center;
+}
+.rr-place.gold { color: #D4A742; }
+.rr-ava {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: var(--dim);
+  flex-shrink: 0;
+}
+.rr-name { flex: 1; font-size: 13px; font-weight: 600; }
+.rr-club { font-size: 11px; color: var(--dim); }
+.rr-races {
+  font-size: 12px; color: var(--dim);
+  margin-left: auto; flex-shrink: 0;
+}
+.rr-score {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  width: 40px; text-align: right; flex-shrink: 0;
+}
+
+/* ── SECTION ── */
+.section { padding: 0 40px 64px; max-width: 1100px; margin: 0 auto; }
+.sec-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.sec-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--dim);
+}
+.sec-link {
+  font-size: 12px; font-weight: 600; color: var(--dim);
+  text-decoration: none; transition: color 0.15s;
+}
+.sec-link:hover { color: var(--text); }
+
+/* ── CLUB RANKINGS ── */
+.clubs-table { width: 100%; }
+.club-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer; transition: opacity 0.15s;
+}
+.club-row:hover { opacity: 0.75; }
+.club-row:last-child { border-bottom: none; }
+.cr-num {
+  font-size: 13px; font-weight: 700; color: var(--dim);
+  width: 22px; text-align: center; flex-shrink: 0;
+}
+.cr-num.gold { color: #D4A742; }
+.cr-num.silver { color: #A0AAB8; }
+.cr-num.bronze { color: #A0724A; }
+.cr-ava {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: var(--dim);
+  flex-shrink: 0;
+}
+.cr-info { flex: 1; min-width: 0; }
+.cr-name { font-size: 14px; font-weight: 700; }
+.cr-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+/* bar */
+.cr-bar-wrap { flex: 1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; max-width: 120px; }
+.cr-bar { height: 100%; border-radius: 2px; background: var(--accent); opacity: 0.6; }
+
+.cr-runners { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; flex-shrink: 0; width: 44px; text-align: right; }
+
+/* ── RACES GRID ── */
+.races-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+.race-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px;
+  text-decoration: none; color: var(--text); display: block;
+  transition: all 0.15s;
+}
+.race-card:hover { background: var(--card-hover); transform: translateY(-2px); }
+.rc-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 10px;
+}
+.rc-name { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 5px; line-height: 1.3; }
+.rc-date { font-size: 12px; color: var(--dim); }
+.rc-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--dim);
+}
+
+/* ── PREDICT CTA ── */
+.predict-cta {
+  margin: 0 40px 72px;
+  max-width: 1020px; margin-left: auto; margin-right: auto;
+  background: var(--card);
+  border: 1px solid rgba(232,98,42,0.2);
+  border-radius: 14px; padding: 36px 44px;
+  display: flex; align-items: center; justify-content: space-between; gap: 32px;
+  flex-wrap: wrap;
+}
+.pc-tag { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.pc-title { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 6px; }
+.pc-sub { font-size: 13px; color: var(--dim); line-height: 1.55; max-width: 400px; }
+
+/* ── TWO COL LAYOUT ── */
+.two-col {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 40px;
+}
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 24px 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+}
+.footer-logo { font-size: 14px; font-weight: 900; color: var(--dim); }
+.footer-logo em { color: var(--accent); font-style: normal; }
+.footer-copy { font-size: 12px; color: var(--dim); }
+
+@keyframes up { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform:none; } }
+.hero { animation: up 0.4s ease; }
+
+@media (max-width: 860px) {
+  .hero-top { grid-template-columns: 1fr; gap: 36px; }
+  .two-col { grid-template-columns: 1fr; }
+  nav { padding: 0 20px; }
+  .nav-links { display: none; }
+  .hero, .section { padding-left: 20px; padding-right: 20px; }
+  .predict-cta { margin: 0 20px 56px; padding: 24px 20px; }
+  footer { padding: 20px; }
+  h1 { letter-spacing: -1.5px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="logo">ayda<em>.run</em></a>
+  <div class="nav-links">
+    <a href="#" class="on">Гонки</a>
+    <a href="#">Маршруты</a>
+    <a href="#">Клубы</a>
+    <a href="#">Предсказать время</a>
+  </div>
+  <div class="right">
+    <a href="#" class="btn-nav">Войти</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <!-- LEFT -->
+    <div>
+      <div class="hero-label">Беговой портал Алматы</div>
+      <h1>Сквозная аналитика<br>всех горных<br><em>гонок Алматы</em></h1>
+      <p class="hero-sub">Рейтинги бегунов и клубов по всему сезону — не одна гонка, а полная картина. Плюс GPX маршруты и предсказание твоего финишного времени.</p>
+      <div class="hero-btns">
+        <a href="#" class="btn btn-fill">Рейтинг сезона</a>
+        <a href="#" class="btn btn-ghost">Предсказать моё время →</a>
+      </div>
+    </div>
+
+    <!-- RIGHT: SEASON BOX -->
+    <div class="season-box">
+      <div class="season-box-head">
+        <div class="sbox-title">Рейтинг сезона 2025</div>
+        <div class="sbox-year">Алматы</div>
+      </div>
+      <div class="season-nums">
+        <div class="snum">
+          <div class="snum-val accent">6</div>
+          <div class="snum-label">гонок в сезоне</div>
+        </div>
+        <div class="snum">
+          <div class="snum-val">1 847</div>
+          <div class="snum-label">уникальных бегунов</div>
+        </div>
+        <div class="snum">
+          <div class="snum-val">18</div>
+          <div class="snum-label">беговых клубов</div>
+        </div>
+      </div>
+      <div class="top-runners" id="topRunners"></div>
+      <div style="padding: 12px 20px; border-top: 1px solid var(--border);">
+        <a href="#" class="sec-link" style="font-size:12px; font-weight:600;">Полный рейтинг — 1847 бегунов →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- TWO COLUMNS -->
+  <div class="two-col">
+    <!-- CLUBS -->
+    <div>
+      <div class="sec-head">
+        <div class="sec-title">Клубы · Сезон 2025</div>
+        <a href="#" class="sec-link">Все клубы →</a>
+      </div>
+      <div id="clubsTable"></div>
+    </div>
+
+    <!-- RACES -->
+    <div>
+      <div class="sec-head">
+        <div class="sec-title">Гонки 2025</div>
+        <a href="#" class="sec-link">Все гонки →</a>
+      </div>
+      <div class="races-grid" id="racesGrid" style="grid-template-columns: 1fr;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- GPX PREDICT -->
+<div class="predict-cta">
+  <div>
+    <div class="pc-tag">GPX Predict</div>
+    <div class="pc-title">Сколько ты пройдёшь этот маршрут?</div>
+    <p class="pc-sub">Подключи Strava — предскажем твоё финишное время на любом трейле Алматы на основе твоих реальных данных.</p>
+  </div>
+  <a href="#" class="btn btn-fill" style="font-size:14px; padding: 13px 28px; white-space:nowrap;">Предсказать моё время</a>
+</div>
+
+<footer>
+  <div class="footer-logo">ayda<em>.run</em></div>
+  <div class="footer-copy">2025 · Алматы, Казахстан</div>
+</footer>
+
+<script>
+const topRunners = [
+  { place: 1, name: "Нурлан Абенов", club: "SRG", races: "6 гонок", score: "312" },
+  { place: 2, name: "Дмитрий Ли", club: "SRG", races: "5 гонок", score: "287" },
+  { place: 3, name: "Алина Кострова", club: "SRG", races: "6 гонок", score: "264" },
+  { place: 4, name: "Айбек Серик", club: "RUNFINITY", races: "4 гонки", score: "241" },
+  { place: 5, name: "Марат Жаксыбеков", club: "Runners KZ", races: "5 гонок", score: "228" },
+];
+
+const clubs = [
+  { rank: 1, name: "SRG", sub: "6 гонок · 68 бегунов", runners: 68, pct: 100 },
+  { rank: 2, name: "RUNFINITY", sub: "5 гонок · 45 бегунов", runners: 45, pct: 66 },
+  { rank: 3, name: "NRC Almaty", sub: "4 гонки · 38 бегунов", runners: 38, pct: 56 },
+  { rank: 4, name: "AlmaRun", sub: "6 гонок · 27 бегунов", runners: 27, pct: 40 },
+  { rank: 5, name: "Mountain Run", sub: "3 гонки · 21 бегун", runners: 21, pct: 31 },
+];
+
+const races = [
+  { tag: "Skyrace · 21 км", name: "Almaty Winter Skyrace", date: "15 февраля", count: "312 финишеров" },
+  { tag: "Trail · 42 км", name: "Almaty Trail Series #1", date: "12 апреля", count: "156 финишеров" },
+  { tag: "Vertical · 10 км", name: "Medeu Vertical Run", date: "3 мая", count: "89 финишеров" },
+  { tag: "Road · 42 км", name: "Big Almaty Run", date: "14 сентября", count: "1 240 финишеров" },
+];
+
+function ini(name) { return name.split(' ').map(w=>w[0]).join('').slice(0,2); }
+
+document.getElementById('topRunners').innerHTML = topRunners.map(r => `
+  <div class="runner-row">
+    <div class="rr-place ${r.place===1?'gold':''}">${r.place}</div>
+    <div class="rr-ava">${ini(r.name)}</div>
+    <div>
+      <div class="rr-name">${r.name}</div>
+      <div class="rr-club">${r.club} · ${r.races}</div>
+    </div>
+    <div class="rr-score">${r.score}</div>
+  </div>
+`).join('');
+
+function rankClass(n) {
+  if (n===1) return 'gold'; if (n===2) return 'silver'; if (n===3) return 'bronze'; return '';
+}
+
+document.getElementById('clubsTable').innerHTML = clubs.map(c => `
+  <div class="club-row">
+    <div class="cr-num ${rankClass(c.rank)}">${c.rank}</div>
+    <div class="cr-ava">${c.name.slice(0,2)}</div>
+    <div class="cr-info">
+      <div class="cr-name">${c.name}</div>
+      <div class="cr-sub">${c.sub}</div>
+    </div>
+    <div class="cr-bar-wrap"><div class="cr-bar" style="width:${c.pct}%"></div></div>
+    <div class="cr-runners">${c.runners}</div>
+  </div>
+`).join('');
+
+document.getElementById('racesGrid').innerHTML = races.map(r => `
+  <a href="#" class="race-card">
+    <div class="rc-tag">${r.tag}</div>
+    <div class="rc-name">${r.name}</div>
+    <div class="rc-date">${r.date} · 2025</div>
+    <div class="rc-footer">
+      <span>${r.count}</span>
+      <span>→</span>
+    </div>
+  </a>
+`).join('');
+</script>
+</body>
+</html>

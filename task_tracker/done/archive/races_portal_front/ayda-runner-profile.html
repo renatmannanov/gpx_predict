@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vizuete Castro Pedro — ayda.run</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#252628;--border:rgba(255,255,255,0.08);--accent:#E8622A;--text:#EDEEF0;--dim:#7A8394;--card:rgba(255,255,255,0.04)}
+body{background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;-webkit-font-smoothing:antialiased}
+nav{position:fixed;top:0;left:0;right:0;z-index:99;height:56px;display:flex;align-items:center;padding:0 40px;background:rgba(37,38,40,0.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.logo{font-size:17px;font-weight:900;letter-spacing:-.5px;color:var(--text);text-decoration:none}.logo em{color:var(--accent);font-style:normal}
+.nav-links{display:flex;gap:2px;margin-left:32px}
+.nav-links a{font-size:13px;font-weight:500;color:var(--dim);text-decoration:none;padding:6px 13px;border-radius:6px}
+.nav-links a:hover{color:var(--text)}
+.nav-right{margin-left:auto}
+.btn-nav{font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;background:var(--accent);color:#fff;padding:7px 18px;border-radius:7px;border:none;cursor:pointer}
+.page{max-width:800px;margin:0 auto;padding:80px 40px 80px}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.page{animation:up .3s ease}
+.back{font-size:12px;color:var(--dim);margin-bottom:16px;display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:color .15s}
+.back:hover{color:var(--text)}
+
+/* ── HEADER ── */
+.runner-head{margin-bottom:28px}
+
+.rh-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.rh-name{font-size:32px;font-weight:900;letter-spacing:-1.5px;line-height:1}
+.rh-pct{font-size:32px;font-weight:900;letter-spacing:-1.5px;color:var(--accent);line-height:1}
+
+.rh-strip{display:flex;align-items:flex-start;justify-content:space-between;border-top:1px solid var(--border);padding-top:12px}
+
+.rh-left-meta{display:flex;gap:24px}
+.rm{display:flex;flex-direction:column;gap:2px}
+.rm-n{font-size:13px;font-weight:800;color:var(--text)}
+.rm-l{font-size:10px;color:var(--dim)}
+
+.rh-right-meta{display:flex;gap:24px}
+.rm-r{display:flex;flex-direction:column;gap:2px;text-align:right}
+.rm-r .rm-n{color:var(--text)}
+.rm-r .rm-n.acc{color:var(--accent)}
+
+/* ── SPARKLINE ── */
+.section{margin-bottom:28px}
+.sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+.sh-title{font-size:16px;font-weight:800;letter-spacing:-.3px}
+.sh-badge{font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(60,199,122,0.1);color:#3CC77A}
+.spark-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden}
+.spark-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 85% 50%,rgba(232,98,42,0.06),transparent 60%);pointer-events:none}
+.spark-wrap{position:relative;width:100%;height:80px}
+.spark-years{position:relative;height:18px;margin-top:6px}
+.spark-tip{position:absolute;pointer-events:none;background:rgba(18,20,22,.98);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-size:11px;white-space:nowrap;display:none;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.spark-tip b{font-size:13px;font-weight:900}.spark-tip span{color:var(--dim)}
+
+/* ── RESULTS ── */
+.year-block{margin-bottom:20px}
+.year-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);margin-bottom:8px}
+.result-row{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:12px;padding:11px 16px;background:var(--card);border:1px solid var(--border);border-radius:9px;margin-bottom:5px;cursor:pointer;transition:all .15s}
+.result-row:hover{border-color:rgba(255,255,255,0.14);background:rgba(255,255,255,0.06)}
+.result-row.hi{border-color:rgba(232,98,42,0.3);background:rgba(232,98,42,0.03)}
+.rr-race{font-size:13px;font-weight:700}
+.rr-dist{font-size:11px;color:var(--dim);margin-top:1px}
+.rr-time{font-size:17px;font-weight:900;letter-spacing:-.5px;text-align:right;white-space:nowrap}
+.rr-place{font-size:10px;color:var(--dim);margin-top:1px;text-align:right}
+.rr-tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.top0{background:rgba(232,98,42,0.15);color:var(--accent)}
+.top1{background:rgba(212,167,66,0.15);color:#D4A742}
+.top2{background:rgba(60,199,122,0.15);color:#3CC77A}
+.top10{background:rgba(91,141,239,0.15);color:#5B8DEF}
+.rr-trend{font-size:11px;font-weight:700;white-space:nowrap;text-align:right}
+.tup{color:#3CC77A}.tdn{color:var(--accent)}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/" class="logo">ayda<em>.run</em></a>
+  <div class="nav-links"><a href="#">Гонки</a><a href="#">Рейтинг</a><a href="#">Клубы</a></div>
+  <div class="nav-right"><button class="btn-nav">Войти</button></div>
+</nav>
+<div class="page">
+  <div class="back">← Назад</div>
+
+  <div class="runner-head">
+    <div class="rh-top">
+      <div class="rh-name">Vizuete Castro Pedro</div>
+      <div class="rh-pct">top-2%</div>
+    </div>
+    <div class="rh-strip">
+      <div class="rh-left-meta">
+        <div class="rm"><div class="rm-n">HomeRun</div><div class="rm-l">клуб</div></div>
+        <div class="rm"><div class="rm-n">M_30–39</div><div class="rm-l">категория</div></div>
+        <div class="rm"><div class="rm-n">6</div><div class="rm-l">лет на сцене</div></div>
+      </div>
+      <div class="rh-right-meta">
+        <div class="rm-r"><div class="rm-n">39</div><div class="rm-l">гонок всего</div></div>
+        <div class="rm-r"><div class="rm-n">9</div><div class="rm-l">в 2025</div></div>
+        <div class="rm-r"><div class="rm-n acc">#1</div><div class="rm-l">лучшее место</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh">
+      <div class="sh-title">Прогресс по сезонам</div>
+      <div class="sh-badge">↑ +26% за 6 лет</div>
+    </div>
+    <div class="spark-card">
+      <div class="spark-wrap">
+        <canvas id="spark" style="width:100%;height:80px"></canvas>
+        <div class="spark-tip" id="stip"></div>
+      </div>
+      <div class="spark-years" id="spark-years"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh"><div class="sh-title">Все результаты</div></div>
+    <div id="results"></div>
+  </div>
+</div>
+
+<script>
+const SEASONS=[
+  {year:2021,pct:62,races:4,best:'Amangeldy Race'},
+  {year:2022,pct:71,races:6,best:'Alpine Race'},
+  {year:2023,pct:78,races:7,best:'Alpine Race'},
+  {year:2024,pct:83,races:8,best:'Aqbura Bay Trail'},
+  {year:2025,pct:88,races:9,best:'Almaty Half Marathon'},
+  {year:2026,pct:80,races:5,best:'Alpine Race'},
+];
+const RESULTS={
+  2026:[
+    {race:'Alpine Race',dist:'Skyrunning 4.6 км',time:'38:36',place:'#1 из 435',tag:'top0',trend:{dir:'up',val:'-0:11:37',vs:'2025'}},
+    {race:'Amangeldy Race',dist:'SR 1500',time:'1:33:58',place:'#5 из 27',tag:'top1',trend:{dir:'up',val:'-0:02:13',vs:'2025'}},
+  ],
+  2025:[
+    {race:'Almaty Half Marathon',dist:'21 км 97.5 м',time:'1:15:26',place:'#26 из 3559',tag:'top1',trend:null},
+    {race:'Almaty Marathon',dist:'42 км 195 м',time:'2:54:41',place:'#22 из 1122',tag:'top2',trend:null},
+    {race:'Alpine Race',dist:'Skyrunning',time:'50:13',place:'#4 из 410',tag:'top1',trend:{dir:'dn',val:'+0:04:17',vs:'2024'}},
+    {race:'Amangeldy Race',dist:'SR 1500',time:'1:36:11',place:'#12 из 87',tag:'top10',trend:{dir:'dn',val:'+0:09:17',vs:'2024'}},
+    {race:'Aqbura Bay Trail',dist:'Uly 51 км',time:'4:05:19',place:'#3 из 107',tag:'top2',trend:null},
+  ],
+  2024:[
+    {race:'Alpine Race',dist:'Skyrunning',time:'46:00',place:'#3 из 390',tag:'top1',trend:null},
+    {race:'Amangeldy Race',dist:'SR 1500',time:'1:27:30',place:'#7 из 75',tag:'top0',trend:null},
+    {race:'Aqbura Bay Trail',dist:'Uly 51 км',time:'4:12:44',place:'#5 из 98',tag:'top2',trend:null},
+  ],
+  2023:[
+    {race:'Alpine Race',dist:'Skyrunning',time:'48:22',place:'#5 из 350',tag:'top2',trend:null},
+    {race:'Salomon Trail',dist:'42 км',time:'5:10:00',place:'#8 из 120',tag:'top10',trend:null},
+  ],
+};
+const TAG={top0:'top-0%',top1:'top-1%',top2:'top-2%',top10:'top-10%'};
+
+let dots=[];
+function renderSpark(){
+  const c=document.getElementById('spark');
+  const dpr=window.devicePixelRatio||1;
+  const W=c.parentElement.getBoundingClientRect().width,H=80;
+  c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';
+  const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+  const P={t:8,r:12,b:6,l:8},cW=W-P.l-P.r,cH=H-P.t-P.b;
+  const n=SEASONS.length,step=cW/(n-1);
+  const toY=p=>P.t+cH-((p-55)/45)*cH;
+  [70,80,90].forEach(p=>{
+    ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;ctx.setLineDash([3,5]);
+    ctx.beginPath();ctx.moveTo(P.l,toY(p));ctx.lineTo(P.l+cW,toY(p));ctx.stroke();ctx.setLineDash([]);
+  });
+  const g=ctx.createLinearGradient(0,P.t,0,P.t+cH);
+  g.addColorStop(0,'rgba(232,98,42,0.22)');g.addColorStop(1,'rgba(232,98,42,0)');
+  ctx.beginPath();
+  SEASONS.forEach((s,i)=>{const x=P.l+i*step,y=toY(s.pct);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+  ctx.lineTo(P.l+(n-1)*step,P.t+cH);ctx.lineTo(P.l,P.t+cH);
+  ctx.closePath();ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();ctx.strokeStyle='rgba(232,98,42,0.85)';ctx.lineWidth=2;ctx.lineJoin='round';
+  SEASONS.forEach((s,i)=>{const x=P.l+i*step,y=toY(s.pct);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+  ctx.stroke();
+  dots=[];
+  SEASONS.forEach((s,i)=>{
+    const x=P.l+i*step,y=toY(s.pct),inc=s.year===2026;
+    if(s.pct===Math.max(...SEASONS.map(x=>x.pct))){ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fillStyle='rgba(232,98,42,0.15)';ctx.fill();}
+    ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle=inc?'#555':'#E8622A';ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,1.5,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+    dots.push({x,y,s});
+  });
+  const yr=document.getElementById('spark-years');
+  yr.style.position='relative';
+  yr.innerHTML=SEASONS.map((s,i)=>`<span style="position:absolute;left:${P.l+i*step}px;transform:translateX(-50%);font-size:10px;font-weight:700;color:rgba(122,131,148,${s.year===2026?.4:.6})">${s.year}</span>`).join('');
+}
+document.getElementById('spark').addEventListener('mousemove',function(e){
+  const rect=this.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  const tip=document.getElementById('stip');let found=null;
+  dots.forEach(d=>{if(Math.sqrt((mx-d.x)**2+(my-d.y)**2)<16)found=d;});
+  if(found){
+    const s=found.s,prev=SEASONS.find(x=>x.year===s.year-1);
+    const delta=prev?(s.pct>prev.pct?`<span style="color:#3CC77A"> ↑+${s.pct-prev.pct}%</span>`:`<span style="color:var(--accent)"> ↓${s.pct-prev.pct}%</span>`):'';
+    tip.innerHTML=`<b>${s.year} · top-${100-s.pct}%${delta}</b><br><span>${s.races} гонок · ${s.best}</span>`;
+    tip.style.display='block';tip.style.left=Math.min(found.x+12,rect.width-200)+'px';tip.style.top=(found.y-52)+'px';
+  } else tip.style.display='none';
+});
+document.getElementById('spark').addEventListener('mouseleave',()=>document.getElementById('stip').style.display='none');
+window.addEventListener('resize',renderSpark);
+
+function renderResults(){
+  let html='';
+  Object.keys(RESULTS).sort((a,b)=>b-a).forEach(yr=>{
+    html+=`<div class="year-block"><div class="year-label">${yr}</div>`;
+    RESULTS[yr].forEach(r=>{
+      const hi=r.tag==='top0'||r.tag==='top1';
+      const tr=r.trend?`<div class="rr-trend ${r.trend.dir==='up'?'tup':'tdn'}">▲ ${r.trend.val} vs ${r.trend.vs}</div>`:'<div></div>';
+      html+=`<div class="result-row ${hi?'hi':''}">
+        <div><div class="rr-race">${r.race}</div><div class="rr-dist">${r.dist}</div></div>
+        <div><div class="rr-time">${r.time}</div><div class="rr-place">${r.place}</div></div>
+        <div class="rr-tag ${r.tag}">${TAG[r.tag]||''}</div>
+        ${tr}
+      </div>`;
+    });
+    html+='</div>';
+  });
+  document.getElementById('results').innerHTML=html;
+}
+renderSpark();renderResults();
+</script>
+</body>
+</html>

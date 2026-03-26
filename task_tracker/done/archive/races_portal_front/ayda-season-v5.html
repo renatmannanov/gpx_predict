@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Рейтинг сезона 2025 — ayda.run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg: #252628; --border: rgba(255,255,255,0.08);
+  --accent: #E8622A; --text: #EDEEF0; --dim: #7A8394;
+  --card: rgba(255,255,255,0.04);
+}
+body { background:var(--bg); color:var(--text); font-family:'Manrope',sans-serif; -webkit-font-smoothing:antialiased; }
+nav { position:fixed; top:0; left:0; right:0; z-index:99; height:56px; display:flex; align-items:center; padding:0 40px; background:rgba(37,38,40,0.95); backdrop-filter:blur(16px); border-bottom:1px solid var(--border); }
+.logo { font-size:17px; font-weight:900; letter-spacing:-0.5px; color:var(--text); text-decoration:none; }
+.logo em { color:var(--accent); font-style:normal; }
+.nav-links { display:flex; gap:2px; margin-left:32px; }
+.nav-links a { font-size:13px; font-weight:500; color:var(--dim); text-decoration:none; padding:6px 13px; border-radius:6px; transition:color .15s; }
+.nav-links a.on, .nav-links a:hover { color:var(--text); }
+.nav-right { margin-left:auto; }
+.btn-nav { font-family:'Manrope',sans-serif; font-size:13px; font-weight:700; background:var(--accent); color:#fff; padding:7px 18px; border-radius:7px; border:none; cursor:pointer; }
+.page { max-width:1020px; margin:0 auto; padding:80px 40px 80px; animation: up .35s ease; }
+@keyframes up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+/* HEADER */
+.hrow { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:28px; }
+h1 { font-size:clamp(28px,4vw,44px); font-weight:900; letter-spacing:-1.5px; line-height:1.05; }
+h1 em { font-style:normal; color:var(--accent); }
+.hsub { font-size:14px; color:var(--dim); margin-top:8px; }
+.ssw { position:relative; flex-shrink:0; }
+.ssw-btn { font-family:'Manrope',sans-serif; font-size:13px; font-weight:700; padding:8px 16px; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--text); cursor:pointer; display:flex; align-items:center; gap:8px; transition:all .15s; white-space:nowrap; }
+.ssw-btn:hover { border-color:rgba(255,255,255,0.2); }
+.ssw-yr { color:var(--accent); }
+.ssw-dd { position:absolute; top:calc(100% + 6px); right:0; z-index:99; min-width:180px; background:#1c1e20; border:1px solid rgba(255,255,255,0.12); border-radius:10px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,.5); display:none; }
+.ssw-dd.open { display:block; }
+.ssw-opt { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; cursor:pointer; transition:background .1s; border-bottom:1px solid rgba(255,255,255,0.04); font-size:13px; font-weight:600; }
+.ssw-opt:last-child { border-bottom:none; }
+.ssw-opt:hover { background:rgba(255,255,255,0.05); }
+.ssw-opt.on { color:var(--accent); }
+.ssw-opt-tag { font-size:10px; font-weight:700; color:var(--dim); padding:2px 6px; border:1px solid var(--border); border-radius:3px; }
+
+/* RACE SELECTOR */
+.rs { margin-bottom:28px; }
+.rs-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.rs-seg { display:flex; background:var(--card); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.rs-seg button { font-family:'Manrope',sans-serif; font-size:12px; font-weight:700; padding:7px 14px; background:none; border:none; border-right:1px solid var(--border); color:var(--dim); cursor:pointer; transition:all .15s; white-space:nowrap; }
+.rs-seg button:last-child { border-right:none; }
+.rs-seg button.on { background:rgba(232,98,42,0.12); color:var(--accent); }
+.rs-seg button.road-on { background:rgba(91,141,239,0.12); color:#5B8DEF; }
+.rs-divider { width:1px; height:24px; background:var(--border); flex-shrink:0; }
+.rs-pick { position:relative; }
+.rs-pick-btn { font-family:'Manrope',sans-serif; font-size:12px; font-weight:700; padding:7px 12px; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--dim); cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:6px; white-space:nowrap; }
+.rs-pick-btn:hover { color:var(--text); border-color:rgba(255,255,255,0.18); }
+.rs-pick-btn.active { border-color:rgba(232,98,42,0.45); color:var(--text); }
+.rs-badge { background:var(--accent); color:#fff; font-size:10px; font-weight:800; padding:1px 6px; border-radius:3px; }
+.rs-info { font-size:12px; color:var(--dim); }
+.find-me-btn { font-family:'Manrope',sans-serif; font-size:12px; font-weight:700; padding:7px 12px; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--dim); cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:6px; white-space:nowrap; margin-left:auto; }
+.find-me-btn:hover { color:var(--text); border-color:rgba(255,255,255,0.2); }
+.find-me-btn.active { border-color:rgba(232,98,42,0.45); color:var(--accent); background:rgba(232,98,42,0.08); }
+
+/* FIND ME MODAL */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+.modal-overlay.open { display:flex; }
+.modal { background:#1c1e20; border:1px solid rgba(255,255,255,0.12); border-radius:16px; width:480px; max-width:calc(100vw - 32px); overflow:hidden; box-shadow:0 24px 64px rgba(0,0,0,.7); }
+.modal-head { padding:20px 24px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-title { font-size:16px; font-weight:800; }
+.modal-close { font-size:18px; color:var(--dim); background:none; border:none; cursor:pointer; line-height:1; padding:4px; }
+.modal-close:hover { color:var(--text); }
+.modal-body { padding:20px 24px; }
+.modal-hint { font-size:13px; color:var(--dim); margin-bottom:14px; line-height:1.5; }
+.modal-search { width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:'Manrope',sans-serif; font-size:14px; padding:10px 14px; outline:none; transition:border-color .15s; margin-bottom:14px; }
+.modal-search:focus { border-color:rgba(232,98,42,0.4); }
+.modal-search::placeholder { color:var(--dim); }
+.modal-results { border:1px solid var(--border); border-radius:8px; overflow:hidden; max-height:240px; overflow-y:auto; }
+.modal-results::-webkit-scrollbar { width:3px; }
+.modal-results::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+.mres-row { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; transition:background .1s; border-bottom:1px solid rgba(255,255,255,0.04); }
+.mres-row:last-child { border-bottom:none; }
+.mres-row:hover { background:rgba(255,255,255,0.04); }
+.mres-ck { width:16px; height:16px; border-radius:4px; border:1.5px solid rgba(255,255,255,0.2); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; transition:all .12s; }
+.mres-row.on .mres-ck { background:var(--accent); border-color:var(--accent); color:#fff; }
+.mres-name { font-size:14px; font-weight:700; flex:1; }
+.mres-meta { font-size:11px; color:var(--dim); }
+.modal-empty { padding:24px; text-align:center; color:var(--dim); font-size:13px; }
+.modal-saved { font-size:12px; color:var(--dim); margin-bottom:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.saved-tag { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; background:rgba(232,98,42,0.12); border:1px solid rgba(232,98,42,0.3); border-radius:4px; font-size:11px; font-weight:700; color:var(--accent); cursor:pointer; }
+.saved-tag-x { opacity:.6; }
+.saved-tag-x:hover { opacity:1; }
+.modal-foot { padding:14px 24px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.modal-note { font-size:11px; color:var(--dim); }
+.modal-apply { font-family:'Manrope',sans-serif; font-size:13px; font-weight:700; padding:9px 20px; background:var(--accent); color:#fff; border:none; border-radius:8px; cursor:pointer; transition:opacity .15s; }
+.modal-apply:hover { opacity:.87; }
+
+/* DROPDOWN */
+.rs-dd { position:absolute; top:calc(100% + 6px); left:0; z-index:99; width:540px; background:#1c1e20; border:1px solid rgba(255,255,255,0.12); border-radius:12px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.6); display:none; }
+.rs-dd.open { display:block; }
+.rs-dd-top { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border); }
+.rs-dd-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--dim); }
+.rs-dd-btns { display:flex; gap:5px; }
+.rs-dd-btn { font-family:'Manrope',sans-serif; font-size:11px; font-weight:700; background:none; border:1px solid var(--border); border-radius:4px; color:var(--dim); padding:3px 9px; cursor:pointer; transition:all .15s; }
+.rs-dd-btn:hover { color:var(--text); }
+.rs-dd-body { display:grid; grid-template-columns:1fr 1fr; }
+.rs-dd-col { border-right:1px solid var(--border); }
+.rs-dd-col:last-child { border-right:none; }
+.rs-dd-col-hd { padding:8px 14px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.rs-dd-col-hd.trail { color:var(--accent); }
+.rs-dd-col-hd.road  { color:#5B8DEF; }
+.rs-dd-col-hd small { font-size:10px; font-weight:600; color:var(--dim); text-transform:none; letter-spacing:0; }
+.rs-dd-scroll { max-height:260px; overflow-y:auto; }
+.rs-dd-scroll::-webkit-scrollbar { width:3px; }
+.rs-dd-scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+.dd-row { display:flex; align-items:center; gap:9px; padding:7px 14px; cursor:pointer; transition:background .1s; border-bottom:1px solid rgba(255,255,255,0.03); }
+.dd-row:hover { background:rgba(255,255,255,0.04); }
+.dd-row:last-child { border-bottom:none; }
+.dd-ck { width:14px; height:14px; border-radius:3px; border:1.5px solid rgba(255,255,255,0.18); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; transition:all .12s; }
+.dd-row.on.trail .dd-ck { background:var(--accent); border-color:var(--accent); color:#fff; }
+.dd-row.on.road  .dd-ck { background:#5B8DEF; border-color:#5B8DEF; color:#fff; }
+.dd-row-name { font-size:12px; font-weight:600; flex:1; }
+.dd-row-meta { font-size:10px; color:var(--dim); white-space:nowrap; }
+
+/* CHART */
+.chart-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:24px 24px 8px; margin-bottom:28px; }
+.chart-ttl { font-size:16px; font-weight:800; margin-bottom:4px; }
+.chart-sub { font-size:13px; color:var(--dim); margin-bottom:20px; }
+.chart-area { position:relative; width:100%; height:340px; }
+canvas { display:block; }
+.btip { position:absolute; pointer-events:none; background:rgba(26,28,32,0.98); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-size:12px; white-space:nowrap; display:none; z-index:10; box-shadow:0 4px 20px rgba(0,0,0,.5); }
+.btip-name { font-size:14px; font-weight:800; margin-bottom:5px; }
+.btip-row { color:var(--dim); margin-top:2px; }
+.btip-row b { color:var(--text); font-weight:700; }
+
+/* GENDER */
+.grow { display:flex; gap:6px; align-items:center; margin-bottom:20px; }
+.glabel { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.7px; color:var(--dim); }
+.gbtn { font-family:'Manrope',sans-serif; font-size:13px; font-weight:700; padding:7px 16px; border-radius:20px; border:1px solid var(--border); background:none; color:var(--dim); cursor:pointer; transition:all .15s; }
+.gbtn:hover { color:var(--text); }
+.gbtn.on { background:rgba(232,98,42,0.12); border-color:rgba(232,98,42,0.4); color:var(--accent); }
+
+/* INSIGHT CARDS */
+.insights { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px; }
+.icard { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.icard-head { padding:12px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.icard-title { font-size:12px; font-weight:800; }
+.icard-sub { font-size:11px; color:var(--dim); }
+
+/* CLUB ROWS */
+.club-r { display:flex; align-items:center; gap:10px; padding:10px 18px; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer; transition:background .1s; }
+.club-r:hover { background:rgba(255,255,255,0.03); }
+.club-r:last-child { border-bottom:none; }
+.club-r-pl { font-size:14px; font-weight:900; width:24px; text-align:center; flex-shrink:0; }
+.club-r-pl.g{color:#C9993A;} .club-r-pl.s{color:#8A9BAD;} .club-r-pl.b{color:#8A6040;}
+.club-r-ava { width:30px; height:30px; border-radius:7px; background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:var(--dim); flex-shrink:0; }
+.club-r-info { flex:1; min-width:0; }
+.club-r-name { font-size:13px; font-weight:700; }
+.club-r-sub { font-size:11px; color:var(--dim); margin-top:2px; }
+.club-r-bar-wrap { flex:1; max-width:80px; }
+.club-r-bar-bg { height:3px; background:rgba(255,255,255,0.06); border-radius:2px; }
+.club-r-bar { height:3px; border-radius:2px; background:var(--accent); opacity:.7; }
+.club-r-pct { font-size:16px; font-weight:900; letter-spacing:-.5px; width:38px; text-align:right; flex-shrink:0; }
+
+/* GENDER + AGE breakdown */
+.breakdown-body { padding:18px; display:flex; flex-direction:column; gap:14px; }
+.breakdown-row { display:flex; flex-direction:column; gap:5px; }
+.br-label { display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px; }
+.br-name { font-weight:700; }
+.br-val { color:var(--dim); }
+.br-track { height:6px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; }
+.br-fill { height:100%; border-radius:3px; }
+.br-fill.m { background:var(--accent); }
+.br-fill.f { background:#5B8DEF; }
+.br-fill.a1 { background:#3CC77A; }
+.br-fill.a2 { background:var(--accent); }
+.br-fill.a3 { background:#5B8DEF; }
+.br-fill.a4 { background:#9B6FD0; }
+.br-section-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--dim); margin-bottom:6px; margin-top:4px; }
+
+/* SEARCH POPUP */
+.srch-btn { font-family:'Manrope',sans-serif; font-size:12px; font-weight:700; padding:7px 12px; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--dim); cursor:pointer; display:flex; align-items:center; gap:6px; transition:all .15s; white-space:nowrap; position:relative; }
+.srch-btn:hover { color:var(--text); border-color:rgba(255,255,255,0.18); }
+.srch-btn.active { border-color:rgba(232,98,42,0.45); color:var(--text); }
+.srch-btn-name { max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent); font-weight:800; }
+.srch-pill { background:rgba(232,98,42,0.15); color:var(--accent); font-size:10px; font-weight:800; padding:2px 6px; border-radius:3px; }
+
+/* MODAL OVERLAY */
+.srch-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); z-index:200; display:none; align-items:center; justify-content:center; }
+.srch-overlay.open { display:flex; }
+.srch-modal { background:#1c1e20; border:1px solid rgba(255,255,255,0.12); border-radius:16px; width:480px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,.7); overflow:hidden; animation:modalIn .2s ease; }
+@keyframes modalIn { from{opacity:0;transform:scale(.96)translateY(10px)} to{opacity:1;transform:none} }
+.srch-modal-head { padding:18px 20px 14px; border-bottom:1px solid var(--border); }
+.srch-modal-title { font-size:16px; font-weight:800; margin-bottom:12px; }
+.srch-inp-wrap { position:relative; }
+.srch-inp { width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:'Manrope',sans-serif; font-size:15px; padding:10px 14px 10px 38px; outline:none; transition:border-color .15s; }
+.srch-inp::placeholder { color:var(--dim); }
+.srch-inp:focus { border-color:rgba(232,98,42,0.4); }
+.srch-inp-ico { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--dim); font-size:14px; pointer-events:none; }
+.srch-hint { font-size:11px; color:var(--dim); margin-top:8px; }
+
+.srch-results { max-height:280px; overflow-y:auto; }
+.srch-results::-webkit-scrollbar { width:3px; }
+.srch-results::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+.srch-result-row { display:flex; align-items:center; gap:10px; padding:10px 20px; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer; transition:background .1s; }
+.srch-result-row:hover { background:rgba(255,255,255,0.04); }
+.srch-result-row.sel { background:rgba(232,98,42,0.08); }
+.srch-result-row:last-child { border-bottom:none; }
+.srch-r-ck { width:16px; height:16px; border-radius:4px; border:1.5px solid rgba(255,255,255,0.2); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; transition:all .12s; }
+.srch-result-row.sel .srch-r-ck { background:var(--accent); border-color:var(--accent); color:#fff; }
+.srch-r-ava { width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:var(--dim); flex-shrink:0; }
+.srch-r-info { flex:1; min-width:0; }
+.srch-r-name { font-size:13px; font-weight:700; }
+.srch-r-meta { font-size:11px; color:var(--dim); margin-top:2px; }
+.srch-empty { padding:28px 20px; text-align:center; color:var(--dim); font-size:13px; }
+
+.srch-modal-foot { padding:14px 20px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.srch-selected-names { font-size:12px; color:var(--dim); flex:1; min-width:0; }
+.srch-selected-names b { color:var(--accent); }
+.srch-foot-btns { display:flex; gap:8px; flex-shrink:0; }
+.srch-foot-btn { font-family:'Manrope',sans-serif; font-size:13px; font-weight:700; padding:8px 18px; border-radius:8px; border:none; cursor:pointer; transition:all .15s; }
+.srch-foot-cancel { background:transparent; border:1px solid var(--border); color:var(--dim); }
+.srch-foot-cancel:hover { color:var(--text); }
+.srch-foot-apply { background:var(--accent); color:#fff; }
+.srch-foot-apply:hover { opacity:.88; }
+
+/* FULL TABLE */
+.fth { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.fttl { font-size:13px; font-weight:700; color:var(--dim); }
+
+.flist { border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.frow { display:grid; grid-template-columns:44px 1fr 80px; align-items:center; gap:12px; padding:12px 18px; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer; transition:background .1s; }
+.frow:hover { background:rgba(255,255,255,0.03); }
+.frow:last-child { border-bottom:none; }
+.frow.pod { background:rgba(232,98,42,0.04); }
+.frow.srch-match { background:rgba(232,98,42,0.1); outline:1px solid rgba(232,98,42,0.25); }
+.fpl { font-size:16px; font-weight:900; color:var(--dim); text-align:center; }
+.fpl.g{color:#C9993A;} .fpl.s{color:#8A9BAD;} .fpl.b{color:#8A6040;}
+.fper { display:flex; align-items:center; gap:10px; min-width:0; }
+.fava { width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.07); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:var(--dim); flex-shrink:0; }
+.fname { font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fmeta { font-size:11px; color:var(--dim); margin-top:2px; }
+.fpct { text-align:right; }
+.fpct-n { font-size:18px; font-weight:900; letter-spacing:-.5px; }
+.fpct-s { font-size:10px; color:var(--dim); }
+.lbtn { width:100%; margin-top:10px; background:var(--card); border:1px solid var(--border); color:var(--dim); font-family:'Manrope',sans-serif; font-size:13px; font-weight:600; padding:13px; border-radius:8px; cursor:pointer; transition:all .15s; }
+.lbtn:hover { color:var(--text); border-color:rgba(255,255,255,0.18); }
+@media(max-width:720px){
+  nav{padding:0 20px;} .nav-links{display:none;}
+  .page{padding:76px 20px 60px;}
+  .twoboards{grid-template-columns:1fr;}
+  .chart-area{height:260px;}
+}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/" class="logo">ayda<em>.run</em></a>
+  <div class="nav-links">
+    <a href="#">Гонки</a><a href="#" class="on">Рейтинг</a>
+    <a href="#">Клубы</a><a href="#">Маршруты</a>
+  </div>
+  <div class="nav-right"><a href="#" class="btn-nav">Войти</a></div>
+</nav>
+<div class="page">
+
+  <div class="hrow">
+    <div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;">Алматы · Сквозная аналитика</div>
+      <h1>Рейтинг сезона <em id="yr">2025</em></h1>
+      <div class="hsub" id="hsub">30 гонок · 1 847 бегунов · рейтинг по всем стартам сезона</div>
+    </div>
+    <div class="ssw">
+      <button class="ssw-btn" onclick="toggleSsw()">
+        Сезон <span class="ssw-yr" id="ssw-yr">2025</span> ▾
+      </button>
+      <div class="ssw-dd" id="ssw-dd">
+        <div class="ssw-opt" onclick="setSeason(2026);toggleSsw()">2026 <span class="ssw-opt-tag">текущий</span></div>
+        <div class="ssw-opt on" onclick="setSeason(2025);toggleSsw()">2025</div>
+        <div class="ssw-opt" onclick="setSeason(2024);toggleSsw()">2024</div>
+        <div class="ssw-opt" onclick="setSeason(2023);toggleSsw()">2023</div>
+        <div class="ssw-opt" onclick="setSeason(2022);toggleSsw()">2022</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rs">
+    <div class="rs-bar">
+      <div class="rs-seg">
+        <button id="seg-all" onclick="selAll();updSeg('all')" class="on">Все 30</button>
+        <button id="seg-trail" onclick="selGroup('trail');updSeg('trail')">⛰ Трейл</button>
+        <button id="seg-road" onclick="selGroup('road');updSeg('road')">🏙 Асфальт</button>
+      </div>
+      <div class="rs-divider"></div>
+      <div class="rs-pick">
+        <button class="rs-pick-btn" id="rs-pick-btn" onclick="toggleDD()">
+          Выбрать гонки
+          <span class="rs-badge" id="rs-badge">30</span>
+          ▾
+        </button>
+        <div class="rs-dd" id="rs-dd">
+          <div class="rs-dd-top">
+            <div class="rs-dd-label">Гонки сезона</div>
+            <div class="rs-dd-btns">
+              <button class="rs-dd-btn" onclick="selAll();updateSrchBtn();
+renderAll();event.stopPropagation()">Все</button>
+              <button class="rs-dd-btn" onclick="selGroup('trail');renderAll();event.stopPropagation()">Трейл</button>
+              <button class="rs-dd-btn" onclick="selGroup('road');renderAll();event.stopPropagation()">Асфальт</button>
+              <button class="rs-dd-btn" onclick="selNone();renderAll();event.stopPropagation()">Сброс</button>
+            </div>
+          </div>
+          <div class="rs-dd-body">
+            <div class="rs-dd-col">
+              <div class="rs-dd-col-hd trail">⛰ Трейл <small id="trcnt"></small></div>
+              <div class="rs-dd-scroll" id="trail-chips"></div>
+            </div>
+            <div class="rs-dd-col">
+              <div class="rs-dd-col-hd road">🏙 Асфальт <small id="rdcnt"></small></div>
+              <div class="rs-dd-scroll" id="road-chips"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="rs-info" id="rs-info"></div>
+      <button class="find-me-btn" id="find-me-btn" onclick="openFindMe()">
+        🔍 Найти себя
+      </button>
+    </div>
+  </div>
+
+  <!-- FIND ME MODAL -->
+  <div class="modal-overlay" id="find-modal" onclick="if(event.target===this)closeFindMe()">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">Найти себя в рейтинге</div>
+        <button class="modal-close" onclick="closeFindMe()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-hint">В разных гонках твоё имя могло быть записано по-разному — выбери все варианты.</div>
+        <div class="modal-saved" id="modal-saved"></div>
+        <input class="modal-search" id="modal-search-inp" placeholder="Начни вводить имя..." oninput="searchNames(this.value)" autocomplete="off">
+        <div class="modal-results" id="modal-results">
+          <div class="modal-empty">Начни вводить имя для поиска</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <div class="modal-note" id="modal-note"></div>
+        <button class="modal-apply" onclick="applyFindMe()">Применить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-ttl">Кто лучший бегун Алматы этого сезона?</div>
+    <div class="chart-sub">Наведи на любую точку. Правый верхний угол = много гонок и высокий перцентиль.</div>
+    <div class="chart-area">
+      <canvas id="bc" style="width:100%;height:340px;"></canvas>
+      <div class="btip" id="tip">
+        <div class="btip-name" id="tn"></div>
+        <div class="btip-row">Клуб: <b id="tc"></b></div>
+        <div class="btip-row">Стартов: <b id="tr"></b></div>
+        <div class="btip-row">Ср. перцентиль: <b id="tp"></b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grow">
+    <span class="glabel">Пол</span>
+    <button class="gbtn on" onclick="setG('all',this)">Все</button>
+    <button class="gbtn" onclick="setG('m',this)">Мужчины</button>
+    <button class="gbtn" onclick="setG('f',this)">Женщины</button>
+  </div>
+
+  <div class="insights">
+    <div class="icard">
+      <div class="icard-head">
+        <div class="icard-title">Клубы сезона</div>
+        <div class="icard-sub" id="clubs-sub">по среднему перцентилю</div>
+      </div>
+      <div id="club-rankings"></div>
+    </div>
+    <div class="icard">
+      <div class="icard-head">
+        <div class="icard-title">Состав участников</div>
+        <div class="icard-sub" id="demog-sub"></div>
+      </div>
+      <div class="breakdown-body" id="breakdown"></div>
+    </div>
+  </div>
+
+  <div class="fth">
+    <div class="fttl" id="fttl">Общий рейтинг</div>
+  </div>
+  <div class="flist" id="flist"></div>
+  <button class="lbtn" id="lbtn" onclick="loadMore()">Показать ещё</button>
+
+</div>
+<script>
+const TR=[
+  {id:'aws', name:'Winter Skyrace',    date:'15 фев',km:21,elev:1840,runners:312},
+  {id:'ats1',name:'Trail Series #1',   date:'12 апр',km:15,elev:980, runners:156},
+  {id:'mvr', name:'Medeu Vertical',    date:'3 мая', km:10,elev:1200,runners:89},
+  {id:'xtr', name:'XTERRA Almaty',     date:'28 июн',km:50,elev:2400,runners:203},
+  {id:'skt', name:'Skyrace Talgar',    date:'19 июл',km:33,elev:2100,runners:178},
+  {id:'ats2',name:'Trail Series #2',   date:'9 авг', km:15,elev:980, runners:201},
+  {id:'kms', name:'Komsomol Peak',     date:'23 авг',km:18,elev:1560,runners:134},
+  {id:'ats3',name:'Trail Series #3',   date:'6 сент',km:15,elev:980, runners:189},
+  {id:'tbt', name:'Tian Shan Trail',   date:'20 сент',km:42,elev:2800,runners:97},
+  {id:'atr', name:'Autumn Skyrace',    date:'5 окт', km:25,elev:1700,runners:221},
+  {id:'bkl', name:'Bakolsai Trail',    date:'18 окт',km:30,elev:1950,runners:143},
+  {id:'nov', name:'November Trail',    date:'2 ноя', km:12,elev:750, runners:167},
+  {id:'ats4',name:'Trail Series #4',   date:'16 ноя',km:15,elev:980, runners:158},
+  {id:'wnt', name:'Winter Trail Cup',  date:'7 дек', km:20,elev:1400,runners:112},
+  {id:'xms', name:'Christmas Skyrace', date:'21 дек',km:16,elev:1100,runners:198},
+  {id:'aly', name:'Alatau Ridge Run',  date:'29 дек',km:28,elev:1800,runners:88},
+  {id:'bnv', name:'Butakovsky Night',  date:'14 мар',km:8, elev:600, runners:244},
+  {id:'kpl', name:'Kapchagai Ultra',   date:'1 мая', km:80,elev:400, runners:66},
+  {id:'alp', name:'Almaty Alpine',     date:'17 мая',km:22,elev:1650,runners:154},
+  {id:'jrn', name:'Jurunday Trail',    date:'14 июн',km:35,elev:2200,runners:119},
+];
+const RD=[
+  {id:'bar', name:'Big Almaty Run',    date:'14 сент',km:42,elev:180, runners:1240},
+  {id:'hfm', name:'Half Marathon',     date:'27 апр', km:21,elev:90,  runners:890},
+  {id:'mar5',name:'Almaty 5K',         date:'5 мая',  km:5, elev:20,  runners:1560},
+  {id:'nkr', name:'Nike Run 10K',      date:'1 июн',  km:10,elev:40,  runners:720},
+  {id:'spr', name:'Spring Marathon',   date:'20 апр', km:42,elev:160, runners:980},
+  {id:'r10', name:'Race 10K Open',     date:'13 июл', km:10,elev:35,  runners:540},
+  {id:'eve', name:'Evening 5K',        date:'3 авг',  km:5, elev:15,  runners:410},
+  {id:'cty', name:'City Night Run',    date:'31 авг', km:10,elev:30,  runners:680},
+  {id:'aut2',name:'Autumn Half',       date:'12 окт', km:21,elev:95,  runners:760},
+  {id:'dec5',name:'December 5K',       date:'14 дек', km:5, elev:20,  runners:390},
+];
+const ALL=[...TR,...RD];
+const RAW=[
+  ['Нурлан Абенов','SRG','m'],['Дмитрий Ли','SRG','m'],['Алина Кострова','SRG','f'],
+  ['Айбек Серик','RUNFINITY','m'],['Марат Жаксыбеков','Runners KZ','m'],
+  ['Надежда Воронова','AlmaRun','f'],['Тимур Касымов','SRG','m'],
+  ['Юлия Ким','NRC Almaty','f'],['Бауыржан Сейтов','SRG','m'],
+  ['Карина Алиева','RUNFINITY','f'],['Ермек Болатов','Mountain Run','m'],
+  ['Саша Морозов','AlmaRun','m'],['Диана Тлеубаева','Mountain Run','f'],
+  ['Олег Сидоров','NRC Almaty','m'],['Айгерим Нурова','SRG','f'],
+  ['Руслан Байков','Runners KZ','m'],['Мадина Жаббарова','RUNFINITY','f'],
+  ['Алексей Громов','SRG','m'],['Асель Нурмаганбет','AlmaRun','f'],
+  ['Данияр Сейткали','SRG','m'],['Лера Минаева','RUNFINITY','f'],
+  ['Коля Захаров','NRC Almaty','m'],['Жанара Ержан','Mountain Run','f'],
+  ['Арман Бейсов','Runners KZ','m'],['Настя Кривицкая','AlmaRun','f'],
+  ['Серик Ахметов','SRG','m'],['Айжан Токова','RUNFINITY','f'],
+  ['Витя Попов','NRC Almaty','m'],['Зарина Нурова','Mountain Run','f'],
+  ['Тимур Рахимов','Runners KZ','m'],
+];
+function rnd(b,v){return Math.max(2,Math.min(99,Math.round(b+(Math.random()-.5)*v)));}
+function ini(n){return n.trim().split(' ').map(w=>w[0]).join('').slice(0,2);}
+const RUNNERS=RAW.map(([name,club,gender],i)=>{
+  const base=96-i*2.2-Math.random()*4;
+  const res={};
+  ALL.forEach(r=>{
+    if(Math.random()<(i>20?.45:i>12?.2:.08))return;
+    res[r.id]=rnd(base,18);
+  });
+  return{name,club,gender,res};
+});
+
+let sel=new Set(ALL.map(r=>r.id)),gF='all',sq='',shown=20,bubs=[];
+
+function avg(r,ids){const v=ids.filter(id=>r.res[id]!=null).map(id=>r.res[id]);return v.length?Math.round(v.reduce((s,x)=>s+x,0)/v.length):null;}
+function cnt(r,ids){return ids.filter(id=>r.res[id]!=null).length;}
+function filt(ids){
+  return RUNNERS.map(r=>({...r,avg:avg(r,ids),cnt:cnt(r,ids)}))
+    .filter(r=>r.avg!==null)
+    .filter(r=>gF==='all'||r.gender===gF)
+    .filter(r=>!sq||(Array.isArray(sq)?sq.some(s=>r.name.toLowerCase().includes(s)):r.name.toLowerCase().includes(sq)))
+    .sort((a,b)=>b.avg-a.avg);
+}
+function lab(p){if(p>=99)return'топ 1%';if(p>=95)return'топ 5%';if(p>=90)return'топ 10%';if(p>=75)return'топ 25%';if(p>=50)return'топ 50%';return'финишировал';}
+function pc(i){if(i===0)return'g';if(i===1)return's';if(i===2)return'b';return'';}
+function pi(i){if(i===0)return'🥇';if(i===1)return'🥈';if(i===2)return'🥉';return i+1;}
+
+function renderChips(){
+  const tSel=TR.filter(r=>sel.has(r.id)).length;
+  const rSel=RD.filter(r=>sel.has(r.id)).length;
+  document.getElementById('trcnt').textContent=tSel+'/'+TR.length;
+  document.getElementById('rdcnt').textContent=rSel+'/'+RD.length;
+  const total=sel.size;
+  document.getElementById('rs-badge').textContent=total;
+  const isCustom=total<ALL.length;
+  document.getElementById('rs-pick-btn').classList.toggle('active',isCustom);
+  document.getElementById('rs-info').textContent=isCustom?'Выбрано '+total+' из 30 гонок':'';
+  ['trail','road'].forEach(type=>{
+    const races=type==='trail'?TR:RD;
+    document.getElementById(type+'-chips').innerHTML=races.map(r=>`
+      <div class="dd-row ${type} ${sel.has(r.id)?'on':''}" onclick="toggleR('${r.id}');event.stopPropagation()">
+        <div class="dd-ck">${sel.has(r.id)?'✓':''}</div>
+        <div class="dd-row-name">${r.name}</div>
+        <div class="dd-row-meta">${r.date}&nbsp;·&nbsp;${r.km}км</div>
+      </div>`).join('');
+  });
+}
+
+function toggleR(id){
+  if(sel.has(id)){if(sel.size>1)sel.delete(id);}else sel.add(id);
+  renderAll();
+}
+function selAll(){ALL.forEach(r=>sel.add(r.id));renderAll();}
+function selGroup(type){
+  const races=type==='trail'?TR:RD;
+  sel=new Set(races.map(r=>r.id));
+  renderAll();
+}
+function selNone(){sel=new Set([ALL[0].id]);renderAll();}
+
+let ddOpen=false;
+function toggleDD(){
+  ddOpen=!ddOpen;
+  document.getElementById('rs-dd').classList.toggle('open',ddOpen);
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.rs-pick')){
+    ddOpen=false;
+    const dd=document.getElementById('rs-dd');
+    if(dd) dd.classList.remove('open');
+  }
+});
+function updSeg(mode){
+  document.getElementById('seg-all').classList.remove('on');
+  document.getElementById('seg-trail').classList.remove('on','road-on');
+  document.getElementById('seg-road').classList.remove('on','road-on');
+  if(mode==='all') document.getElementById('seg-all').classList.add('on');
+  else if(mode==='trail') document.getElementById('seg-trail').classList.add('on');
+  else if(mode==='road'){ document.getElementById('seg-road').classList.add('on','road-on'); }
+}
+
+
+function renderInsights(){
+  const ids=[...sel];
+  const data=filt(ids);
+
+  // --- CLUB RANKINGS ---
+  const clubMap={};
+  data.forEach(r=>{
+    if(!clubMap[r.club]) clubMap[r.club]={sum:0,cnt:0};
+    clubMap[r.club].sum+=r.avg; clubMap[r.club].cnt++;
+  });
+  const clubs=Object.entries(clubMap)
+    .map(([name,d])=>({name,avg:Math.round(d.sum/d.cnt),cnt:d.cnt}))
+    .sort((a,b)=>b.avg-a.avg);
+  const maxAvg=clubs[0]?.avg||1;
+  document.getElementById('club-rankings').innerHTML=clubs.slice(0,6).map((c,i)=>`
+    <div class="club-r">
+      <div class="club-r-pl ${pc(i)}">${pi(i)}</div>
+      <div class="club-r-ava">${c.name.slice(0,2)}</div>
+      <div class="club-r-info">
+        <div class="club-r-name">${c.name}</div>
+        <div class="club-r-sub">${c.cnt} бегунов</div>
+      </div>
+      <div class="club-r-bar-wrap">
+        <div class="club-r-bar-bg"><div class="club-r-bar" style="width:${Math.round(c.avg/maxAvg*100)}%"></div></div>
+      </div>
+      <div class="club-r-pct">${c.avg}%</div>
+    </div>`).join('');
+
+  // --- DEMOGRAPHICS ---
+  const total=data.length;
+  const men=data.filter(r=>r.gender==='m').length;
+  const women=data.filter(r=>r.gender==='f').length;
+  const ages={'18–29':0,'30–39':0,'40–49':0,'50+':0};
+  // approximate from name index
+  data.forEach((r,i)=>{
+    const raw=i%4;
+    if(raw===0) ages['18–29']++;
+    else if(raw===1) ages['30–39']++;
+    else if(raw===2) ages['40–49']++;
+    else ages['50+']++;
+  });
+  document.getElementById('demog-sub').textContent=total+' бегунов';
+  document.getElementById('breakdown').innerHTML=`
+    <div>
+      <div class="br-section-title">По полу</div>
+      <div class="breakdown-row">
+        <div class="br-label"><span class="br-name">Мужчины</span><span class="br-val">${men} (${Math.round(men/total*100)}%)</span></div>
+        <div class="br-track"><div class="br-fill m" style="width:${Math.round(men/total*100)}%"></div></div>
+      </div>
+      <div class="breakdown-row">
+        <div class="br-label"><span class="br-name">Женщины</span><span class="br-val">${women} (${Math.round(women/total*100)}%)</span></div>
+        <div class="br-track"><div class="br-fill f" style="width:${Math.round(women/total*100)}%"></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="br-section-title">По возрасту</div>
+      ${Object.entries(ages).map(([label,n],i)=>`
+        <div class="breakdown-row">
+          <div class="br-label"><span class="br-name">${label}</span><span class="br-val">${n} (${Math.round(n/total*100)}%)</span></div>
+          <div class="br-track"><div class="br-fill a${i+1}" style="width:${Math.round(n/total*100)}%"></div></div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderFull(){
+  const ids=[...sel],data=filt(ids),show=data.slice(0,shown);
+  document.getElementById('fttl').textContent='Общий рейтинг · '+data.length+' бегунов';
+  document.getElementById('lbtn').style.display=data.length>shown?'':'none';
+  document.getElementById('flist').innerHTML=show.map((r,i)=>`
+    <div class="frow ${i<3?'pod':''} ${srchActive.has(r.name)?'pod':''} ${srchActive.has(r.name)?'srch-match':''}">
+      <div class="fpl ${pc(i)}">${pi(i)}</div>
+      <div class="fper">
+        <div class="fava">${ini(r.name)}</div>
+        <div><div class="fname">${r.name}</div><div class="fmeta">${r.club} · ${r.cnt} ${r.cnt===1?'гонка':r.cnt<5?'гонки':'гонок'}</div></div>
+      </div>
+      <div class="fpct"><div class="fpct-n">${r.avg}%</div><div class="fpct-s">${lab(r.avg)}</div></div>
+    </div>`).join('');
+}
+
+function renderBubble(){
+  const canvas=document.getElementById('bc'),ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1,W=canvas.parentElement.getBoundingClientRect().width,H=340;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
+  ctx.scale(dpr,dpr);
+  const P={t:24,r:24,b:44,l:48},cW=W-P.l-P.r,cH=H-P.t-P.b;
+  const ids=[...sel],maxR=ids.length,data=filt(ids);
+
+  // Zone backgrounds
+  const zones=[
+    {x:.55,y:.62,w:.45,h:.38,color:'rgba(212,167,66,0.07)',  label:'Быстрые и активные'},
+    {x:.0, y:.62,w:.55,h:.38,color:'rgba(232,98,42,0.05)',   label:'Быстрые'},
+    {x:.55,y:.2, w:.45,h:.42,color:'rgba(91,141,239,0.05)',  label:'Активные'},
+    {x:.0, y:.0, w:.55,h:.62,color:'rgba(255,255,255,0.02)', label:'Любители'},
+  ];
+  zones.forEach(z=>{
+    ctx.fillStyle=z.color;
+    ctx.fillRect(P.l+z.x*cW,P.t+(1-z.y-z.h)*cH,z.w*cW,z.h*cH);
+    ctx.fillStyle='rgba(255,255,255,0.1)';
+    ctx.font='bold 10px Manrope';ctx.textAlign='left';
+    ctx.fillText(z.label,P.l+z.x*cW+8,P.t+(1-z.y-z.h)*cH+14);
+  });
+
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+  [25,50,75,100].forEach(p=>{
+    const y=P.t+cH-(p/100)*cH;
+    ctx.beginPath();ctx.moveTo(P.l,y);ctx.lineTo(P.l+cW,y);ctx.stroke();
+    ctx.fillStyle='rgba(122,131,148,0.7)';ctx.font='10px Manrope';ctx.textAlign='right';
+    ctx.fillText(p+'%',P.l-6,y+4);
+  });
+  const step=maxR<=10?1:maxR<=20?2:maxR<=30?5:10;
+  for(let r=step;r<=maxR;r+=step){
+    const x=P.l+(r/maxR)*cW;
+    ctx.beginPath();ctx.moveTo(x,P.t);ctx.lineTo(x,P.t+cH);ctx.stroke();
+    ctx.fillStyle='rgba(122,131,148,0.6)';ctx.font='10px Manrope';ctx.textAlign='center';
+    ctx.fillText(r,x,P.t+cH+14);
+  }
+  ctx.fillStyle='rgba(122,131,148,0.7)';ctx.font='11px Manrope';ctx.textAlign='center';
+  ctx.fillText('количество гонок',P.l+cW/2,H-4);
+
+  // Dots
+  bubs=data.map((r,i)=>({x:P.l+(r.cnt/maxR)*cW,y:P.t+cH-(r.avg/100)*cH,r,i}));
+  bubs.forEach((b,i)=>{
+    const top=i<3,rad=top?9:5;
+    ctx.beginPath();ctx.arc(b.x,b.y,rad,0,Math.PI*2);
+    ctx.fillStyle=top?'rgba(232,98,42,0.9)':'rgba(255,255,255,0.2)';
+    ctx.fill();
+  });
+  // Top 3 name labels with bg
+  bubs.slice(0,3).forEach(b=>{
+    const fn=b.r.name.split(' ')[0];
+    ctx.font='bold 11px Manrope';ctx.textAlign='center';
+    const tw=ctx.measureText(fn).width;
+    ctx.fillStyle='rgba(37,38,40,0.9)';
+    ctx.beginPath();
+    ctx.roundRect(b.x-tw/2-5,b.y-28,tw+10,17,3);
+    ctx.fill();
+    ctx.fillStyle='rgba(232,98,42,1)';
+    ctx.fillText(fn,b.x,b.y-15);
+  });
+}
+
+document.getElementById('bc').addEventListener('mousemove',function(e){
+  const rect=this.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  const tip=document.getElementById('tip');
+  let f=null;bubs.forEach(b=>{if(Math.sqrt((mx-b.x)**2+(my-b.y)**2)<12)f=b;});
+  if(f){
+    document.getElementById('tn').textContent=f.r.name;
+    document.getElementById('tc').textContent=f.r.club;
+    document.getElementById('tr').textContent=f.r.cnt;
+    document.getElementById('tp').textContent=f.r.avg+'% ('+lab(f.r.avg)+')';
+    tip.style.display='block';
+    tip.style.left=Math.min(f.x+16,rect.width-220)+'px';
+    tip.style.top=(f.y-44)+'px';
+  }else tip.style.display='none';
+});
+document.getElementById('bc').addEventListener('mouseleave',()=>document.getElementById('tip').style.display='none');
+
+function setG(v,btn){gF=v;shown=20;document.querySelectorAll('.gbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderAll();}
+// doSearch replaced by findMe modal
+function loadMore(){shown+=20;renderFull();}
+let sswOpen=false;
+function toggleSsw(){
+  sswOpen=!sswOpen;
+  document.getElementById('ssw-dd').classList.toggle('open',sswOpen);
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.ssw')){ sswOpen=false; const d=document.getElementById('ssw-dd'); if(d) d.classList.remove('open'); }
+});
+function setSeason(yr){
+  document.getElementById('ssw-yr').textContent=yr;
+  document.querySelectorAll('.ssw-opt').forEach(o=>o.classList.remove('on'));
+  const m={2022:'18 гонок · 890 бегунов',2023:'22 гонки · 1 120 бегунов',2024:'25 гонок · 1 204 бегуна',2025:'30 гонок · 1 847 бегунов',2026:'8 гонок · 423 бегуна'};
+  document.getElementById('hsub').textContent=(m[yr]||yr+' сезон')+' · рейтинг по всем стартам сезона';
+}
+
+// FIND ME
+let myNames=JSON.parse(localStorage.getItem('ayda_mynames')||'[]');
+let pendingNames=[...myNames];
+
+function openFindMe(){
+  pendingNames=[...myNames];
+  document.getElementById('modal-search-inp').value='';
+  renderSavedTags();
+  searchNames('');
+  document.getElementById('find-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('modal-search-inp').focus(),100);
+}
+function closeFindMe(){ document.getElementById('find-modal').classList.remove('open'); }
+
+function renderSavedTags(){
+  const el=document.getElementById('modal-saved');
+  if(pendingNames.length===0){ el.innerHTML=''; return; }
+  el.innerHTML='<span style="font-weight:700;color:var(--text)">Выбрано:</span> '+
+    pendingNames.map(n=>`<span class="saved-tag" onclick="removePending('${n}')">${n} <span class="saved-tag-x">✕</span></span>`).join('');
+  document.getElementById('modal-note').textContent='Рейтинг будет показывать их всех как одного бегуна';
+}
+function removePending(name){ pendingNames=pendingNames.filter(n=>n!==name); renderSavedTags(); renderModalResults(document.getElementById('modal-search-inp').value); }
+
+function searchNames(q){
+  q=q.trim().toLowerCase();
+  const all=RUNNERS.map(r=>r.name);
+  const matches = q.length<2 ? [] : all.filter(n=>n.toLowerCase().includes(q)).slice(0,12);
+  renderModalResults(q, matches);
+}
+
+function renderModalResults(q, matches){
+  const el=document.getElementById('modal-results');
+  if(!matches || matches.length===0){
+    el.innerHTML=`<div class="modal-empty">${q.length<2?'Начни вводить имя для поиска':'Ничего не найдено'}</div>`;
+    return;
+  }
+  el.innerHTML=matches.map(name=>{
+    const on=pendingNames.includes(name);
+    const runner=RUNNERS.find(r=>r.name===name);
+    const cnt=runner?Object.keys(runner.res).length:0;
+    return `<div class="mres-row ${on?'on':''}" onclick="togglePending('${name}')">
+      <div class="mres-ck">${on?'✓':''}</div>
+      <div class="mres-name">${name}</div>
+      <div class="mres-meta">${cnt} гонок</div>
+    </div>`;
+  }).join('');
+}
+
+function togglePending(name){
+  if(pendingNames.includes(name)) pendingNames=pendingNames.filter(n=>n!==name);
+  else pendingNames.push(name);
+  renderSavedTags();
+  renderModalResults(document.getElementById('modal-search-inp').value, 
+    RUNNERS.map(r=>r.name).filter(n=>n.toLowerCase().includes(document.getElementById('modal-search-inp').value.toLowerCase())).slice(0,12));
+}
+
+function applyFindMe(){
+  myNames=[...pendingNames];
+  localStorage.setItem('ayda_mynames', JSON.stringify(myNames));
+  sq = myNames.length ? myNames.map(n=>n.toLowerCase()) : [];
+  shown=20;
+  // highlight in table
+  const btn=document.getElementById('find-me-btn');
+  btn.classList.toggle('active', myNames.length>0);
+  btn.innerHTML=myNames.length ? '🎯 '+myNames[0].split(' ')[0] : '🔍 Найти себя';
+  closeFindMe();
+  renderAll();
+}
+
+// ── SEARCH MODAL ─────────────────────────────────────────
+let srchPending=new Set(); // temp selection in modal
+let srchActive=new Set();  // confirmed selection
+// load from localStorage
+try { const s=localStorage.getItem('ayda_mynames'); if(s) srchActive=new Set(JSON.parse(s)); } catch(e){}
+
+function ini2(n){return n.trim().split(' ').map(w=>w[0]).join('').slice(0,2);}
+
+function openSearch(){
+  srchPending=new Set(srchActive);
+  document.getElementById('srch-inp').value='';
+  document.getElementById('srch-results').innerHTML='<div class="srch-empty">Начни вводить имя ↑</div>';
+  updateSrchFoot();
+  document.getElementById('srch-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('srch-inp').focus(),100);
+}
+function closeSearch(e){
+  if(e&&e.target!==document.getElementById('srch-overlay'))return;
+  document.getElementById('srch-overlay').classList.remove('open');
+}
+function onSrchInput(val){
+  const q=val.trim().toLowerCase();
+  const hint=document.getElementById('srch-hint');
+  if(q.length<2){
+    document.getElementById('srch-results').innerHTML='<div class="srch-empty">Введи хотя бы 2 символа</div>';
+    hint.textContent='Можно выбрать несколько — например, если в разных гонках имя написано по-разному.';
+    return;
+  }
+  // fuzzy: contains query OR first letters match
+  const matches=RUNNERS.filter(r=>{
+    const n=r.name.toLowerCase();
+    return n.includes(q)||n.split(' ').some(w=>w.startsWith(q));
+  }).slice(0,12);
+  
+  if(!matches.length){
+    document.getElementById('srch-results').innerHTML='<div class="srch-empty">Никого не нашли. Попробуй другое написание.</div>';
+    return;
+  }
+  hint.textContent='Выбери все варианты написания своего имени:';
+  document.getElementById('srch-results').innerHTML=matches.map(r=>{
+    const sel=srchPending.has(r.name);
+    const ids=[...selected];
+    const av=avg(r,ids);
+    const cnt2=cnt(r,ids);
+    return `<div class="srch-result-row ${sel?'sel':''}" onclick="toggleSrch('${r.name.replace(/'/g,"\'")}')">
+      <div class="srch-r-ck">${sel?'✓':''}</div>
+      <div class="srch-r-ava">${ini2(r.name)}</div>
+      <div class="srch-r-info">
+        <div class="srch-r-name">${r.name}</div>
+        <div class="srch-r-meta">${r.club}${av?' · '+av+'% · '+cnt2+' гонок':' · нет данных'}</div>
+      </div>
+    </div>`;
+  }).join('');
+  updateSrchFoot();
+}
+function toggleSrch(name){
+  if(srchPending.has(name)) srchPending.delete(name);
+  else srchPending.add(name);
+  // re-render results
+  onSrchInput(document.getElementById('srch-inp').value);
+}
+function updateSrchFoot(){
+  const el=document.getElementById('srch-selected-names');
+  if(srchPending.size===0){ el.innerHTML='Никто не выбран'; return; }
+  el.innerHTML='<b>'+[...srchPending].join(', ')+'</b>';
+}
+function applySearch(){
+  srchActive=new Set(srchPending);
+  try { localStorage.setItem('ayda_mynames',JSON.stringify([...srchActive])); } catch(e){}
+  document.getElementById('srch-overlay').classList.remove('open');
+  updateSrchBtn();
+  sq=''; shown=20; renderAll();
+}
+function clearSearch(){
+  srchActive=new Set(); srchPending=new Set();
+  try { localStorage.removeItem('ayda_mynames'); } catch(e){}
+  updateSrchBtn();
+  sq=''; renderAll();
+}
+function updateSrchBtn(){
+  const btn=document.getElementById('srch-btn');
+  const label=document.getElementById('srch-btn-label');
+  if(srchActive.size>0){
+    btn.classList.add('active');
+    const first=[...srchActive][0];
+    label.innerHTML=`<span class="srch-btn-name">${first}</span>${srchActive.size>1?' <span class="srch-pill">+'+( srchActive.size-1)+'</span>':''} <span style="font-size:10px;opacity:.6" onclick="event.stopPropagation();clearSearch()">✕</span>`;
+  } else {
+    btn.classList.remove('active');
+    label.textContent='Найти себя';
+  }
+}
+
+// Override filt to highlight active search names
+const _origFilt=filt;
+// patch renderFull to highlight matching rows
+
+function renderAll(){
+  renderChips();
+  renderInsights();
+  renderFull();renderBubble();
+}
+window.addEventListener('resize',renderBubble);
+renderAll();
+</script>
+</body>
+</html>

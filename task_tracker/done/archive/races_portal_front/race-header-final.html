@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Race header final</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#252628;--border:rgba(255,255,255,0.08);--accent:#E8622A;--text:#EDEEF0;--dim:#7A8394;--card:rgba(255,255,255,0.04)}
+body{background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+
+.page{max-width:800px;margin:0 auto;padding:40px 32px}
+.back{font-size:12px;color:var(--dim);margin-bottom:20px;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
+.back:hover{color:var(--text)}
+
+/* ── TITLE ROW ──────────────────── */
+.title-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+
+.race-title{font-size:32px;font-weight:900;letter-spacing:-1.5px;line-height:1}
+
+/* year dropdown trigger */
+.year-dd{position:relative}
+.year-btn{font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;padding:5px 12px 5px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;letter-spacing:-.5px}
+.year-btn:hover{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.07)}
+.year-btn.open{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.07)}
+.year-chevron{font-size:10px;color:var(--dim);transition:transform .15s}
+.year-btn.open .year-chevron{transform:rotate(180deg)}
+
+.year-menu{position:absolute;top:calc(100% + 6px);left:0;background:#1c1e20;border:1px solid rgba(255,255,255,0.12);border-radius:10px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.6);display:none;z-index:99;min-width:130px}
+.year-menu.open{display:block}
+.year-opt{font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;padding:9px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--dim);transition:background .1s;border-bottom:1px solid rgba(255,255,255,0.04)}
+.year-opt:last-child{border-bottom:none}
+.year-opt:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.year-opt.on{color:var(--text)}
+.year-opt-tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;background:rgba(232,98,42,0.12);color:var(--accent)}
+
+.race-badge{font-size:10px;font-weight:800;text-transform:uppercase;background:var(--accent);color:#fff;padding:4px 9px;border-radius:5px;letter-spacing:.4px;align-self:center}
+
+/* ── DISTANCES ROW ──────────────── */
+.dist-wrap{position:relative;margin-bottom:0}
+
+/* fade edges */
+.dist-wrap::before,.dist-wrap::after{
+  content:'';position:absolute;top:0;bottom:0;width:40px;z-index:2;pointer-events:none;transition:opacity .2s
+}
+.dist-wrap::before{left:0;background:linear-gradient(to right, var(--bg) 0%, transparent 100%);opacity:0}
+.dist-wrap::after{right:0;background:linear-gradient(to left, var(--bg) 0%, transparent 100%)}
+.dist-wrap.can-scroll-left::before{opacity:1}
+.dist-wrap.can-scroll-right::after{opacity:1}
+/* when NOT scrollable right, hide right fade */
+.dist-wrap:not(.can-scroll-right)::after{opacity:0}
+
+/* arrow buttons */
+.dist-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:28px;height:28px;border-radius:50%;background:rgba(40,42,44,0.95);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--dim);transition:all .15s;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.dist-arrow:hover{color:var(--text);border-color:rgba(255,255,255,0.2)}
+.dist-arrow.left{left:4px;display:none}
+.dist-arrow.right{right:4px}
+.can-scroll-left .dist-arrow.left{display:flex}
+.dist-wrap:not(.can-scroll-right) .dist-arrow.right{display:none}
+
+.dist-scroll{overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.dist-scroll::-webkit-scrollbar{display:none}
+.dist-pills{display:flex;gap:6px;width:max-content;padding:0 2px}
+.dp{font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;padding:7px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--dim);cursor:pointer;white-space:nowrap;transition:all .12s}
+.dp:hover{color:var(--text);border-color:rgba(255,255,255,0.18)}
+.dp.on{background:rgba(232,98,42,0.1);border-color:rgba(232,98,42,0.35);color:var(--accent)}
+
+/* active dist info */
+.dist-info{font-size:12px;color:var(--dim);margin-top:10px;margin-bottom:16px}
+.dist-info b{color:var(--text)}
+
+/* STAT STRIP */
+.stat-strip{display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.ss{flex:1;padding:14px 18px;border-right:1px solid var(--border)}
+.ss:last-child{border-right:none}
+.ss-n{font-size:26px;font-weight:900;letter-spacing:-.8px}
+.ss-n.accent{color:var(--accent)}
+.ss-l{font-size:11px;color:var(--dim);margin-top:3px}
+
+/* note */
+.note{margin-top:32px;font-size:12px;color:var(--dim);line-height:1.7;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:8px}
+.note b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="back">← Все гонки</div>
+
+  <!-- TITLE ROW: Name + [Year ▾] + badge -->
+  <div class="title-row">
+    <div class="race-title">Tengri Ultra</div>
+
+    <div class="year-dd" id="year-dd">
+      <button class="year-btn" id="year-btn" onclick="toggleYear()">
+        <span id="year-label">2025</span>
+        <span class="year-chevron">▾</span>
+      </button>
+      <div class="year-menu" id="year-menu">
+        <div class="year-opt on" onclick="setYear('2025',this)">2025 <span class="year-opt-tag">сейчас</span></div>
+        <div class="year-opt" onclick="setYear('2024',this)">2024</div>
+        <div class="year-opt" onclick="setYear('2023',this)">2023</div>
+        <div class="year-opt" onclick="setYear('2022',this)">2022</div>
+        <div class="year-opt" onclick="setYear('2021',this)">2021</div>
+      </div>
+    </div>
+
+    <div class="race-badge">ТРЕЙЛ</div>
+  </div>
+
+  <!-- DISTANCES: scrollable with arrows -->
+  <div class="dist-wrap" id="dist-wrap">
+    <button class="dist-arrow left" id="arr-left" onclick="scrollDist(-1)">‹</button>
+    <button class="dist-arrow right" id="arr-right" onclick="scrollDist(1)">›</button>
+    <div class="dist-scroll" id="dist-scroll">
+      <div class="dist-pills" id="dist-pills"></div>
+    </div>
+  </div>
+
+  <div class="dist-info" id="dist-info"></div>
+
+  <div class="stat-strip" id="stat-strip"></div>
+
+  <div class="note">
+    <b>Как работает:</b> стрелки ‹ › появляются только когда есть куда скроллить. Левая стрелка скрыта в начале, правая — в конце. Фейд по краям подсказывает что список продолжается. На мобиле — свайп, стрелки скрыты.
+  </div>
+
+</div>
+
+<script>
+const DISTANCES = [
+  { name:'Canicross',    km: null },
+  { name:'Kids Sprint',  km: null },
+  { name:'Kids Trail',   km: null },
+  { name:'Nordic Sprint 7', km: 7 },
+  { name:'Sprint 7',     km: 7 },
+  { name:'Tengri 150',   km: 150 },
+  { name:'Ultra 100',    km: 100 },
+  { name:'Zamykaiushiy', km: null },
+];
+
+const STATS = {
+  'Canicross':    { fin:16,  best:'10:45', med:'13:44' },
+  'Kids Sprint':  { fin:24,  best:'5:12',  med:'6:30'  },
+  'Kids Trail':   { fin:31,  best:'8:44',  med:'11:20' },
+  'Nordic Sprint 7':{ fin:42, best:'38:10', med:'52:00' },
+  'Sprint 7':     { fin:87,  best:'35:22', med:'48:15' },
+  'Tengri 150':   { fin:56,  best:'18:22:00', med:'24:05:00' },
+  'Ultra 100':    { fin:104, best:'11:44:00', med:'16:30:00' },
+  'Zamykaiushiy': { fin:19,  best:'28:10:00', med:'35:00:00' },
+};
+
+let activeDist = DISTANCES[0].name;
+
+function renderDists() {
+  const pills = document.getElementById('dist-pills');
+  pills.innerHTML = DISTANCES.map(d => `
+    <button class="dp ${d.name===activeDist?'on':''}" onclick="setDist('${d.name}')">
+      ${d.name}${d.km ? ' · '+d.km+'км' : ''}
+    </button>`).join('');
+  updateDistInfo();
+  updateStats();
+  setTimeout(checkScroll, 50);
+}
+
+function setDist(name) {
+  activeDist = name;
+  renderDists();
+}
+
+function updateDistInfo() {
+  const d = DISTANCES.find(x => x.name === activeDist);
+  document.getElementById('dist-info').innerHTML =
+    `<b>${d.name}</b>${d.km ? ' · ' + d.km + ' км' : ''}`;
+}
+
+function updateStats() {
+  const s = STATS[activeDist];
+  document.getElementById('stat-strip').innerHTML = `
+    <div class="ss"><div class="ss-n accent">${s.fin}</div><div class="ss-l">финишёров</div></div>
+    <div class="ss"><div class="ss-n">${s.best}</div><div class="ss-l">лучший</div></div>
+    <div class="ss"><div class="ss-n">${s.med}</div><div class="ss-l">медиана</div></div>`;
+}
+
+// SCROLL LOGIC
+function checkScroll() {
+  const el = document.getElementById('dist-scroll');
+  const wrap = document.getElementById('dist-wrap');
+  const atStart = el.scrollLeft <= 4;
+  const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 4;
+  wrap.classList.toggle('can-scroll-left', !atStart);
+  wrap.classList.toggle('can-scroll-right', !atEnd);
+}
+
+function scrollDist(dir) {
+  const el = document.getElementById('dist-scroll');
+  el.scrollBy({ left: dir * 180, behavior: 'smooth' });
+  setTimeout(checkScroll, 300);
+}
+
+document.getElementById('dist-scroll').addEventListener('scroll', checkScroll);
+
+// YEAR DROPDOWN
+function toggleYear() {
+  const btn = document.getElementById('year-btn');
+  const menu = document.getElementById('year-menu');
+  btn.classList.toggle('open');
+  menu.classList.toggle('open');
+}
+
+function setYear(yr, el) {
+  document.getElementById('year-label').textContent = yr;
+  document.querySelectorAll('.year-opt').forEach(o => o.classList.remove('on'));
+  el.classList.add('on');
+  toggleYear();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#year-dd')) {
+    document.getElementById('year-btn').classList.remove('open');
+    document.getElementById('year-menu').classList.remove('open');
+  }
+});
+
+window.addEventListener('resize', checkScroll);
+
+renderDists();
+</script>
+</body>
+</html>

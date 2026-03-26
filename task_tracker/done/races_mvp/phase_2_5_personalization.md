@@ -1,0 +1,135 @@
+# Фаза 2.5: Персонализация и интеграция
+
+## Контекст
+
+Races MVP (Фаза 2) работает: `/races` → карточка гонки → прогноз/поиск/статистика. Но прогноз использует только введённый темп, поиск требует ручного ввода имени, а Strava-интеграция ограничена 1 пользователем (не одобрена Strava). Эта фаза улучшает UX и открывает путь к масштабированию.
+
+## Зависимости
+
+- **Фаза 2 завершена** — бот, API, keyboards, FSM states работают
+- Для Задачи 3 — endpoint на стороне ayda_run
+
+## Задачи
+
+### Задача 0: Фиксы вывода бота ✅
+
+**Выполнено.** Переделан вывод карточки гонки и прогноза:
+
+- Race card: структурированный формат (Гонка/Дистанция/Сложность/Локация/Маршрут)
+- GRADE_LABEL с текстовым описанием (Доступно начинающим / Средний / Продвинутый / Экспертный)
+- Кнопка "Рассчитать прогноз" вместо "Мой прогноз"
+- Убрана кнопка регистрации
+- HTML escaping для stats (`<` и `>` в bucket labels)
+- Fix search: word-by-word matching (Mannanov Renat / Renat Mannanov)
+- Удалён дубликат `find_distance_results`
+- Prediction output: card header, dot-padded методы, dual Strava+selected pace, comparison
+- Hiking output: тоже с card header и dot-padded методами
+
+---
+
+### Задача 1: Авто-поиск по имени из профиля ✅
+
+**Выполнено.** Реализовано сохранение `race_search_name` при первом поиске и авто-поиск при повторном:
+
+- Кнопка "Поиск" (бывш. "Найти себя") → если есть сохранённое имя → авто-поиск
+- Первый поиск: просим ввести ФИО, сохраняем в `users.race_search_name` (только если найдены результаты)
+- "Искать другое имя" → ручной ввод, не перезаписывает сохранённое имя
+- Результат пользователя отображается в аналитике (один год и все годы)
+
+---
+
+### Задача 2: Персональный прогноз гонки ✅
+
+**Выполнено.** Прокинут run_profile через цепочку Bot → API → RaceService → TrailRunService:
+
+- Backend: telegram_id в PredictRequest, загрузка UserRunProfile из БД, personalized_times + run_profile_stats в ответе
+- Bot: telegram_id передаётся в predict(), _do_predict() и далее в API
+- Formatter: 3 секции (fast/moderate/easy + Strava stats + effort legend)
+- Убрана секция "Сравнение с {year}" из вывода прогноза (бег и хайк)
+- Улучшен экран выбора режима: показывает название гонки и дистанции
+
+**Суть:** Если у пользователя есть Strava + run profile (gradient-pace данные), использовать их для персонализированного прогноза вместо простого flat pace.
+
+**Текущий flow:**
+```
+Bot → POST /races/{id}/predict {distance_id, flat_pace, mode}
+  → RaceService.predict_by_pace() → TrailRunService(flat_pace=X) — без персонализации
+```
+
+**Новый flow:**
+```
+Bot → POST /races/{id}/predict {distance_id, flat_pace, mode, telegram_id}
+  → API загружает UserRunProfile из БД
+  → RaceService.predict_by_pace(run_profile=profile)
+  → TrailRunService(flat_pace=X, run_profile=profile) — с персонализацией
+```
+
+**Файлы:**
+
+| Файл | Изменение |
+|------|-----------|
+| `backend/app/api/v1/routes/races.py` | `PredictRequest` — добавить `telegram_id: Optional[str]`. Endpoint — добавить `Depends(get_async_db)`, загрузка `UserRunProfile`. `PredictResponse` — добавить `personalized: bool`, `run_profile_stats: Optional[dict]`, `personalized_times: Optional[dict]` |
+| `backend/app/features/races/service.py` | `predict_by_pace()` — новый параметр `run_profile`. `_predict_trail_run()` — передать в `TrailRunService`. `RacePrediction` — добавить `personalized: bool`, `run_profile_stats`, `personalized_times` |
+| `bot/services/clients/races.py` | `predict()` — добавить `telegram_id` параметр |
+| `bot/handlers/races.py` | `_do_predict()` — передавать `telegram_id`. `_format_prediction_result()` — добавить 3 секции (см. ниже) |
+
+**Секции вывода бота (добавить в `_format_prediction_result()`):**
+
+После блоков Strava/selected pace, перед comparison:
+
+1. **Персонализированный расчёт** (если `personalized_times` в ответе API):
+```
+🎯 Персонализированный расчет на основе данных из Strava:
+  🔥 Fast...............1ч 10мин
+  ⚡ Moderate...1ч 21мин
+  🚶 Easy..............1ч 31мин
+```
+
+2. **Strava profile stats** (если `run_profile_stats` в ответе API):
+```
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+📈 Персонализация основана на данных из Strava:
+1091 км, 111 активностей, 1049 сплитов, профиль заполнен 11 из 11
+```
+
+3. **Effort level legend** (если был персонализированный расчёт):
+```
+🔥 Fast — гоночный/асфальтовый темп
+⚡ Moderate — обычная тренировка
+🚶 Easy — лёгкий бег / разведка
+```
+
+Паттерн форматирования — как в `bot/handlers/trail_run.py` (строки 142-197).
+
+**Переиспользуемое:**
+- `TrailRunService` — уже принимает `run_profile` и возвращает personalized times
+- `UserRepository.get_by_telegram_id()` — уже есть
+- `TrailRunProfileRepository.get_by_user_id()` — уже есть
+- `bot/handlers/trail_run.py` — паттерн отображения effort levels и Strava stats
+
+**Критерий готовности:** Прогноз с Strava → "Персонализированный" секция + Strava stats + effort legend. Без Strava → как раньше (только GAP методы).
+
+---
+
+### Задача 3: Strava через ayda_run → ВЫНЕСЕНО
+
+**Вынесено в отдельный план:** `docs/task_tracker/todo/cross_service_integration.md`
+
+Задача выросла в полноценную кросс-сервисную интеграцию (4 шага: токены, авто-профилирование, предикт, матчинг).
+
+---
+
+## Порядок реализации
+
+1. ~~Задача 0 — фиксы вывода~~ ✅
+2. ~~Задача 1 — авто-поиск + результат в аналитике~~ ✅
+3. ~~Задача 2 — персональный прогноз~~ ✅
+4. ~~Задача 3~~ → вынесено в `cross_service_integration.md`
+
+## Что НЕ делаем в этой фазе
+
+- Полную миграцию OAuth (удаление локального OAuth из gpx_predictor)
+- Автоматический матчинг пользователя с гонкой (сохранение race_name в БД)
+- Push-уведомления о гонках
+- Веб-интерфейс

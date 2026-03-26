@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Клубы — ayda.run</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#252628;--border:rgba(255,255,255,0.08);
+  --accent:#E8622A;--text:#EDEEF0;--dim:#7A8394;
+  --card:rgba(255,255,255,0.04);--card2:rgba(255,255,255,0.07);
+}
+body{background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;-webkit-font-smoothing:antialiased}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:99;height:56px;display:flex;align-items:center;padding:0 40px;background:rgba(37,38,40,0.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.logo{font-size:17px;font-weight:900;letter-spacing:-.5px;color:var(--text);text-decoration:none}.logo em{color:var(--accent);font-style:normal}
+.nav-links{display:flex;gap:2px;margin-left:32px}
+.nav-links a{font-size:13px;font-weight:500;color:var(--dim);text-decoration:none;padding:6px 13px;border-radius:6px;transition:color .15s}
+.nav-links a.on,.nav-links a:hover{color:var(--text)}
+.nav-right{margin-left:auto}
+.btn-nav{font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;background:var(--accent);color:#fff;padding:7px 18px;border-radius:7px;border:none;cursor:pointer}
+
+.page{max-width:1060px;margin:0 auto;padding:80px 40px 80px}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.page{animation:up .35s ease}
+
+/* HEADER */
+.page-eyebrow{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+h1{font-size:clamp(28px,4vw,42px);font-weight:900;letter-spacing:-1.5px;line-height:1.05;margin-bottom:8px}
+h1 em{font-style:normal;color:var(--accent)}
+.page-sub{font-size:14px;color:var(--dim);margin-bottom:36px}
+
+/* STAT ROW */
+.stats-row{display:flex;gap:1px;background:var(--border);border-radius:12px;overflow:hidden;margin-bottom:40px}
+.stat-item{flex:1;background:var(--bg);padding:18px 20px}
+.stat-n{font-size:28px;font-weight:900;letter-spacing:-1px}
+.stat-n em{font-style:normal;color:var(--accent)}
+.stat-l{font-size:12px;color:var(--dim);margin-top:3px}
+
+/* SECTION TITLES */
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+.section-title{font-size:18px;font-weight:800;letter-spacing:-.5px}
+.section-sub{font-size:12px;color:var(--dim)}
+
+
+
+/* SORT TABS */
+.sort-tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:3px;margin-left:auto}
+.sort-tab{font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;padding:5px 12px;background:none;border:none;border-radius:5px;color:var(--dim);cursor:pointer;transition:all .15s;white-space:nowrap}
+.sort-tab.on{background:rgba(255,255,255,0.08);color:var(--text)}
+
+/* ─── CLUB CARDS ─────────────────────────────────── */
+.clubs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:40px}
+.club-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;transition:all .15s;text-decoration:none;color:inherit;display:block}
+.club-card:hover{border-color:rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);transform:translateY(-2px)}
+
+.cc-top{padding:16px 18px 12px;border-bottom:1px solid var(--border)}
+.cc-title-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.cc-ava{width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--dim);flex-shrink:0}
+.cc-name{font-size:16px;font-weight:800}
+.cc-type{font-size:11px;color:var(--dim);margin-top:2px}
+.cc-rank{margin-left:auto;text-align:right;flex-shrink:0}
+.cc-rank-n{font-size:24px;font-weight:900;letter-spacing:-1px}
+.cc-rank-l{font-size:10px;color:var(--dim)}
+
+/* specialization bar */
+.cc-spec{display:flex;height:4px;border-radius:2px;overflow:hidden;gap:1px}
+.cc-spec-trail{background:var(--accent);opacity:.7}
+.cc-spec-road{background:#5B8DEF;opacity:.7}
+
+.cc-metrics{padding:12px 18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+.cc-m{text-align:center;padding:4px 0}
+.cc-m+.cc-m{border-left:1px solid var(--border)}
+.cc-m-n{font-size:18px;font-weight:900;letter-spacing:-.5px}
+.cc-m-l{font-size:10px;color:var(--dim);margin-top:1px}
+
+.cc-bottom{padding:10px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.cc-best{font-size:12px;color:var(--dim)}
+.cc-best b{color:var(--text);font-weight:700}
+.cc-arrow{font-size:16px;color:var(--dim)}
+
+/* TREND badge */
+.trend{font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px}
+.trend.up{background:rgba(60,199,122,0.15);color:#3CC77A}
+.trend.dn{background:rgba(232,98,42,0.15);color:var(--accent)}
+.trend.eq{background:rgba(255,255,255,0.07);color:var(--dim)}
+
+/* BUBBLE CHART */
+.bubble-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 24px 8px;margin-bottom:40px}
+.bubble-area{position:relative;width:100%;height:360px}
+.btip{position:absolute;pointer-events:none;background:rgba(26,28,32,.98);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;white-space:nowrap;display:none;z-index:10;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.btip-name{font-size:14px;font-weight:800;margin-bottom:5px}
+.btip-row{color:var(--dim);margin-top:2px}
+.btip-row b{color:var(--text);font-weight:700}
+
+@media(max-width:720px){
+  nav{padding:0 20px}.nav-links{display:none}
+  .page{padding:76px 20px 60px}
+  .stats-row{flex-wrap:wrap}
+  .clubs-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/" class="logo">ayda<em>.run</em></a>
+  <div class="nav-links">
+    <a href="#">Гонки</a><a href="#">Рейтинг</a>
+    <a href="#" class="on">Клубы</a><a href="#">Маршруты</a>
+  </div>
+  <div class="nav-right"><a href="#" class="btn-nav">Войти</a></div>
+</nav>
+
+<div class="page">
+
+  <div class="page-eyebrow">Алматы · Сезон 2025</div>
+  <h1>Клубы <em>Алматы</em></h1>
+  <div class="page-sub">Сравнение всех беговых клубов по сезонным стартам</div>
+
+  <div class="stats-row">
+    <div class="stat-item"><div class="stat-n"><em>8</em></div><div class="stat-l">активных клубов</div></div>
+    <div class="stat-item"><div class="stat-n">1 <em>847</em></div><div class="stat-l">уникальных бегунов</div></div>
+    <div class="stat-item"><div class="stat-n"><em>30</em></div><div class="stat-l">гонок в сезоне</div></div>
+    <div class="stat-item"><div class="stat-n">4 <em>821</em></div><div class="stat-l">стартов суммарно</div></div>
+  </div>
+
+  <!-- BUBBLE CHART -->
+  <div class="section-head">
+    <div>
+      <div class="section-title">Карта клубов сезона</div>
+      <div class="section-sub">Правый верхний угол = лучший результат в трейле. Наведи на клуб.</div>
+    </div>
+  </div>
+  <div class="bubble-card">
+    <div class="bubble-area">
+      <canvas id="clubChart" style="width:100%;height:360px;"></canvas>
+      <div class="btip" id="ctip">
+        <div class="btip-name" id="ct-name"></div>
+        <div class="btip-row">Тип: <b id="ct-type"></b></div>
+        <div class="btip-row">Бегунов: <b id="ct-runners"></b></div>
+        <div class="btip-row">Ср. перцентиль: <b id="ct-pct"></b></div>
+        <div class="btip-row">Гонок: <b id="ct-races"></b></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLUB CARDS -->
+  <div class="section-head" style="margin-top:40px">
+    <div>
+      <div class="section-title">Рейтинг клубов</div>
+      <div class="section-sub">По среднему перцентилю участников</div>
+    </div>
+    <div class="sort-tabs" id="sort-tabs">
+      <button class="sort-tab on" onclick="sortCards('pct',this)">Перцентиль</button>
+      <button class="sort-tab" onclick="sortCards('runners',this)">Бегуны</button>
+      <button class="sort-tab" onclick="sortCards('starts',this)">Старты</button>
+      <button class="sort-tab" onclick="sortCards('trail',this)">Трейл%</button>
+    </div>
+  </div>
+  <div class="clubs-grid" id="clubs-grid"></div>
+
+</div>
+
+
+<script>
+// ─── DATA ──────────────────────────────────────────
+const TRAIL_RACES=[
+  {id:'aws',name:'Winter Skyrace',km:21,elev:1840},
+  {id:'ats1',name:'Trail Series #1',km:15,elev:980},
+  {id:'mvr',name:'Medeu Vertical',km:10,elev:1200},
+  {id:'xtr',name:'XTERRA Almaty',km:50,elev:2400},
+  {id:'skt',name:'Skyrace Talgar',km:33,elev:2100},
+  {id:'ats2',name:'Trail Series #2',km:15,elev:980},
+  {id:'kms',name:'Komsomol Peak',km:18,elev:1560},
+  {id:'tbt',name:'Tian Shan Trail',km:42,elev:2800},
+  {id:'atr',name:'Autumn Skyrace',km:25,elev:1700},
+  {id:'wnt',name:'Winter Trail Cup',km:20,elev:1400},
+];
+const ROAD_RACES=[
+  {id:'bar',name:'Big Almaty Run',km:42,elev:180},
+  {id:'hfm',name:'Half Marathon',km:21,elev:90},
+  {id:'mar5',name:'Almaty 5K',km:5,elev:20},
+  {id:'nkr',name:'Nike Run 10K',km:10,elev:40},
+  {id:'spr',name:'Spring Marathon',km:42,elev:160},
+  {id:'r10',name:'Race 10K',km:10,elev:35},
+  {id:'eve',name:'Evening 5K',km:5,elev:15},
+  {id:'cty',name:'City Night Run',km:10,elev:30},
+  {id:'aut2',name:'Autumn Half',km:21,elev:95},
+  {id:'dec5',name:'December 5K',km:5,elev:20},
+];
+const ALL_RACES=[...TRAIL_RACES,...ROAD_RACES];
+
+const CLUBS=[
+  {id:'srg',    name:'SRG',         spec:'trail', trend:+4},
+  {id:'runfin', name:'RUNFINITY',   spec:'road',  trend:+2},
+  {id:'rnkz',   name:'Runners KZ',  spec:'both',  trend:-1},
+  {id:'almarun',name:'AlmaRun',     spec:'road',  trend:+1},
+  {id:'nrc',    name:'NRC Almaty',  spec:'road',  trend: 0},
+  {id:'mtnrun', name:'Mountain Run',spec:'trail', trend:+6},
+  {id:'elite',  name:'Elite Run',   spec:'both',  trend:-2},
+  {id:'triclub',name:'Tri Club',    spec:'trail', trend:+3},
+];
+
+// Generate presence matrix: club × race → participants count
+function rndInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+const MATRIX={};
+const CLUB_STATS={};
+
+CLUBS.forEach((club,ci)=>{
+  MATRIX[club.id]={};
+  let totalStarts=0,trailStarts=0,pctSum=0,pctCnt=0;
+
+  ALL_RACES.forEach((race,ri)=>{
+    const isTrail=TRAIL_RACES.some(r=>r.id===race.id);
+    // SRG strong in trail, RUNFINITY strong in road, etc
+    let prob=0.65;
+    if(club.spec==='trail'&&isTrail)prob=0.9;
+    if(club.spec==='road'&&!isTrail)prob=0.88;
+    if(club.spec==='trail'&&!isTrail)prob=0.3;
+    if(club.spec==='road'&&isTrail)prob=0.25;
+    if(club.spec==='both')prob=0.72;
+
+    const participated=Math.random()<prob;
+    if(participated){
+      const baseCount=isTrail?rndInt(4,22):rndInt(8,45);
+      const count=Math.max(1,Math.round(baseCount*(1-ci*0.08)));
+      MATRIX[club.id][race.id]=count;
+      totalStarts+=count;
+      if(isTrail)trailStarts+=count;
+      const pct=rndInt(62,94)-(ci*3);
+      pctSum+=pct;pctCnt++;
+    } else {
+      MATRIX[club.id][race.id]=0;
+    }
+  });
+
+  const trailPct=totalStarts>0?Math.round(trailStarts/totalStarts*100):50;
+  CLUB_STATS[club.id]={
+    runners:rndInt(18,85)-(ci*6),
+    starts:totalStarts,
+    trailPct,
+    avgPct:pctCnt>0?Math.round(pctSum/pctCnt):0,
+    races:Object.values(MATRIX[club.id]).filter(v=>v>0).length,
+    bestRunner:['Нурлан А.','Дмитрий Л.','Айбек С.','Марат Ж.','Надежда В.','Тимур К.','Юлия К.','Руслан Б.'][ci],
+    trend:club.trend,
+  };
+});
+
+// ─── BUBBLE CHART ──────────────────────────────────
+let clubBubs=[];
+function renderBubble(){
+  const canvas=document.getElementById('clubChart');
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.getBoundingClientRect().width;
+  const H=360;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx.scale(dpr,dpr);
+
+  const P={t:24,r:24,b:48,l:52};
+  const cW=W-P.l-P.r, cH=H-P.t-P.b;
+
+  // ZONES
+  // X=0 left=road, X=1 right=trail  Y=0 bottom=low, Y=1 top=high
+  const zones=[
+    {x:0,   y:.55, w:.48, h:.45, color:'rgba(91,141,239,0.06)',  label:'Шоссе-элита'},
+    {x:.52, y:.55, w:.48, h:.45, color:'rgba(232,98,42,0.07)',   label:'Трейл-элита'},
+    {x:.26, y:.55, w:.48, h:.45, color:'rgba(60,199,122,0.05)',  label:'Универсалы'},
+    {x:0,   y:0,   w:1,   h:.55, color:'rgba(255,255,255,0.02)', label:'Развивающиеся'},
+  ];
+  zones.forEach(z=>{
+    ctx.fillStyle=z.color;
+    ctx.fillRect(P.l+z.x*cW, P.t+(1-z.y-z.h)*cH, z.w*cW, z.h*cH);
+    ctx.fillStyle='rgba(255,255,255,0.09)';
+    ctx.font='bold 10px Manrope'; ctx.textAlign='left';
+    ctx.fillText(z.label, P.l+z.x*cW+8, P.t+(1-z.y-z.h)*cH+15);
+  });
+
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  [25,50,75,100].forEach(p=>{
+    const y=P.t+cH-(p/100)*cH;
+    ctx.beginPath(); ctx.moveTo(P.l,y); ctx.lineTo(P.l+cW,y); ctx.stroke();
+    ctx.fillStyle='rgba(122,131,148,0.7)'; ctx.font='10px Manrope'; ctx.textAlign='right';
+    ctx.fillText(p+'%',P.l-6,y+4);
+  });
+  // X axis labels
+  ctx.fillStyle='rgba(122,131,148,0.7)'; ctx.font='10px Manrope';
+  ctx.textAlign='left';  ctx.fillText('🏙 Шоссе', P.l+4,    P.t+cH+16);
+  ctx.textAlign='right'; ctx.fillText('Трейл ⛰', P.l+cW-4, P.t+cH+16);
+  ctx.textAlign='center'; ctx.fillText('← специализация →', P.l+cW/2, P.t+cH+28);
+  // Y axis label
+  ctx.save(); ctx.translate(14, P.t+cH/2);
+  ctx.rotate(-Math.PI/2); ctx.textAlign='center';
+  ctx.fillText('перцентиль', 0, 0); ctx.restore();
+
+  // Dividers at x=0.52 and y=0.55
+  ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  const divX=P.l+0.5*cW, divY=P.t+(1-0.55)*cH;
+  ctx.beginPath(); ctx.moveTo(divX,P.t); ctx.lineTo(divX,P.t+cH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(P.l,divY); ctx.lineTo(P.l+cW,divY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Max runners for bubble sizing
+  const maxRunners=Math.max(...CLUBS.map(c=>CLUB_STATS[c.id].runners));
+
+  // Bubbles
+  clubBubs=CLUBS.map(club=>{
+    const s=CLUB_STATS[club.id];
+    const x=P.l+(s.trailPct/100)*cW;
+    const y=P.t+cH-(s.avgPct/100)*cH;
+    const r=10+Math.round((s.runners/maxRunners)*18);
+    return{x,y,r,club,s};
+  });
+
+  // Draw bubbles
+  clubBubs.forEach((b,i)=>{
+    const isTrail=b.s.trailPct>60;
+    const color=isTrail?'rgba(232,98,42,0.85)':'rgba(91,141,239,0.85)';
+    // shadow glow
+    ctx.shadowColor=isTrail?'rgba(232,98,42,0.4)':'rgba(91,141,239,0.3)';
+    ctx.shadowBlur=12;
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.shadowBlur=0;
+    // name label
+    ctx.fillStyle='#fff'; ctx.font='bold 11px Manrope'; ctx.textAlign='center';
+    ctx.fillText(b.club.name, b.x, b.y+b.r+14);
+  });
+}
+
+// Tooltip
+document.getElementById('clubChart').addEventListener('mousemove',function(e){
+  const rect=this.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const tip=document.getElementById('ctip');
+  let found=null;
+  clubBubs.forEach(b=>{if(Math.sqrt((mx-b.x)**2+(my-b.y)**2)<=b.r+4)found=b;});
+  if(found){
+    document.getElementById('ct-name').textContent=found.club.name;
+    document.getElementById('ct-type').textContent=found.s.trailPct>60?'⛰ Трейл-клуб':found.s.trailPct<40?'🏙 Шоссе-клуб':'Универсальный';
+    document.getElementById('ct-runners').textContent=found.s.runners;
+    document.getElementById('ct-pct').textContent=found.s.avgPct+'%';
+    document.getElementById('ct-races').textContent=found.s.races;
+    tip.style.display='block';
+    const tx=Math.min(found.x+found.r+8, rect.width-200);
+    tip.style.left=tx+'px'; tip.style.top=(found.y-44)+'px';
+  } else tip.style.display='none';
+});
+document.getElementById('clubChart').addEventListener('mouseleave',()=>document.getElementById('ctip').style.display='none');
+window.addEventListener('resize',renderBubble);
+
+// ─── CLUB CARDS ────────────────────────────────────
+let sortKey='pct';
+function sortCards(key,btn){
+  sortKey=key;
+  document.querySelectorAll('.sort-tab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderBubble();
+renderCards();
+}
+
+function renderCards(){
+  const sorted=[...CLUBS].sort((a,b)=>{
+    const sa=CLUB_STATS[a.id],sb=CLUB_STATS[b.id];
+    if(sortKey==='pct')return sb.avgPct-sa.avgPct;
+    if(sortKey==='runners')return sb.runners-sa.runners;
+    if(sortKey==='starts')return sb.starts-sa.starts;
+    if(sortKey==='trail')return sb.trailPct-sa.trailPct;
+    return 0;
+  });
+
+  document.getElementById('clubs-grid').innerHTML=sorted.map((club,rank)=>{
+    const s=CLUB_STATS[club.id];
+    const trendHtml=s.trend>0?`<span class="trend up">↑${s.trend}%</span>`:
+                    s.trend<0?`<span class="trend dn">↓${Math.abs(s.trend)}%</span>`:
+                    `<span class="trend eq">→</span>`;
+    return `<a class="club-card" href="#club-${club.id}" id="club-${club.id}">
+      <div class="cc-top">
+        <div class="cc-title-row">
+          <div class="cc-ava">${club.name.slice(0,2)}</div>
+          <div>
+            <div class="cc-name">${club.name}</div>
+            <div class="cc-type">${club.spec==='trail'?'⛰ Трейл-клуб':club.spec==='road'?'🏙 Шоссе':' Трейл + Шоссе'}</div>
+          </div>
+          <div class="cc-rank">
+            <div class="cc-rank-n">#${rank+1}</div>
+            <div class="cc-rank-l">в сезоне</div>
+          </div>
+        </div>
+        <div class="cc-spec">
+          <div class="cc-spec-trail" style="flex:${s.trailPct}"></div>
+          <div class="cc-spec-road"  style="flex:${100-s.trailPct}"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px">
+          <span style="font-size:10px;color:rgba(232,98,42,0.7)">⛰ ${s.trailPct}% трейл</span>
+          <span style="font-size:10px;color:rgba(91,141,239,0.7)">${100-s.trailPct}% шоссе</span>
+        </div>
+      </div>
+      <div class="cc-metrics">
+        <div class="cc-m">
+          <div class="cc-m-n">${s.avgPct}%</div>
+          <div class="cc-m-l">перцентиль ${trendHtml}</div>
+        </div>
+        <div class="cc-m">
+          <div class="cc-m-n">${s.runners}</div>
+          <div class="cc-m-l">бегунов</div>
+        </div>
+        <div class="cc-m">
+          <div class="cc-m-n">${s.races}</div>
+          <div class="cc-m-l">гонок</div>
+        </div>
+      </div>
+      <div class="cc-bottom">
+        <div class="cc-best">Лучший: <b>${s.bestRunner}</b></div>
+        <div class="cc-arrow">→</div>
+      </div>
+    </a>`;
+  }).join('');
+}
+
+renderBubble();
+renderCards();
+</script>
+</body>
+</html>
