@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from datetime import datetime
 
-from .db_models import Club, Race, RaceDistance, RaceEdition, RaceResultDB, Runner
+from .db_models import Club, Race, RaceDistance, RaceEdition, RaceResultDB, Runner, RunnerNameAlias
 from .models import RaceDistanceResults, RaceEditionData, RaceResult, RaceStats
 from .name_utils import normalize_name
 from .stats import calculate_stats
@@ -305,17 +305,21 @@ class RaceRepository:
         return list(rows)
 
     def search_runners(self, name: str, limit: int = 10) -> list[Runner]:
-        """Search runners by normalized name (partial match).
+        """Search runners by name through aliases (partial match).
 
+        Searches RunnerNameAlias.name_normalized so that transliteration
+        variants and alternative spellings are matched.
         Returns runners sorted by races_count DESC.
         """
         norm = normalize_name(name)
         norm_words = norm.split()
-        filters = [Runner.name_normalized.contains(word) for word in norm_words]
+        alias_filters = [RunnerNameAlias.name_normalized.contains(word) for word in norm_words]
 
         return self.db.execute(
             select(Runner)
-            .where(*filters)
+            .join(RunnerNameAlias, RunnerNameAlias.runner_id == Runner.id)
+            .where(*alias_filters)
+            .group_by(Runner.id)
             .order_by(Runner.races_count.desc())
             .limit(limit)
         ).scalars().all()

@@ -143,6 +143,9 @@ races:
   name: Tengri Ultra
   file: races/tengri_ultra_kz.yaml
   editions:
+  - year: 2026
+    url: https://live.myrace.info/?f=bases/kz/2026/tengriultra2026/tu2026.clax
+    status: parsed
   - year: 2025
     url: https://live.myrace.info/?f=bases/kz/2025/tengriultra2025/tu2025.clax
     status: parsed
@@ -162,6 +165,9 @@ races:
   name: Backyard Ultra
   file: races/backyard_ultra_kz.yaml
   editions:
+  - year: 2026
+    url: https://live.myrace.info/?f=bases/kz/2026/backyard2026/backyard2026.clax
+    status: parsed
   - year: 2025
     url: https://live.myrace.info/?f=bases/kz/2025/backyard2025/backyard2025.clax
     status: parsed
