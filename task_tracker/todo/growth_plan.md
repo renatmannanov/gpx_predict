@@ -25,6 +25,7 @@
 | 2 | SEO: мета-теги + OG для шеринга | step_2_seo.md (TBD) | pending | до 12 апреля |
 | 3 | Страницы клубов | step_3_club_pages.md (TBD) | pending | до 19 апреля |
 | 4 | Share-карточки профилей | step_4_share_cards.md (TBD) | pending | после шага 2 |
+| — | Контент (параллельно) | [content_plan.md](content_plan.md) | pending | с первого деплоя |
 
 ---
 

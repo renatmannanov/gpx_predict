@@ -47,11 +47,13 @@ from app.features.races.am_parser import AlmatyMarathonParser
 from app.features.races.clax_parser import ClaxParser
 from app.features.races.db_models import (
     Club,
+    ClubNameAlias,
     Race,
     RaceDistance,
     RaceEdition,
     RaceResultDB,
     Runner,
+    RunnerNameAlias,
 )
 from app.features.races.models import RaceEditionData
 from app.features.races.name_utils import normalize_name
@@ -81,12 +83,109 @@ def save_catalog(catalog: dict) -> None:
         )
 
 
-def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData) -> int:
+def _resolve_club(db: Session, club_text: str) -> tuple[int, str] | None:
+    """Resolve club text to (club_id, canonical_name).
+
+    Lookup order:
+    1. clubs.name_normalized (exact match)
+    2. club_name_aliases.name_normalized (alias → canonical club)
+    3. Create new club if not found
+
+    Returns (club_id, canonical_club_name) or None if club_text is empty.
+    """
+    if not club_text or not club_text.strip():
+        return None
+
+    club_norm = club_text.strip().lower()
+
+    # 1. Direct match in clubs
+    club = db.execute(
+        select(Club).where(Club.name_normalized == club_norm)
+    ).scalar_one_or_none()
+    if club:
+        return club.id, club.name
+
+    # 2. Match via alias → get canonical club
+    alias = db.execute(
+        select(ClubNameAlias).where(ClubNameAlias.name_normalized == club_norm)
+    ).scalar_one_or_none()
+    if alias:
+        club = db.get(Club, alias.club_id)
+        if club:
+            return club.id, club.name
+
+    # 3. Not found — create new club
+    club = Club(
+        name=club_text.strip(),
+        name_normalized=club_norm,
+        runners_count=0,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db.add(club)
+    db.flush()
+    return club.id, club.name
+
+
+def _fuzzy_match_runner(
+    db: Session, name_normalized: str, birth_year: int | None,
+) -> tuple[Runner | None, list[str]]:
+    """Find existing runner by fuzzy name match + birth_year.
+
+    Uses pg_trgm similarity to catch transliteration variants like
+    Baikashev/Bajkashev, Anastasiya/Anastassiya, Assel/Asel.
+
+    Returns (runner, warnings):
+    - similarity > 0.85 + same birth_year → auto-merge (runner returned)
+    - similarity 0.7-0.85 + same birth_year → warning for manual review
+    - Only matches when birth_year is available and identical — this prevents
+      false merges (e.g. Pavlenko Alexandr 1988 vs Pavlenko Alexandra 1987).
+    """
+    if not birth_year or not name_normalized:
+        return None, []
+
+    # Look for candidates with similarity > 0.7 and same birth_year
+    rows = db.execute(
+        select(
+            Runner,
+            sa.func.similarity(Runner.name_normalized, name_normalized).label("sim"),
+        ).where(
+            sa.func.similarity(Runner.name_normalized, name_normalized) > 0.7,
+            Runner.birth_year == birth_year,
+        ).order_by(
+            sa.literal_column("sim").desc()
+        ).limit(3)
+    ).all()
+
+    if not rows:
+        return None, []
+
+    best_runner, best_sim = rows[0]
+
+    # High confidence — auto-merge
+    if best_sim > 0.85:
+        return best_runner, []
+
+    # Suspect zone — warn for manual review
+    warnings = []
+    for runner, sim in rows:
+        warnings.append(
+            f"  [!] Possible dupe: \"{name_normalized}\" (new, by={birth_year}) "
+            f"~ \"{runner.name_normalized}\" (id={runner.id}, \"{runner.name}\", "
+            f"sim={sim:.2f})"
+        )
+    return None, warnings
+
+
+def save_to_db(
+    db: Session, race_id: str, race_name: str, data: RaceEditionData, source: str = "clax",
+) -> tuple[int, list[str]]:
     """Save parsed race data to database.
 
     Creates Race (if not exists), RaceEdition, RaceDistances, RaceResults.
-    Returns total number of results saved.
+    Returns (total_results_saved, suspect_dupe_warnings).
     """
+    suspect_warnings: list[str] = []
     # Upsert Race
     race = db.get(Race, race_id)
     if not race:
@@ -140,29 +239,22 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData)
                 ).scalar_one_or_none()
 
                 if not runner:
-                    # Resolve club_id
+                    # Fuzzy match: catch transliteration variants
+                    runner, warnings = _fuzzy_match_runner(db, name_norm, r.birth_year)
+                    suspect_warnings.extend(warnings)
+
+                if not runner:
+                    # Resolve club via aliases
                     club_id = None
-                    if r.club and r.club.strip():
-                        club_norm = r.club.strip().lower()
-                        club = db.execute(
-                            select(Club).where(Club.name_normalized == club_norm)
-                        ).scalar_one_or_none()
-                        if not club:
-                            club = Club(
-                                name=r.club.strip(),
-                                name_normalized=club_norm,
-                                runners_count=0,
-                                created_at=datetime.now(timezone.utc),
-                                updated_at=datetime.now(timezone.utc),
-                            )
-                            db.add(club)
-                            db.flush()
-                        club_id = club.id
+                    club_canonical = r.club
+                    resolved = _resolve_club(db, r.club)
+                    if resolved:
+                        club_id, club_canonical = resolved
 
                     runner = Runner(
                         name=r.name,
                         name_normalized=name_norm,
-                        club=r.club,
+                        club=club_canonical,
                         club_id=club_id,
                         gender=r.gender,
                         category=r.category,
@@ -177,13 +269,10 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData)
                     # Update runner with latest data
                     runner.name = r.name
                     if r.club:
-                        runner.club = r.club
-                        club_norm = r.club.strip().lower()
-                        club = db.execute(
-                            select(Club).where(Club.name_normalized == club_norm)
-                        ).scalar_one_or_none()
-                        if club:
-                            runner.club_id = club.id
+                        resolved = _resolve_club(db, r.club)
+                        if resolved:
+                            runner.club_id = resolved[0]
+                            runner.club = resolved[1]  # canonical name
                     if r.gender:
                         runner.gender = r.gender
                     if r.category:
@@ -193,6 +282,23 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData)
                     runner.updated_at = datetime.now(timezone.utc)
 
                 runner_id = runner.id
+
+                # Save name alias
+                if runner and r.name:
+                    alias_norm = normalize_name(r.name)
+                    existing_alias = db.execute(
+                        select(RunnerNameAlias).where(
+                            RunnerNameAlias.runner_id == runner.id,
+                            RunnerNameAlias.name_normalized == alias_norm,
+                        )
+                    ).scalar_one_or_none()
+                    if not existing_alias:
+                        db.add(RunnerNameAlias(
+                            runner_id=runner.id,
+                            name=r.name,
+                            name_normalized=alias_norm,
+                            source=source,
+                        ))
 
             result = RaceResultDB(
                 distance_id=distance.id,
@@ -220,7 +326,7 @@ def save_to_db(db: Session, race_id: str, race_name: str, data: RaceEditionData)
     _update_runner_counts(db)
     _update_club_counts(db)
 
-    return total_results
+    return total_results, suspect_warnings
 
 
 def _update_runner_counts(db: Session) -> None:
@@ -309,8 +415,11 @@ def parse_race(db: Session, race: dict, force: bool = False, dry_run: bool = Fal
             else:
                 print(f"{total_distances} distances, {total_results} results", end=" ", flush=True)
 
-            saved = save_to_db(db, race_id, race_name, data)
+            saved, warnings = save_to_db(db, race_id, race_name, data, source=source)
             print(f"-> DB ({saved} rows)")
+            if warnings:
+                for w in warnings:
+                    print(w)
             edition["status"] = "parsed"
             stats["parsed"] += 1
 
@@ -393,8 +502,12 @@ def import_json_to_db(db: Session, race: dict) -> dict:
             total = sum(len(d.results) for d in data.distances)
             print(f"  Importing {json_path.name} ({year}, {total} results)...", end=" ", flush=True)
 
-            saved = save_to_db(db, race_id, race_name, data)
+            source = race.get("source", "clax")
+            saved, warnings = save_to_db(db, race_id, race_name, data, source=source)
             print(f"-> DB ({saved} rows)")
+            if warnings:
+                for w in warnings:
+                    print(w)
             stats["imported"] += 1
 
         except Exception as e:

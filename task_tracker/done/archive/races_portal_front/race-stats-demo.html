@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Race stats demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#252628;--border:rgba(255,255,255,0.08);--accent:#E8622A;--text:#EDEEF0;--dim:#7A8394;--card:rgba(255,255,255,0.04)}
+body{background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;-webkit-font-smoothing:antialiased;padding:40px}
+.page{max-width:800px;margin:0 auto}
+
+.back{font-size:12px;color:var(--dim);margin-bottom:16px}
+
+/* race title row */
+.race-title-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.race-title{font-size:32px;font-weight:900;letter-spacing:-1.5px}
+.year-btn{font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;padding:5px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;letter-spacing:-.5px}
+.year-chevron{font-size:10px;color:var(--dim)}
+.race-badge{font-size:10px;font-weight:800;text-transform:uppercase;background:var(--accent);color:#fff;padding:4px 9px;border-radius:5px}
+
+/* dist scroll */
+.dist-wrap{position:relative;margin-bottom:20px}
+.dist-wrap::after{content:'';position:absolute;top:0;right:0;bottom:0;width:40px;background:linear-gradient(to left,var(--bg),transparent);pointer-events:none}
+.dist-scroll{overflow-x:auto;scrollbar-width:none}
+.dist-scroll::-webkit-scrollbar{display:none}
+.dist-pills{display:flex;gap:6px;width:max-content}
+.dp{font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;padding:7px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--dim);cursor:pointer;white-space:nowrap}
+.dp.on{background:rgba(232,98,42,0.1);border-color:rgba(232,98,42,0.35);color:var(--accent)}
+
+/* ── STATS BLOCK — вариант Г ── */
+.dist-stats{margin-bottom:24px}
+
+.ds-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.ds-name{font-size:22px;font-weight:900;letter-spacing:-.8px}
+.ds-main{font-size:22px;font-weight:900;letter-spacing:-.8px;color:var(--accent)}
+
+.ds-strip{display:flex;align-items:flex-start;justify-content:space-between;border-top:1px solid var(--border);padding-top:10px}
+.ds-left{display:flex;gap:24px}
+.ds-right{display:flex;gap:24px}
+.dm{display:flex;flex-direction:column;gap:2px}
+.dm-n{font-size:13px;font-weight:800;color:var(--text)}
+.dm-l{font-size:10px;color:var(--dim)}
+.dm-r{display:flex;flex-direction:column;gap:2px;text-align:right}
+.dm-r .dm-n{color:var(--text)}
+.dm-r .dm-n.warn{color:rgba(232,98,42,0.7)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="back">← Все гонки</div>
+
+  <div class="race-title-row">
+    <div class="race-title">Tengri Ultra</div>
+    <button class="year-btn">2025 <span class="year-chevron">▾</span></button>
+    <div class="race-badge">ТРЕЙЛ</div>
+  </div>
+
+  <div class="dist-wrap">
+    <div class="dist-scroll">
+      <div class="dist-pills">
+        <button class="dp on">Canicross</button>
+        <button class="dp">Kids Sprint</button>
+        <button class="dp">Kids Trail</button>
+        <button class="dp">Nordic Sprint 7 · 7км</button>
+        <button class="dp">Sprint 7 · 7км</button>
+        <button class="dp">Tengri 150 · 150км</button>
+        <button class="dp">Ultra 100 · 100км</button>
+        <button class="dp">Zamykaiushiy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS — вариант Г -->
+  <div class="dist-stats">
+    <div class="ds-top">
+      <div class="ds-name">Canicross</div>
+      <div class="ds-main">16 финишёров</div>
+    </div>
+    <div class="ds-strip">
+      <div class="ds-left">
+        <div class="dm"><div class="dm-n">10:45</div><div class="dm-l">лучший</div></div>
+        <div class="dm"><div class="dm-n">13:44</div><div class="dm-l">медиана</div></div>
+        <div class="dm"><div class="dm-n">16:20</div><div class="dm-l">последний</div></div>
+      </div>
+      <div class="ds-right">
+        <div class="dm-r"><div class="dm-n warn">2</div><div class="dm-l">DNF</div></div>
+        <div class="dm-r"><div class="dm-n">1</div><div class="dm-l">DNS</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
