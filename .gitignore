@@ -57,3 +57,9 @@ internal/
 
 # Reports (script output)
 backend/reports/
+
+# Personal / ad-hoc working files
+content/audit/
+content/my_personal_plan/
+content/test_gpx/
+ralph.ps1
