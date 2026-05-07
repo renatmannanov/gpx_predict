@@ -22,17 +22,32 @@ class UsersClient(BaseAPIClient):
         """
         return await self._get_optional(f"/api/v1/users/{telegram_id}")
 
-    async def create(self, telegram_id: int) -> Optional[dict]:
+    async def create(
+        self,
+        telegram_id: int,
+        name: Optional[str] = None,
+        telegram_username: Optional[str] = None,
+    ) -> Optional[dict]:
         """
         Create user or get existing one.
 
         Args:
             telegram_id: User's Telegram ID
+            name: User's display name (from Telegram first_name + last_name)
+            telegram_username: User's Telegram @username
 
         Returns:
             User info dict or None on error
         """
-        return await self._post_optional(f"/api/v1/users/{telegram_id}/create")
+        body = {}
+        if name:
+            body["name"] = name
+        if telegram_username:
+            body["telegram_username"] = telegram_username
+        return await self._post_optional(
+            f"/api/v1/users/{telegram_id}/create",
+            json=body if body else None,
+        )
 
     async def complete_onboarding(self, telegram_id: int, activity_type: str) -> bool:
         """

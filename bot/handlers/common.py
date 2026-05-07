@@ -37,8 +37,23 @@ async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
 
     telegram_id = message.from_user.id
+    tg_user = message.from_user
+
+    # Build display name from Telegram profile
+    name_parts = [tg_user.first_name or ""]
+    if tg_user.last_name:
+        name_parts.append(tg_user.last_name)
+    tg_name = " ".join(name_parts).strip() or None
+    tg_username = tg_user.username  # without @
 
     try:
+        # Create or update user with Telegram info
+        await api_client.create_user(
+            telegram_id,
+            name=tg_name,
+            telegram_username=tg_username,
+        )
+
         # Check if user exists and has completed onboarding
         user_info = await api_client.get_user_info(telegram_id)
 
