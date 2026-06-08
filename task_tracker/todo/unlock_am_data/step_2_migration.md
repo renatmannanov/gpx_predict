@@ -1,7 +1,7 @@
 # Шаг 2: Миграция БД — колонка source + новый UNIQUE constraint
 
 > Зависит от: нет (можно параллельно со step_1, но применять после)
-> Статус: [ ] pending
+> Статус: [x] done
 > Файлы: backend/app/features/races/db_models.py, новая миграция 019
 
 ## Задача

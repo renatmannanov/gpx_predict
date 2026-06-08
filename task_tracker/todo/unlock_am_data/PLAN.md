@@ -44,7 +44,7 @@
 | # | Файл | Агент | Статус |
 |---|------|-------|--------|
 | 1 | step_1_matching_logic.md | Backend | [x] |
-| 2 | step_2_migration.md | Backend | [ ] |
+| 2 | step_2_migration.md | Backend | [x] |
 | 3 | step_3_tests.md | Backend | [ ] |
 | 4 | step_4_rebuild_local.md | Data Engineer | [ ] |
 | 5 | step_5_am_pilot.md | Data Engineer | [ ] |
