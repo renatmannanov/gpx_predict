@@ -1,7 +1,7 @@
 # Шаг 1: Матчинг по (name, birth_year, source), убрать fuzzy из импорта
 
 > Зависит от: нет
-> Статус: [ ] pending
+> Статус: [x] done
 > Файл: backend/scripts/batch_parse.py
 
 ## Задача

@@ -132,6 +132,10 @@ def _fuzzy_match_runner(
 ) -> tuple[Runner | None, list[str]]:
     """Find existing runner by fuzzy name match + birth_year.
 
+    NOTE: No longer called at import — matching there is strict on
+    (name_normalized, birth_year, source). Reserved for the future
+    merge-candidates API (manual merge UI).
+
     Uses pg_trgm similarity to catch transliteration variants like
     Baikashev/Bajkashev, Anastasiya/Anastassiya, Assel/Asel.
 
@@ -184,6 +188,10 @@ def save_to_db(
 
     Creates Race (if not exists), RaceEdition, RaceDistances, RaceResults.
     Returns (total_results_saved, suspect_dupe_warnings).
+
+    NOTE: suspect_dupe_warnings is now always empty — fuzzy matching was removed
+    from import (namesakes go to separate runners by design). The second tuple
+    element is kept for backward-compatible call sites.
     """
     suspect_warnings: list[str] = []
     # Upsert Race
@@ -231,17 +239,25 @@ def save_to_db(
         for r in dist_data.results:
             name_norm = normalize_name(r.name)
 
-            # Get or create runner
+            # Get or create runner.
+            # Matching is strict: (name_normalized, birth_year, source).
+            # - source isolates AM runners from athletex runners (never merged).
+            # - birth_year IS NULL → always a new runner (fragment); we do not guess.
+            # - No fuzzy matching at import — namesakes go to separate runners on
+            #   purpose; fuzzy only added false merges. (_fuzzy_match_runner is kept,
+            #   unused, reserved for the future merge-candidates API.)
+            runner_source = "am" if source == "almaty-marathon" else "athletex"
             runner_id = None
             if name_norm:
-                runner = db.execute(
-                    select(Runner).where(Runner.name_normalized == name_norm)
-                ).scalar_one_or_none()
-
-                if not runner:
-                    # Fuzzy match: catch transliteration variants
-                    runner, warnings = _fuzzy_match_runner(db, name_norm, r.birth_year)
-                    suspect_warnings.extend(warnings)
+                runner = None
+                if r.birth_year is not None:
+                    runner = db.execute(
+                        select(Runner).where(
+                            Runner.name_normalized == name_norm,
+                            Runner.birth_year == r.birth_year,
+                            Runner.source == runner_source,
+                        )
+                    ).scalar_one_or_none()
 
                 if not runner:
                     # Resolve club via aliases
@@ -254,6 +270,7 @@ def save_to_db(
                     runner = Runner(
                         name=r.name,
                         name_normalized=name_norm,
+                        source=runner_source,
                         club=club_canonical,
                         club_id=club_id,
                         gender=r.gender,
