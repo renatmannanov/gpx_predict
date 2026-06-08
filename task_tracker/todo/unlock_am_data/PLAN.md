@@ -45,7 +45,7 @@
 |---|------|-------|--------|
 | 1 | step_1_matching_logic.md | Backend | [x] |
 | 2 | step_2_migration.md | Backend | [x] |
-| 3 | step_3_tests.md | Backend | [ ] |
+| 3 | step_3_tests.md | Backend | [x] |
 | 4 | step_4_rebuild_local.md | Data Engineer | [ ] |
 | 5 | step_5_am_pilot.md | Data Engineer | [ ] |
 | 6 | step_6_am_full.md | Data Engineer | [ ] |
