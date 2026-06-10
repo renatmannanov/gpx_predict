@@ -56,7 +56,8 @@ class Runner(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)  # display name (from latest result)
-    name_normalized = Column(String(255), nullable=False, unique=True, index=True)
+    name_normalized = Column(String(255), nullable=False, index=True)
+    source = Column(String(20), nullable=False, default="athletex")  # "am" | "athletex"
     club = Column(String(255), nullable=True)  # latest known club (text)
     club_id = Column(Integer, ForeignKey("clubs.id"), nullable=True)
     gender = Column(String(4), nullable=True)  # "M" / "F"
@@ -65,6 +66,17 @@ class Runner(Base):
     races_count = Column(Integer, default=0)  # cached count of unique race editions
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        # UNIQUE only when birth_year is known. In Postgres NULL != NULL, so
+        # fragments without birth_year do not auto-conflict. source isolates
+        # AM runners from athletex runners (never merged across sources).
+        UniqueConstraint(
+            "name_normalized", "birth_year", "source",
+            name="uq_runner_name_birth_source",
+        ),
+        Index("ix_runner_source", "source"),
+    )
 
     results = relationship("RaceResultDB", back_populates="runner")
     club_ref = relationship("Club", back_populates="runners")

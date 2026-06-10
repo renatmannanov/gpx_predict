@@ -152,36 +152,39 @@ class TestPhoneticNormalizeWordSafety:
 # ---------------------------------------------------------------------------
 
 class TestNormalizeNameSamePerson:
-    """Real pairs that are the same person -- should produce identical output."""
+    """Same person within ONE alphabet -- should produce identical output.
 
-    def test_andrei_ladontsev(self):
-        """andrei -> andrey normalization."""
-        assert normalize_name("Андрей Ладонцев") == normalize_name("Ladontsev Andrei")
+    NOTE: cross-alphabet matching (Cyrillic AM ↔ Latin athletex) was removed
+    on purpose — sources are isolated by runners.source. normalize_name now
+    canonicalizes in the name's own alphabet, with NO transliteration.
+    """
 
-    def test_sergei_tkachenko(self):
-        """sergei -> sergey normalization."""
-        assert normalize_name("Сергей Ткаченко") == normalize_name("Tkachenko Sergei")
+    # --- Latin (athletex): word order + phonetic variant collapsing ---
 
-    def test_dmitrii_doktorov(self):
-        """dmitrii -> dmitriy normalization."""
-        assert normalize_name("Дмитрий Докторов") == normalize_name("Doktorov Dmitrii")
+    def test_latin_word_order(self):
+        assert normalize_name("Ladontsev Andrey") == normalize_name("Andrey Ladontsev")
 
-    def test_rakhimbayev_almas(self):
-        """No phonetic rules needed -- already matching."""
-        assert normalize_name("Рахимбаев Алмас") == normalize_name("Rakhimbayev Almas")
+    def test_latin_andrei_andrey(self):
+        """ei -> ey phonetic variant collapses (both Latin)."""
+        assert normalize_name("Andrei Ladontsev") == normalize_name("Ladontsev Andrey")
 
-    def test_yevgeniy_dvurechenskiy(self):
-        """Rule 11 (ye->e at word start) now makes these match:
-        Cyrillic 'Евгений' -> 'evgeniy', Latin 'Yevgeniy' -> 'yevgeniy' -> 'evgeniy'."""
-        assert normalize_name("Евгений Двуреченский") == normalize_name("Dvurechenskiy Yevgeniy")
+    def test_latin_sergei_sergey(self):
+        assert normalize_name("Sergei Tkachenko") == normalize_name("Tkachenko Sergey")
 
-    def test_yekaterina_shatnaya(self):
-        """Rule 11: 'Yekaterina' -> 'ekaterina', matching Cyrillic 'Екатерина' -> 'ekaterina'."""
-        assert normalize_name("Екатерина Шатная") == normalize_name("Shatnaya Yekaterina")
+    def test_latin_dmitrii_dmitriy(self):
+        assert normalize_name("Dmitrii Doktorov") == normalize_name("Doktorov Dmitriy")
 
-    def test_alexandra_pavlenko(self):
-        """x -> ks normalization."""
-        assert normalize_name("Александра Павленко") == normalize_name("Pavlenko Alexandra")
+    def test_latin_alexandra_aleksandra(self):
+        """x -> ks phonetic variant collapses (both Latin)."""
+        assert normalize_name("Alexandra Pavlenko") == normalize_name("Pavlenko Aleksandra")
+
+    # --- Cyrillic (AM): word order invariance, stays Cyrillic ---
+
+    def test_cyrillic_word_order(self):
+        assert normalize_name("Алмас Рахимбаев") == normalize_name("Рахимбаев Алмас")
+
+    def test_cyrillic_case_invariant(self):
+        assert normalize_name("РАХИМБАЕВ Алмас") == normalize_name("рахимбаев алмас")
 
 
 class TestNormalizeNameDifferentPeople:
@@ -213,8 +216,9 @@ class TestNormalizeNameBasic:
     def test_extra_whitespace(self):
         assert normalize_name("  Vizuete  Castro   Pedro ") == "castro pedro vizuete"
 
-    def test_cyrillic_transliteration(self):
-        assert normalize_name("Руслан Бекешов") == "bekeshov ruslan"
+    def test_cyrillic_canonical_stays_cyrillic(self):
+        """Cyrillic is canonicalized (lowercase + sorted) but NOT transliterated."""
+        assert normalize_name("Руслан Бекешов") == "бекешов руслан"
 
     def test_sergej_tropin(self):
         """New doctest: Sergej -> Sergey via phonetic normalization."""

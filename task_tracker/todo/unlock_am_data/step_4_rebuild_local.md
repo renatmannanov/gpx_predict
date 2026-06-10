@@ -1,7 +1,8 @@
 # Шаг 4: Пересборка athletex локально с нуля
 
 > Зависит от: step_1, step_2, step_3 (тесты должны быть зелёные)
-> Статус: [ ] pending
+> Статус: [x] done — 39826 runners (am 26296 / athletex 13530), 60734 results,
+>   Юлия Ким 1→5, 0 склеек birth_year, 56 editions parsed, 0 errors
 
 ## Задача
 

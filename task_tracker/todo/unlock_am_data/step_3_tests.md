@@ -1,8 +1,8 @@
 # Шаг 3: Юнит-тесты на матчинг — тёзки и изоляция источников
 
 > Зависит от: step_1, step_2
-> Статус: [ ] pending
-> Файл: backend/tests/test_runner_matching.py (новый)
+> Статус: [x] done
+> Файл: backend/tests/features/races/test_runner_matching.py (новый) + tests/conftest.py
 
 ## Задача
 

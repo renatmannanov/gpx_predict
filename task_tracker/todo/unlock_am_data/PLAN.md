@@ -43,12 +43,12 @@
 
 | # | Файл | Агент | Статус |
 |---|------|-------|--------|
-| 1 | step_1_matching_logic.md | Backend | [ ] |
-| 2 | step_2_migration.md | Backend | [ ] |
-| 3 | step_3_tests.md | Backend | [ ] |
-| 4 | step_4_rebuild_local.md | Data Engineer | [ ] |
-| 5 | step_5_am_pilot.md | Data Engineer | [ ] |
-| 6 | step_6_am_full.md | Data Engineer | [ ] |
+| 1 | step_1_matching_logic.md | Backend | [x] |
+| 2 | step_2_migration.md | Backend | [x] |
+| 3 | step_3_tests.md | Backend | [x] |
+| 4 | step_4_rebuild_local.md | Data Engineer | [x] |
+| 5 | step_5_am_pilot.md | Data Engineer | [x] |
+| 6 | step_6_am_full.md | Data Engineer | [x] |
 | 7 | step_7_deploy.md | Deployer | [ ] |
 | 8 | step_8_completion.md | Orchestrator | [ ] |
 

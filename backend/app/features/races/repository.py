@@ -216,52 +216,6 @@ class RaceRepository:
 
     # --- Runner management ---
 
-    def get_or_create_runner(
-        self,
-        name_normalized: str,
-        name: str,
-        club: str | None = None,
-        gender: str | None = None,
-        category: str | None = None,
-        birth_year: int | None = None,
-    ) -> Runner:
-        """Find or create a runner by normalized name.
-
-        If found, updates mutable fields (club, category, gender) from latest data.
-        """
-        runner = self.db.execute(
-            select(Runner).where(Runner.name_normalized == name_normalized)
-        ).scalar_one_or_none()
-
-        if runner:
-            # Update with latest known data
-            if club:
-                runner.club = club
-            if gender:
-                runner.gender = gender
-            if category:
-                runner.category = category
-            if birth_year:
-                runner.birth_year = birth_year
-            runner.name = name
-            runner.updated_at = datetime.utcnow()
-        else:
-            runner = Runner(
-                name=name,
-                name_normalized=name_normalized,
-                club=club,
-                gender=gender,
-                category=category,
-                birth_year=birth_year,
-                races_count=0,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
-            self.db.add(runner)
-            self.db.flush()  # get the id
-
-        return runner
-
     def get_runner_by_id(self, runner_id: int) -> Runner | None:
         """Get runner by ID."""
         return self.db.get(Runner, runner_id)

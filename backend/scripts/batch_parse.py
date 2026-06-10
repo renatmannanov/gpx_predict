@@ -38,6 +38,13 @@ import yaml
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Windows consoles default to cp1252 and crash printing Cyrillic names
+# (UnicodeEncodeError). Force UTF-8 so summary output of AM races doesn't abort.
+for _stream in (sys.stdout, sys.stderr):
+    reconfigure = getattr(_stream, "reconfigure", None)
+    if reconfigure:
+        reconfigure(encoding="utf-8", errors="replace")
+
 import sqlalchemy as sa
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -132,6 +139,10 @@ def _fuzzy_match_runner(
 ) -> tuple[Runner | None, list[str]]:
     """Find existing runner by fuzzy name match + birth_year.
 
+    NOTE: No longer called at import — matching there is strict on
+    (name_normalized, birth_year, source). Reserved for the future
+    merge-candidates API (manual merge UI).
+
     Uses pg_trgm similarity to catch transliteration variants like
     Baikashev/Bajkashev, Anastasiya/Anastassiya, Assel/Asel.
 
@@ -184,6 +195,10 @@ def save_to_db(
 
     Creates Race (if not exists), RaceEdition, RaceDistances, RaceResults.
     Returns (total_results_saved, suspect_dupe_warnings).
+
+    NOTE: suspect_dupe_warnings is now always empty — fuzzy matching was removed
+    from import (namesakes go to separate runners by design). The second tuple
+    element is kept for backward-compatible call sites.
     """
     suspect_warnings: list[str] = []
     # Upsert Race
@@ -218,6 +233,11 @@ def save_to_db(
     db.flush()
 
     total_results = 0
+    # Track (runner_id, alias_norm) added during THIS edition import. A DB select
+    # only sees flushed rows, so two results of the same runner+name within one
+    # import would both pass the "not exists" check and insert a duplicate alias,
+    # violating ix_runner_aliases_unique. This set dedupes pending aliases.
+    seen_aliases: set[tuple[int, str]] = set()
     for dist_data in data.distances:
         distance = RaceDistance(
             edition_id=edition.id,
@@ -231,17 +251,25 @@ def save_to_db(
         for r in dist_data.results:
             name_norm = normalize_name(r.name)
 
-            # Get or create runner
+            # Get or create runner.
+            # Matching is strict: (name_normalized, birth_year, source).
+            # - source isolates AM runners from athletex runners (never merged).
+            # - birth_year IS NULL → always a new runner (fragment); we do not guess.
+            # - No fuzzy matching at import — namesakes go to separate runners on
+            #   purpose; fuzzy only added false merges. (_fuzzy_match_runner is kept,
+            #   unused, reserved for the future merge-candidates API.)
+            runner_source = "am" if source == "almaty-marathon" else "athletex"
             runner_id = None
             if name_norm:
-                runner = db.execute(
-                    select(Runner).where(Runner.name_normalized == name_norm)
-                ).scalar_one_or_none()
-
-                if not runner:
-                    # Fuzzy match: catch transliteration variants
-                    runner, warnings = _fuzzy_match_runner(db, name_norm, r.birth_year)
-                    suspect_warnings.extend(warnings)
+                runner = None
+                if r.birth_year is not None:
+                    runner = db.execute(
+                        select(Runner).where(
+                            Runner.name_normalized == name_norm,
+                            Runner.birth_year == r.birth_year,
+                            Runner.source == runner_source,
+                        )
+                    ).scalar_one_or_none()
 
                 if not runner:
                     # Resolve club via aliases
@@ -254,6 +282,7 @@ def save_to_db(
                     runner = Runner(
                         name=r.name,
                         name_normalized=name_norm,
+                        source=runner_source,
                         club=club_canonical,
                         club_id=club_id,
                         gender=r.gender,
@@ -286,19 +315,22 @@ def save_to_db(
                 # Save name alias
                 if runner and r.name:
                     alias_norm = normalize_name(r.name)
-                    existing_alias = db.execute(
-                        select(RunnerNameAlias).where(
-                            RunnerNameAlias.runner_id == runner.id,
-                            RunnerNameAlias.name_normalized == alias_norm,
-                        )
-                    ).scalar_one_or_none()
-                    if not existing_alias:
-                        db.add(RunnerNameAlias(
-                            runner_id=runner.id,
-                            name=r.name,
-                            name_normalized=alias_norm,
-                            source=source,
-                        ))
+                    alias_key = (runner.id, alias_norm)
+                    if alias_key not in seen_aliases:
+                        existing_alias = db.execute(
+                            select(RunnerNameAlias).where(
+                                RunnerNameAlias.runner_id == runner.id,
+                                RunnerNameAlias.name_normalized == alias_norm,
+                            )
+                        ).scalar_one_or_none()
+                        if not existing_alias:
+                            db.add(RunnerNameAlias(
+                                runner_id=runner.id,
+                                name=r.name,
+                                name_normalized=alias_norm,
+                                source=source,
+                            ))
+                        seen_aliases.add(alias_key)
 
             result = RaceResultDB(
                 distance_id=distance.id,

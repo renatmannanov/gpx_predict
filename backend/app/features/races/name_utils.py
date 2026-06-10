@@ -1,7 +1,12 @@
 """Utilities for normalizing participant names from race results.
 
 Handles both Latin (CLAX) and Cyrillic (Almaty Marathon) names.
-normalize_name() produces a canonical Latin form for matching and search.
+normalize_name() canonicalizes a name in its OWN alphabet (no cross-alphabet
+transliteration) — sources are isolated by runners.source, so AM Cyrillic and
+athletex Latin are never matched against each other.
+
+transliterate_cyrillic() is retained for reference / possible future
+cross-source merge tooling, but is NOT used by normalize_name() anymore.
 """
 
 from __future__ import annotations
@@ -161,13 +166,19 @@ def phonetic_normalize_word(word: str) -> str:
 
 
 def normalize_name(name: str) -> str:
-    """Normalize a participant name for matching.
+    """Normalize a participant name for matching, in its OWN alphabet.
 
-    Steps:
-    1. If Cyrillic — transliterate to Latin
-    2. Strip whitespace, collapse multiple spaces, lowercase
-    3. Apply phonetic normalization per word (collapse transliteration variants)
-    4. Sort words alphabetically (so "renat mannanov" == "mannanov renat")
+    We canonicalize (lowercase, collapse spaces, sort words) but do NOT
+    transliterate across alphabets. Sources are isolated by runners.source
+    (AM Cyrillic vs athletex Latin never match), so there is no need — and
+    transliterating Cyrillic→Latin only produced wrong, lossy forms
+    (Ким/Kim, double-ss, Kazakh names). As-is in, as-is out.
+
+    Cyrillic input  → canonical Cyrillic  (lowercase + sorted words)
+    Latin input     → canonical Latin     (+ phonetic variant collapsing)
+
+    Phonetic normalization is Latin-only (its rules assume Latin), so it is
+    applied only to Latin names.
 
     >>> normalize_name("Baikashev Shyngys")
     'baikashev shyngys'
@@ -178,15 +189,17 @@ def normalize_name(name: str) -> str:
     >>> normalize_name("  Vizuete  Castro   Pedro ")
     'castro pedro vizuete'
     >>> normalize_name("Руслан Бекешов")
-    'bekeshov ruslan'
-    >>> normalize_name("Шынгыс Байкашев")
-    'baykashev shyngys'
+    'бекешов руслан'
+    >>> normalize_name("Бекешов Руслан")
+    'бекешов руслан'
     >>> normalize_name("Sergej Tropin")
     'sergey tropin'
     """
-    if _has_cyrillic(name):
-        name = transliterate_cyrillic(name)
+    is_cyrillic = _has_cyrillic(name)
     name = re.sub(r"\s+", " ", name.strip()).lower()
-    words = [phonetic_normalize_word(w) for w in name.split()]
-    parts = sorted(words)
-    return " ".join(parts)
+    if is_cyrillic:
+        # Canonicalize in Cyrillic: no transliteration, no Latin phonetics.
+        words = name.split()
+    else:
+        words = [phonetic_normalize_word(w) for w in name.split()]
+    return " ".join(sorted(words))
