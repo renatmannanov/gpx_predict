@@ -230,10 +230,6 @@ async def list_races(db: Session = Depends(get_db)):
     races = repo.list_races()
     result = []
 
-    # Hide Almaty Marathon races for now (dirty data — cities instead of clubs)
-    HIDDEN_SOURCES = {"_am_kz"}
-    races = [r for r in races if not any(r.id.endswith(s) for s in HIDDEN_SOURCES)]
-
     for race in races:
         # Build editions from DB
         editions = []

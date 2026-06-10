@@ -58,14 +58,10 @@ class SeasonStatsResponse(BaseModel):
 async def get_season_stats(year: int, db: Session = Depends(get_db)):
     """Aggregate stats for a season: total runners, total clubs, top runners/clubs."""
 
-    # Hide Almaty Marathon races (dirty data — cities instead of clubs)
-    HIDDEN_SUFFIX = "_am_kz"
-
-    # Base filter: results for this year, only finishers, excluding hidden races
+    # Base filter: results for this year, only finishers
     base_filter = [
         RaceEdition.year == year,
         RaceResultDB.status.in_(_FINISHED_STATUSES),
-        ~Race.id.endswith(HIDDEN_SUFFIX),
     ]
     base_join = (
         select(RaceResultDB)
