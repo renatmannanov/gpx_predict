@@ -226,6 +226,11 @@ def save_to_db(
     db.flush()
 
     total_results = 0
+    # Track (runner_id, alias_norm) added during THIS edition import. A DB select
+    # only sees flushed rows, so two results of the same runner+name within one
+    # import would both pass the "not exists" check and insert a duplicate alias,
+    # violating ix_runner_aliases_unique. This set dedupes pending aliases.
+    seen_aliases: set[tuple[int, str]] = set()
     for dist_data in data.distances:
         distance = RaceDistance(
             edition_id=edition.id,
@@ -303,19 +308,22 @@ def save_to_db(
                 # Save name alias
                 if runner and r.name:
                     alias_norm = normalize_name(r.name)
-                    existing_alias = db.execute(
-                        select(RunnerNameAlias).where(
-                            RunnerNameAlias.runner_id == runner.id,
-                            RunnerNameAlias.name_normalized == alias_norm,
-                        )
-                    ).scalar_one_or_none()
-                    if not existing_alias:
-                        db.add(RunnerNameAlias(
-                            runner_id=runner.id,
-                            name=r.name,
-                            name_normalized=alias_norm,
-                            source=source,
-                        ))
+                    alias_key = (runner.id, alias_norm)
+                    if alias_key not in seen_aliases:
+                        existing_alias = db.execute(
+                            select(RunnerNameAlias).where(
+                                RunnerNameAlias.runner_id == runner.id,
+                                RunnerNameAlias.name_normalized == alias_norm,
+                            )
+                        ).scalar_one_or_none()
+                        if not existing_alias:
+                            db.add(RunnerNameAlias(
+                                runner_id=runner.id,
+                                name=r.name,
+                                name_normalized=alias_norm,
+                                source=source,
+                            ))
+                        seen_aliases.add(alias_key)
 
             result = RaceResultDB(
                 distance_id=distance.id,

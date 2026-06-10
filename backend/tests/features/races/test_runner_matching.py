@@ -9,7 +9,7 @@ women and "Pavlov Alexandr" from father+son into single runners.
 """
 from sqlalchemy import select, func
 
-from app.features.races.db_models import Runner
+from app.features.races.db_models import Runner, RunnerNameAlias
 from app.features.races.models import (
     RaceEditionData,
     RaceDistanceResults,
@@ -125,3 +125,56 @@ def test_fuzzy_not_applied_at_import(db):
 
     total = db.execute(select(func.count()).select_from(Runner)).scalar()
     assert total == 2
+
+
+def test_duplicate_name_in_same_race_no_alias_violation(db):
+    """Two identical results (same name+birth_year) in ONE race import.
+
+    Regression: a DB select only sees flushed rows, so the second result's
+    alias "not exists" check passed and inserted a duplicate, violating
+    ix_runner_aliases_unique (hit on Tengri Ultra: two "ABZHAPAROV Nurgeldi").
+    Must resolve to a single runner with a single alias, without raising.
+    """
+    _save(
+        db, "race_dup", "Race Dup",
+        [
+            _result("Nurgeldi Abzhaparov", birth_year=1990),
+            _result("Nurgeldi Abzhaparov", birth_year=1990),
+        ],
+        source="clax",
+    )
+
+    assert _runner_count(db, "abzhaparov nurgeldi") == 1
+    runner = db.execute(
+        select(Runner).where(Runner.name_normalized == "abzhaparov nurgeldi")
+    ).scalar_one()
+    alias_count = db.execute(
+        select(func.count()).select_from(RunnerNameAlias).where(
+            RunnerNameAlias.runner_id == runner.id
+        )
+    ).scalar()
+    assert alias_count == 1
+
+
+def test_cyrillic_am_matching_stays_cyrillic(db):
+    """AM Cyrillic names: word-order variants of the same person merge, and
+    name/name_normalized stay Cyrillic (no transliteration to Latin)."""
+    _save(
+        db, "race_am1", "AM Race 1",
+        [_result("Руслан Бекешов", birth_year=1990)],
+        source="almaty-marathon",
+    )
+    _save(
+        db, "race_am2", "AM Race 2",
+        [_result("Бекешов Руслан", birth_year=1990)],  # swapped word order
+        source="almaty-marathon",
+    )
+
+    # Same person -> one runner, keyed by canonical Cyrillic normalized form.
+    assert _runner_count(db, "бекешов руслан") == 1
+    runner = db.execute(
+        select(Runner).where(Runner.name_normalized == "бекешов руслан")
+    ).scalar_one()
+    assert runner.source == "am"
+    # Display name stays Cyrillic (as it arrived), not transliterated.
+    assert any("Ѐ" <= ch <= "ӿ" for ch in runner.name)
