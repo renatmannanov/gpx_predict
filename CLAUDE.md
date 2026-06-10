@@ -454,11 +454,11 @@ internal/docs/
 `--inserts` = 1 запрос на строку по сети = часы. COPY = потоком = секунды.
 
 ```bash
-# 1. Экспорт из локальной БД (с фильтрацией если нужно)
-PGPASSWORD=secret psql -h localhost -U gpx_predictor -d gpx_predictor -c "\copy (SELECT * FROM races WHERE id NOT LIKE '%_am_kz') TO '/tmp/races.csv' CSV HEADER"
+# 1. Экспорт из локальной БД (COPY TO STDOUT — устойчиво к путям/версиям)
+PGPASSWORD=secret psql -h localhost -U gpx_predictor -d gpx_predictor -c "COPY races TO STDOUT WITH CSV HEADER" > /tmp/races.csv
 
 # 2. Импорт на прод
-PGPASSWORD=<prod_password> psql -h <prod_host> -p <prod_port> -U postgres -d railway -c "\copy races FROM '/tmp/races.csv' CSV HEADER"
+psql -d "$PROD_URL" -c "COPY races FROM STDIN WITH CSV HEADER" < /tmp/races.csv
 ```
 
 Порядок загрузки (FK зависимости):
@@ -467,12 +467,30 @@ PGPASSWORD=<prod_password> psql -h <prod_host> -p <prod_port> -U postgres -d rai
 3. `race_editions` (→ races)
 4. `race_distances` (→ race_editions)
 5. `race_results` (→ race_distances, runners)
+6. `runner_name_aliases`, `club_name_aliases` (→ runners / clubs)
 
-Перед повторной загрузкой: `TRUNCATE race_results, race_distances, race_editions, races, runners, clubs CASCADE`
+Перед повторной загрузкой: `TRUNCATE race_results, race_distances, race_editions, races, runner_name_aliases, club_name_aliases, runners, clubs RESTART IDENTITY CASCADE`
+
+**После COPY с явными id** — выровнять sequences (иначе PK-конфликт при INSERT из приложения):
+```bash
+psql -d "$PROD_URL" -c "SELECT setval(pg_get_serial_sequence('runners','id'), (SELECT MAX(id) FROM runners));"
+# аналогично для clubs, race_editions, race_distances, race_results, runner_name_aliases
+# races.id — строковый ключ, sequence НЕ нужен
+```
+
+**Версии Postgres:** прод на **PG17**, локальный клиент может быть PG16 → `pg_dump -F c`
+НЕ работает (version mismatch). Для бэкапа/экспорта используй `COPY ... TO STDOUT > file.csv`
+(psql 16 коннектится к 17 нормально, COPY не зависит от версии). `\copy` с Windows-путём
+из Git-Bash молча не пишет файл — только `COPY TO STDOUT` + redirect.
 
 ### Гонки Алматы Марафон
-- ID с суффиксом `_am_kz` — **НЕ загружать на прод** (данные грязные)
-- На фронте отфильтрованы в API, но лучше не засорять продовую БД
+- **Загружены на прод (2026-06-10).** Источники изолированы через `runners.source`
+  (`am` / `athletex`) — AM и athletex-бегуны не сопоставляются. Матчинг по
+  `(name_normalized, birth_year, source)`. Подробнее — ARCHITECTURE.md §3.8.
+- ID гонок AM: `almaty_marathon`, `almaty_half_marathon`, `winter_run`,
+  `summer_relay`, `tau_jarys`, `almaty_copa_run` (БЕЗ суффикса `_am_kz` — он убран).
+- Фронт делит каталог по источнику: «Все / Athletex / Алматы Марафон».
+- Имена AM хранятся в родном алфавите (кириллица не транслитерируется).
 
 ---
 

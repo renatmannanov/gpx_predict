@@ -99,13 +99,14 @@ gpx-predictor/
 │       │   ├── races/              # Race catalog, results & predictions
 │       │   │   ├── __init__.py
 │       │   │   ├── models.py       # RaceResult, RaceStats, RaceEditionData
-│       │   │   ├── db_models.py    # SQLAlchemy: Race, RaceEdition, RaceDistance, RaceResultDB
+│       │   │   ├── db_models.py    # SQLAlchemy: Race, Runner(+source), RaceEdition, RaceDistance, RaceResultDB, *NameAlias
 │       │   │   ├── repository.py   # RaceRepository (DB reads: list, get, search, stats)
 │       │   │   ├── catalog.py      # RaceCatalog (GPX file path lookup only)
-│       │   │   ├── clax_parser.py  # CLAX XML parser (myrace.info)
+│       │   │   ├── clax_parser.py  # CLAX XML parser (athletex/myrace.info)
+│       │   │   ├── am_parser.py    # Almaty Marathon HTML parser (almaty-marathon.kz)
 │       │   │   ├── service.py      # RaceService (prediction + comparison from DB)
 │       │   │   ├── stats.py        # Statistics calculations
-│       │   │   ├── name_utils.py   # normalize_name() for participant matching
+│       │   │   ├── name_utils.py   # normalize_name() — own-alphabet canonical (см. 3.8)
 │       │   │   └── matching.py     # User matching across years
 │       │   │
 │       │   └── users/              # User management
@@ -359,6 +360,62 @@ class StravaSyncStatus:
     sync_in_progress: bool
     last_error: Optional[str]
 ```
+
+---
+
+### 3.8 Race-данные: Race, Runner, RaceResult, NameAlias
+
+**Файл:** `features/races/db_models.py`
+
+Результаты гонок (athletex.kz / Алматы Марафон) хранятся отдельным стеком таблиц:
+
+```python
+class Runner:
+    id: int                     # PK
+    name: str                   # display name (как пришло из результатов)
+    name_normalized: str        # канон для матчинга (НЕ unique сам по себе)
+    source: str                 # "am" | "athletex"  ← изоляция источников
+    birth_year: Optional[int]
+    club / club_id / gender / category / races_count
+
+    # Составной UNIQUE: (name_normalized, birth_year, source)
+    # NULL birth_year в Postgres != NULL → фрагменты без года не конфликтуют.
+
+class Race:           id: str (PK, "tengri_ultra_kz"), name, type
+class RaceEdition:    один год гонки (→ Race)
+class RaceDistance:   дистанция в edition (→ RaceEdition)
+class RaceResultDB:   результат участника (→ RaceDistance, Runner)
+class RunnerNameAlias / ClubNameAlias:  альтернативные написания (поиск)
+```
+
+#### Изоляция источников и матчинг (ключевое решение)
+
+Матчинг бегуна при импорте (`scripts/batch_parse.py::save_to_db`) строгий —
+по тройке **`(name_normalized, birth_year, source)`**:
+
+- **`source`** изолирует Алматы Марафон (`am`) от athletex (`athletex`). Бегуны
+  из разных источников **никогда не сопоставляются**. Один человек, бежавший и
+  AM, и трейл, будет двумя `Runner` (свяжет позже ручной мёрдж — отдельная задача).
+- **`birth_year IS NULL` → всегда новый `Runner`** (фрагмент). Не угадываем.
+  В AM-данных ~80% без года рождения — это осознанный компромисс честности.
+- **Без fuzzy при импорте.** Тёзки идут в разные `Runner` (отец/сын Pavlov 1984/2015
+  — два бегуна). `_fuzzy_match_runner` оставлен, но не вызывается — зарезервирован
+  под будущий merge-candidates API.
+
+#### Нормализация имён (`features/races/name_utils.py`)
+
+`normalize_name` канонизирует имя **в его собственном алфавите** (lowercase +
+сортировка слов), БЕЗ транслитерации между алфавитами:
+
+- Кириллица (AM) → канон-кириллица. Латиница (athletex) → канон-латиница
+  (+ фонетика: `x→ks`, `ss→s`, `j→y` и т.п. — только для латиницы).
+- Межалфавитная транслитерация убрана: source изолирует источники, поэтому
+  переводить кириллицу в латиницу не нужно (и она давала лоссовые формы:
+  Ким/Kim, двойные ss, казахские имена).
+- Поиск работает в своём алфавите: `Каримов`→am, `Karimov`→athletex.
+
+**Фронт** делит гонки по источнику (`getRaceSource` в `types/races.ts`,
+явный список 6 AM-id): фильтры «Все / Athletex / Алматы Марафон».
 
 ---
 
