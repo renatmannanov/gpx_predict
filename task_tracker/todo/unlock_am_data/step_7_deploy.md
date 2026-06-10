@@ -1,8 +1,22 @@
 # Шаг 7: Деплой на прод
 
 > Зависит от: step_6
-> Статус: [ ] pending
+> Статус: [x] done — задеплоено 2026-06-10. Прод: am 26296 / athletex 13530,
+>   Юлия Ким=5, AM-гонки видны, user-данные целы (users 5, strava 1070, gpx 13).
+>   Поиск Каримов→am / Karimov→athletex работает на ayda.run. Профили чистые.
 > Агент: Deployer
+
+## Факты деплоя (2026-06-10)
+- Прод PostgreSQL **17.7**, локальный клиент 16.11 → `pg_dump -F c` НЕ работает
+  (version mismatch). Бэкап делали через `COPY ... TO STDOUT > file.csv` (psql 16
+  подключается к 17 ОК, COPY не зависит от версии).
+- `\copy` с Windows-путём из Git-Bash НЕ пишет файл (молча) — использовать
+  `COPY TO STDOUT` + redirect, путь интерпретирует Git-Bash, не psql.exe.
+- Бэкап user-таблиц: `C:\Users\renat\AppData\Local\Temp\prod_user_backup\*.csv`
+  (12 таблиц, users/strava/profiles/gpx). Race-данные не бэкапили — воспроизводимы.
+- После COPY с явными id ОБЯЗАТЕЛЬНО `setval(pg_get_serial_sequence(...), max(id))`
+  для всех serial-таблиц (TRUNCATE RESTART IDENTITY сбросил sequence → иначе PK-конфликт).
+  races.id — строковый ключ, sequence не нужен.
 
 ## Задача
 
