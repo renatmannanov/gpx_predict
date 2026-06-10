@@ -1,15 +1,15 @@
-type FilterValue = 'all' | 'trail' | 'road';
+type FilterValue = 'all' | 'athletex' | 'am';
 
 interface RaceFiltersProps {
   selected: FilterValue;
-  counts: { all: number; trail: number; road: number };
+  counts: { all: number; athletex: number; am: number };
   onChange: (filter: FilterValue) => void;
 }
 
 const filters: { value: FilterValue; label: string }[] = [
   { value: 'all', label: 'Все' },
-  { value: 'trail', label: 'Трейл' },
-  { value: 'road', label: 'Шоссе' },
+  { value: 'athletex', label: 'Athletex' },
+  { value: 'am', label: 'Алматы Марафон' },
 ];
 
 export default function RaceFilters({ selected, counts, onChange }: RaceFiltersProps) {

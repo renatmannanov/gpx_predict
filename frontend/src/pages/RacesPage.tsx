@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchRaces } from '../api/races';
-import { getRaceCategory } from '../types/races';
+import { getRaceSource } from '../types/races';
 import RaceFilters from '../components/races/RaceFilters';
 import RaceCard from '../components/races/RaceCard';
 import './RacesPage.css';
 
-type FilterValue = 'all' | 'trail' | 'road';
+type FilterValue = 'all' | 'athletex' | 'am';
 
 export default function RacesPage() {
   const { data: races, isLoading, error } = useQuery({
@@ -21,11 +21,11 @@ export default function RacesPage() {
   }, []);
 
   const counts = useMemo(() => {
-    if (!races) return { all: 0, trail: 0, road: 0 };
+    if (!races) return { all: 0, athletex: 0, am: 0 };
     return {
       all: races.length,
-      trail: races.filter((r) => getRaceCategory(r.type, r.id) === 'trail').length,
-      road: races.filter((r) => getRaceCategory(r.type, r.id) === 'road').length,
+      athletex: races.filter((r) => getRaceSource(r.id) === 'athletex').length,
+      am: races.filter((r) => getRaceSource(r.id) === 'am').length,
     };
   }, [races]);
 
@@ -34,7 +34,7 @@ export default function RacesPage() {
 
     const filtered = filter === 'all'
       ? races
-      : races.filter((r) => getRaceCategory(r.type, r.id) === filter);
+      : races.filter((r) => getRaceSource(r.id) === filter);
 
     return [...filtered].sort((a, b) => {
       const latestA = getLatestEditionDate(a.editions);
@@ -65,9 +65,8 @@ export default function RacesPage() {
     <div className="page">
       <div className="page-eyebrow">
         <a href="https://athletex.kz/" target="_blank" rel="noopener noreferrer">Athletex</a>
-        {/* TODO: раскомментировать когда вернём гонки АМ */}
-        {/* {' · '}
-        <a href="https://almaty-marathon.kz/ru/" target="_blank" rel="noopener noreferrer" className="eyebrow-road">Алматы Марафон</a> */}
+        {' · '}
+        <a href="https://almaty-marathon.kz/ru/" target="_blank" rel="noopener noreferrer" className="eyebrow-road">Алматы Марафон</a>
       </div>
       <h1>Гонки</h1>
       <p className="page-sub">

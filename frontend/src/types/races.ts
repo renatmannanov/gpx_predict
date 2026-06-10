@@ -204,7 +204,28 @@ export interface RunnerProfileResponse {
 // === Хелперы ===
 
 export type RaceCategory = 'trail' | 'road' | 'other';
+export type RaceSource = 'am' | 'athletex';
 
+// Источник гонки. Алматы Марафон (almaty-marathon.kz) vs Athletex (athletex.kz).
+// Это явный список AM-гонок — меняется только при добавлении новой AM-гонки.
+const AM_RACE_IDS: ReadonlySet<string> = new Set([
+  'almaty_marathon',
+  'almaty_half_marathon',
+  'winter_run',
+  'summer_relay',
+  'tau_jarys',
+  'almaty_copa_run',
+]);
+
+export function getRaceSource(raceId: string): RaceSource {
+  return AM_RACE_IDS.has(raceId) ? 'am' : 'athletex';
+}
+
+export function getRaceSourceLabel(source: RaceSource): string {
+  return source === 'am' ? 'Алматы Марафон' : 'Athletex';
+}
+
+// Бейдж trail/road на карточке (отдельная ось от источника).
 // Fallback: type пока NULL в БД, определяем по race.id
 // TODO: убрать после заполнения type в catalog.yaml + БД
 const RACE_TYPE_BY_ID: Record<string, RaceCategory> = {
@@ -221,15 +242,16 @@ const RACE_TYPE_BY_ID: Record<string, RaceCategory> = {
   mount_fest_skyrunning_kz: 'trail',
   kosmos_uphill_kz: 'trail',
   red_bull_400_kz: 'trail',
-  tau_jarys: 'trail',
   tun_run_kz: 'trail',
   burabay_ice_kz: 'trail',
+  // Алматы Марафон — городские шоссейные старты
   almaty_marathon: 'road',
   almaty_half_marathon: 'road',
   zerenda_half_marathon_kz: 'road',
   winter_run: 'road',
   almaty_copa_run: 'road',
   summer_relay: 'road',
+  tau_jarys: 'road',
 };
 
 export function getRaceCategory(type: string | null, raceId?: string): RaceCategory {
