@@ -38,6 +38,13 @@ import yaml
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Windows consoles default to cp1252 and crash printing Cyrillic names
+# (UnicodeEncodeError). Force UTF-8 so summary output of AM races doesn't abort.
+for _stream in (sys.stdout, sys.stderr):
+    reconfigure = getattr(_stream, "reconfigure", None)
+    if reconfigure:
+        reconfigure(encoding="utf-8", errors="replace")
+
 import sqlalchemy as sa
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
