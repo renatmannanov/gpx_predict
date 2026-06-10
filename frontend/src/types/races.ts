@@ -221,15 +221,15 @@ const RACE_TYPE_BY_ID: Record<string, RaceCategory> = {
   mount_fest_skyrunning_kz: 'trail',
   kosmos_uphill_kz: 'trail',
   red_bull_400_kz: 'trail',
-  tau_jarys_am_kz: 'trail',
+  tau_jarys: 'trail',
   tun_run_kz: 'trail',
   burabay_ice_kz: 'trail',
-  almaty_marathon_am_kz: 'road',
-  almaty_half_marathon_am_kz: 'road',
+  almaty_marathon: 'road',
+  almaty_half_marathon: 'road',
   zerenda_half_marathon_kz: 'road',
-  winter_run_am_kz: 'road',
-  almaty_copa_run_am_kz: 'road',
-  summer_relay_am_kz: 'road',
+  winter_run: 'road',
+  almaty_copa_run: 'road',
+  summer_relay: 'road',
 };
 
 export function getRaceCategory(type: string | null, raceId?: string): RaceCategory {

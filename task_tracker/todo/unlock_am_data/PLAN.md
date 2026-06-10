@@ -48,7 +48,7 @@
 | 3 | step_3_tests.md | Backend | [x] |
 | 4 | step_4_rebuild_local.md | Data Engineer | [x] |
 | 5 | step_5_am_pilot.md | Data Engineer | [x] |
-| 6 | step_6_am_full.md | Data Engineer | [~] данные залиты; осталось убрать _am_kz фильтры+id |
+| 6 | step_6_am_full.md | Data Engineer | [x] |
 | 7 | step_7_deploy.md | Deployer | [ ] |
 | 8 | step_8_completion.md | Orchestrator | [ ] |
 
