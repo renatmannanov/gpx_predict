@@ -16,7 +16,7 @@
 | 1 | ~~Источник гонки (am/athletex) из БД вместо хардкода во фронте~~ | [done](../done/race_source_from_db.md) | ✅ 2026-06-11 — `source` в API, `AM_RACE_IDS` удалён |
 | 2 | ~~Баг B10: счётчик финишёров включает небеговые дистанции~~ | *(файла нет — из сессий)* | ✅ 2026-06-11 — фильтр небеговых дистанций в SQL счётчика |
 | 3 | Баг: клуб бегуна берётся по последней гонке (Авдеева → «Сибирские сувениры» вместо RUNFINITY) | *(файла нет — из сессий)* | Качество данных профиля бегуна |
-| 4 | Open Graph / meta-теги | [backlog_seo_meta.md](backlog_seo_meta.md) | В работе 2026-06-11: og:title/description для /races/:id и /runners/:id (серверная подстановка). SSR/prerender — не делаем |
+| 4 | Open Graph / meta-теги | [backlog_seo_meta.md](backlog_seo_meta.md) | ✅ частично 2026-06-11 — серверные OG-теги для /races/:id и /runners/:id. Осталось: og:image (PNG), prerender/SSG при росте |
 
 ## P2 — ближайшая очередь
 

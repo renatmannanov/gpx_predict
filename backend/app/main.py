@@ -11,13 +11,14 @@ import sys
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings, PROJECT_ROOT
-from app.db.session import init_db, AsyncSessionLocal
+from app.db.session import init_db, AsyncSessionLocal, SessionLocal
 from app.api.v1.router import api_router
 from app.features.strava.sync import background_sync
+from app.services.seo_meta import build_page_meta, inject_meta
 
 
 # === Logging Setup ===
@@ -167,10 +168,30 @@ if _frontend_dist.is_dir():
 
     @app.get("/{full_path:path}")
     async def spa_fallback(request: Request, full_path: str):
-        """SPA fallback: serve index.html for all non-API, non-file routes."""
+        """SPA fallback: serve index.html for all non-API, non-file routes.
+
+        For shareable routes (/races/{id}, /runners/{id}) page-specific
+        <title> and Open Graph tags are injected so messenger/search bots
+        (which don't run JS) see real previews.
+        """
         file_path = _frontend_dist / full_path
         if full_path and file_path.is_file():
             return FileResponse(file_path)
-        return FileResponse(_frontend_dist / "index.html")
+
+        index_path = _frontend_dist / "index.html"
+        try:
+            with SessionLocal() as db:
+                meta = build_page_meta(full_path, db)
+            if meta:
+                title, description = meta
+                base = (settings.base_url or "https://ayda.run").rstrip("/")
+                page_html = inject_meta(
+                    index_path.read_text(encoding="utf-8"),
+                    title, description, f"{base}/{full_path}",
+                )
+                return HTMLResponse(page_html)
+        except Exception:
+            logger.exception(f"Meta injection failed for /{full_path}")
+        return FileResponse(index_path)
 
     logger.info(f"Serving frontend SPA from {_frontend_dist}")

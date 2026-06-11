@@ -1,5 +1,11 @@
 # SEO & Meta Tags — Бэклог
 
+> **Частично сделано 2026-06-11:** серверная подстановка `<title>` + OG-тегов
+> (og:title/description/url, twitter:card, meta description) для `/races/:id`
+> и `/runners/:id` — `backend/app/services/seo_meta.py` + SPA-фоллбэк в `main.py`.
+> Дефолтные теги для остальных страниц — в `frontend/index.html`.
+> Осталось: og:image (нужен PNG, мессенджеры не едят SVG), SSG/prerender при росте.
+
 ## Проблема
 
 SPA (React) не генерирует правильные `<meta>` теги для страниц бегунов и гонок.
