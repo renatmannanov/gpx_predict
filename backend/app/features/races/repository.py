@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from .db_models import Club, Race, RaceDistance, RaceEdition, RaceResultDB, Runner, RunnerNameAlias
+from .disciplines import running_distance_filter
 from .models import RaceDistanceResults, RaceEditionData, RaceResult, RaceStats
 from .name_utils import normalize_name
 from .stats import calculate_stats
@@ -202,7 +203,11 @@ class RaceRepository:
         return None
 
     def count_finishers(self, race_id: str, year: int) -> int:
-        """Count total finishers (finished + over_time_limit) across all distances."""
+        """Count total finishers (finished + over_time_limit) across running distances.
+
+        Non-running disciplines (bike, ski-alp) are excluded — they are hidden
+        from the results UI, so the counter must match.
+        """
         return self.db.execute(
             select(func.count(RaceResultDB.id))
             .join(RaceDistance, RaceResultDB.distance_id == RaceDistance.id)
@@ -211,6 +216,7 @@ class RaceRepository:
                 RaceEdition.race_id == race_id,
                 RaceEdition.year == year,
                 RaceResultDB.status.in_(("finished", "over_time_limit")),
+                running_distance_filter(RaceDistance.name),
             )
         ).scalar() or 0
 

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.config import CONTENT_DIR
 from app.db.session import get_async_db, get_db
 from app.features.races.catalog import RaceCatalog
+from app.features.races.disciplines import is_running_distance
 from app.features.races.repository import RaceRepository
 from app.features.races.service import RaceService
 from app.features.races.stats import calculate_stats, format_time, get_percentile
@@ -27,20 +28,8 @@ router = APIRouter()
 # RaceCatalog — only for GPX file paths
 _catalog = RaceCatalog(CONTENT_DIR)
 
-# Non-running distance keywords — hide from results until discipline field in DB
-_NON_RUNNING_KEYWORDS = [
-    "ski ", "ski-", "ски-альп", "splitboard", "skitour",
-    "bike", "mtb", "velo", "gravel",
-]
-
 # Backyard Ultra: winner = longest time. Reverse sort + recalculate places.
 _BACKYARD_RACE_IDS = {"backyard_ultra_kz"}
-
-
-def _is_running_distance(name: str) -> bool:
-    """Return False for non-running disciplines (bike, ski, etc.)."""
-    lower = name.lower()
-    return not any(kw in lower for kw in _NON_RUNNING_KEYWORDS)
 
 
 # === Pydantic schemas ===
@@ -72,7 +61,7 @@ class RaceSchema(BaseModel):
     distances: list[RaceDistanceSchema] = []
     editions: list[RaceEditionSchema] = []
     next_date: Optional[str] = None
-    total_finishers: Optional[int] = None  # latest year, all distances
+    total_finishers: Optional[int] = None  # latest year, running distances only
     source: str = "athletex"  # "am" | "athletex" — derived from runners.source
 
 
@@ -249,7 +238,7 @@ async def list_races(db: Session = Depends(get_db)):
         if race.editions:
             latest_ed = max(race.editions, key=lambda e: e.year)
             for dist in latest_ed.distances:
-                if not _is_running_distance(dist.name):
+                if not is_running_distance(dist.name):
                     continue
                 # Check if GPX exists via catalog
                 has_gpx = _catalog.get_gpx_path(race.id, dist.name) is not None
@@ -308,7 +297,7 @@ async def get_race(race_id: str, db: Session = Depends(get_db)):
         latest_ed = max(race.editions, key=lambda e: e.year)
         total_finishers = repo.count_finishers(race_id, latest_ed.year)
         for dist in latest_ed.distances:
-            if not _is_running_distance(dist.name):
+            if not is_running_distance(dist.name):
                 continue
             has_gpx = _catalog.get_gpx_path(race_id, dist.name) is not None
             distances.append(
@@ -347,7 +336,7 @@ async def get_results(race_id: str, year: int, db: Session = Depends(get_db)):
 
     result = []
     for dist in data.distances:
-        if not _is_running_distance(dist.distance_name):
+        if not is_running_distance(dist.distance_name):
             continue
 
         race_results = list(dist.results)
