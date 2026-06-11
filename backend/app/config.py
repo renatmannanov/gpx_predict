@@ -64,6 +64,10 @@ class Settings(BaseSettings):
         default=None,
         description="Public base URL (for Telegram webhook registration)"
     )
+    site_url: str = Field(
+        default="https://ayda.run",
+        description="Canonical public site URL (og:url meta tags); base_url may point to the Railway domain"
+    )
 
     # === Cross-service integration ===
     cross_service_api_key: Optional[str] = Field(

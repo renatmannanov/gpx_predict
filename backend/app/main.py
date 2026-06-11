@@ -184,7 +184,7 @@ if _frontend_dist.is_dir():
                 meta = build_page_meta(full_path, db)
             if meta:
                 title, description = meta
-                base = (settings.base_url or "https://ayda.run").rstrip("/")
+                base = settings.site_url.rstrip("/")
                 page_html = inject_meta(
                     index_path.read_text(encoding="utf-8"),
                     title, description, f"{base}/{full_path}",
