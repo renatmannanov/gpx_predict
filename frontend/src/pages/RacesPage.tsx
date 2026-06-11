@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchRaces } from '../api/races';
-import { getRaceSource } from '../types/races';
 import RaceFilters from '../components/races/RaceFilters';
 import RaceCard from '../components/races/RaceCard';
 import './RacesPage.css';
@@ -24,8 +23,8 @@ export default function RacesPage() {
     if (!races) return { all: 0, athletex: 0, am: 0 };
     return {
       all: races.length,
-      athletex: races.filter((r) => getRaceSource(r.id) === 'athletex').length,
-      am: races.filter((r) => getRaceSource(r.id) === 'am').length,
+      athletex: races.filter((r) => r.source === 'athletex').length,
+      am: races.filter((r) => r.source === 'am').length,
     };
   }, [races]);
 
@@ -34,7 +33,7 @@ export default function RacesPage() {
 
     const filtered = filter === 'all'
       ? races
-      : races.filter((r) => getRaceSource(r.id) === filter);
+      : races.filter((r) => r.source === filter);
 
     return [...filtered].sort((a, b) => {
       const latestA = getLatestEditionDate(a.editions);

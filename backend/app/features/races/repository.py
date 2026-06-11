@@ -214,6 +214,34 @@ class RaceRepository:
             )
         ).scalar() or 0
 
+    def get_race_sources(self) -> dict[str, str]:
+        """Map race_id -> data source ("am" | "athletex").
+
+        Derived from runners of the race results: sources are isolated per race
+        (AM and athletex runners are never matched across sources), so any
+        runner's source identifies the whole race. Races without results are
+        absent from the map.
+        """
+        rows = self.db.execute(
+            select(RaceEdition.race_id, func.min(Runner.source))
+            .join(RaceDistance, RaceDistance.edition_id == RaceEdition.id)
+            .join(RaceResultDB, RaceResultDB.distance_id == RaceDistance.id)
+            .join(Runner, RaceResultDB.runner_id == Runner.id)
+            .group_by(RaceEdition.race_id)
+        ).all()
+        return {race_id: source for race_id, source in rows}
+
+    def get_race_source(self, race_id: str) -> str | None:
+        """Data source ("am" | "athletex") for a single race, None if no results."""
+        return self.db.execute(
+            select(Runner.source)
+            .join(RaceResultDB, RaceResultDB.runner_id == Runner.id)
+            .join(RaceDistance, RaceResultDB.distance_id == RaceDistance.id)
+            .join(RaceEdition, RaceDistance.edition_id == RaceEdition.id)
+            .where(RaceEdition.race_id == race_id)
+            .limit(1)
+        ).scalar_one_or_none()
+
     # --- Runner management ---
 
     def get_runner_by_id(self, runner_id: int) -> Runner | None:

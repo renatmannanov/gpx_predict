@@ -73,6 +73,7 @@ class RaceSchema(BaseModel):
     editions: list[RaceEditionSchema] = []
     next_date: Optional[str] = None
     total_finishers: Optional[int] = None  # latest year, all distances
+    source: str = "athletex"  # "am" | "athletex" — derived from runners.source
 
 
 class PercentileBucketSchema(BaseModel):
@@ -228,6 +229,7 @@ async def list_races(db: Session = Depends(get_db)):
     """Get race catalog (all races with distances and editions)."""
     repo = RaceRepository(db)
     races = repo.list_races()
+    sources = repo.get_race_sources()
     result = []
 
     for race in races:
@@ -276,6 +278,7 @@ async def list_races(db: Session = Depends(get_db)):
                 distances=distances,
                 editions=editions,
                 total_finishers=total_finishers,
+                source=sources.get(race.id, "athletex"),
             )
         )
 
@@ -326,6 +329,7 @@ async def get_race(race_id: str, db: Session = Depends(get_db)):
         distances=distances,
         editions=editions,
         total_finishers=total_finishers,
+        source=repo.get_race_source(race_id) or "athletex",
     )
 
 
