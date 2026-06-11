@@ -107,6 +107,7 @@ gpx-predictor/
 │       │   │   ├── service.py      # RaceService (prediction + comparison from DB)
 │       │   │   ├── stats.py        # Statistics calculations
 │       │   │   ├── name_utils.py   # normalize_name() — own-alphabet canonical (см. 3.8)
+│       │   │   ├── disciplines.py  # is_running_distance() — детект небеговых дистанций (bike/ski)
 │       │   │   └── matching.py     # User matching across years
 │       │   │
 │       │   └── users/              # User management
@@ -128,6 +129,7 @@ gpx-predictor/
 │       │   ├── naismith.py         # old_naismith (3rd method!)
 │       │   ├── sun.py              # Sunrise/sunset
 │       │   ├── user_profile.py     # Profile calculation
+│       │   ├── seo_meta.py         # OG/meta tags injection for SPA pages (bots)
 │       │   └── calculators/
 │       │       ├── base.py         # Base calculator classes
 │       │       └── comparison.py   # ComparisonService

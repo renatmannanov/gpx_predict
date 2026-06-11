@@ -27,6 +27,7 @@ export interface Race {
   editions: RaceEdition[];
   next_date: string | null;
   total_finishers: number | null;
+  source: RaceSource;
 }
 
 // === Season stats ===
@@ -204,26 +205,10 @@ export interface RunnerProfileResponse {
 // === Хелперы ===
 
 export type RaceCategory = 'trail' | 'road' | 'other';
+
+// Источник гонки: Алматы Марафон (almaty-marathon.kz) vs Athletex (athletex.kz).
+// Приходит из API (race.source), вычисляется на бэке из runners.source.
 export type RaceSource = 'am' | 'athletex';
-
-// Источник гонки. Алматы Марафон (almaty-marathon.kz) vs Athletex (athletex.kz).
-// Это явный список AM-гонок — меняется только при добавлении новой AM-гонки.
-const AM_RACE_IDS: ReadonlySet<string> = new Set([
-  'almaty_marathon',
-  'almaty_half_marathon',
-  'winter_run',
-  'summer_relay',
-  'tau_jarys',
-  'almaty_copa_run',
-]);
-
-export function getRaceSource(raceId: string): RaceSource {
-  return AM_RACE_IDS.has(raceId) ? 'am' : 'athletex';
-}
-
-export function getRaceSourceLabel(source: RaceSource): string {
-  return source === 'am' ? 'Алматы Марафон' : 'Athletex';
-}
 
 // Бейдж trail/road на карточке (отдельная ось от источника).
 // Fallback: type пока NULL в БД, определяем по race.id
